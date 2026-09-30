@@ -1,0 +1,79 @@
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+
+export type StatusType =
+    | 'DRAFT'
+    | 'SUBMITTED'
+    | 'PENDING_SS'
+    | 'APPROVED'
+    | 'APPROVED_SS'
+    | 'VERIFIED_SS'
+    | 'DISBURSED'
+    | 'SETTLED'
+    | 'REJECTED'
+    | 'REJECTED_REFUND_PENDING'
+    | 'REFUNDED'
+    | 'BALANCED'
+    | 'SURPLUS'
+    | 'SHORTAGE'
+    | 'ACTIVE'
+    | 'INACTIVE'
+    | string;
+
+interface StatusBadgeProps {
+    status: StatusType;
+    className?: string;
+}
+
+export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
+    const getBadgeStyle = (st: string) => {
+        switch (st) {
+            case 'DRAFT':
+                return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+            case 'SUBMITTED':
+                return 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
+            case 'PENDING_SS':
+                return 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800';
+            case 'APPROVED':
+            case 'APPROVED_SS':
+            case 'BALANCED':
+            case 'ACTIVE':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800';
+            case 'VERIFIED_SS':
+                return 'bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800';
+            case 'DISBURSED':
+                return 'bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800';
+            case 'SETTLED':
+                return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700';
+            case 'REJECTED':
+            case 'SHORTAGE':
+            case 'INACTIVE':
+                return 'bg-red-50 text-red-700 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800';
+            case 'REJECTED_REFUND_PENDING':
+                return 'bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800';
+            case 'REFUNDED':
+                return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+            case 'SURPLUS':
+                return 'bg-cyan-50 text-cyan-700 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800';
+            // Roles
+            case 'SYSTEM_ADMIN':
+                return 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800';
+            case 'SM':
+                return 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800';
+            case 'SAC':
+                return 'bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800';
+            case 'SS':
+                return 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800';
+            case 'SOA':
+                return 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800';
+            default:
+                return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700';
+        }
+    };
+
+    return (
+        <Badge variant="outline" className={`font-mono text-xs px-2.5 py-0.5 font-medium border ${getBadgeStyle(status)} ${className}`}>
+            {status}
+        </Badge>
+    );
+}
