@@ -8,6 +8,7 @@ use App\Exceptions\InvalidVoucherStateException;
 use App\Models\AuditLog;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ApproveVoucherAction
@@ -22,6 +23,10 @@ class ApproveVoucherAction
      */
     public function execute(PettyCashVoucher $voucher, User $actor, ?string $ipAddress = null): PettyCashVoucher
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 5: Anti Self-Approval
         if ($actor->role === 'SAC' && $voucher->requester_id === $actor->id) {
             throw new ForbiddenSelfApprovalException('FORBIDDEN_SELF_APPROVAL: Anda tidak dapat menyetujui pengajuan milik sendiri.');
@@ -72,6 +77,18 @@ class ApproveVoucherAction
                 'VOUCHER',
                 $voucher->id
             );
+
+            // Notify requester that voucher has been approved
+            if ($voucher->requester && $voucher->requester->id !== $actor->id) {
+                $this->notificationAction->toUser(
+                    $voucher->requester,
+                    'VOUCHER_APPROVED',
+                    'Voucher Disetujui',
+                    "Voucher {$voucher->voucher_number} telah disetujui oleh {$actor->name}. Silakan ambil pencairan dana ke kasir (SAC).",
+                    'VOUCHER',
+                    $voucher->id
+                );
+            }
 
             return $voucher;
         });

@@ -73,8 +73,25 @@ test('system admin can see records across all stores', function () {
     expect($configs)->toHaveCount(2);
 });
 
-test('unauthenticated query does not apply store scope automatically', function () {
+test('unauthenticated query fails closed and returns empty', function () {
     $configs = StoreOpnameConfig::all();
 
-    expect($configs)->toHaveCount(2);
+    expect($configs)->toHaveCount(0);
+});
+
+test('user without store_id who is not system admin fails closed and returns empty', function () {
+    $homelessUser = User::create([
+        'store_id' => null,
+        'nik' => 'HOMELESS001',
+        'name' => 'User Without Store',
+        'role' => 'SAC',
+        'pin_hash' => Hash::make('123456'),
+        'is_active' => true,
+    ]);
+    $homelessUser->syncRoles(['SAC']);
+
+    $this->actingAs($homelessUser);
+    $configs = StoreOpnameConfig::all();
+
+    expect($configs)->toHaveCount(0);
 });

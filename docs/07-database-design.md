@@ -93,17 +93,20 @@
 | `id` | VARCHAR(32) | NO | CUID | PK |
 | `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
 | `opname_number` | VARCHAR(50) | NO | — | `001/KKCL/10435/IX/2026`. UNIQUE. |
-| `opname_type` | VARCHAR(20) | NO | `KAS_KECIL` | Opname type discriminator |
+| `opname_type` | VARCHAR(20) | NO | `KAS_KECIL` | `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER` |
 | `status` | VARCHAR(20) | NO | `DRAFT` | `DRAFT`, `SUBMITTED`, `VERIFIED_SS`, `APPROVED`, `REJECTED` |
 | `date` | DATE | NO | TODAY() | Opname date |
-| `imprest_fund_cents` | INTEGER | NO | 500000000 | Plafon snapshot at session creation |
+| `imprest_fund_cents` | INTEGER | NO | 500000000 | Plafon / Target baseline at session creation |
 | `previous_variance_cents` | INTEGER | NO | 0 | V_prev from last approved session |
 | `physical_total_cents` | INTEGER | NO | 0 | K_fisik = sum of item counts |
-| `vouchers_total_cents` | INTEGER | NO | 0 | K_bon = sum of DISBURSED vouchers |
-| `bri_clean_balance_cents` | INTEGER | NO | 0 | K_bri = net BRI petty cash portion |
-| `total_actual_cents` | INTEGER | NO | 0 | K_fisik + K_bon + K_bri |
-| `target_reconciled_cents` | INTEGER | NO | 500000000 | imprest + V_prev |
-| `current_variance_cents` | INTEGER | NO | 0 | total_actual - target_reconciled |
+| `vouchers_total_cents` | INTEGER | NO | 0 | K_bon = sum of DISBURSED vouchers (KAS_KECIL only) |
+| `bri_clean_balance_cents` | INTEGER | NO | 0 | K_bri = net BRI petty cash portion (KAS_KECIL only) |
+| `total_actual_cents` | INTEGER | NO | 0 | Total real actual count |
+| `target_reconciled_cents` | INTEGER | NO | 500000000 | Target baseline ceiling |
+| `current_variance_cents` | INTEGER | NO | 0 | Legacy compatibility variance |
+| `raw_discrepancy_cents` | INTEGER | NO | 0 | Total_Actual - Target_Baseline |
+| `cumulative_resolved_cents` | INTEGER | NO | 0 | Sum of approved variance resolutions |
+| `outstanding_variance_cents` | INTEGER | NO | 0 | Raw_Discrepancy + Cumulative_Resolved |
 | `variance_status` | VARCHAR(10) | NO | `BALANCED` | `BALANCED`, `SURPLUS`, `SHORTAGE` |
 | `created_by_id` | VARCHAR(32) | NO | — | FK → `users.id` (SAC) |
 | `verified_by_ss_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (SS) |
@@ -117,7 +120,56 @@
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
-**Indexes**: UNIQUE(`opname_number`), INDEX(`store_id`, `opname_type`, `status`), INDEX(`store_id`, `opname_type`, `status`, `approved_sm_at`)
+**Indexes**:
+- UNIQUE(`opname_number`)
+- INDEX(`store_id`, `opname_type`, `status`)
+- INDEX(`store_id`, `opname_type`, `status`, `approved_sm_at`)
+- Partial UNIQUE Index (SQLite/DB): `unique_active_session_per_store_type_date` ON `cash_opname_sessions (store_id, opname_type, date)` WHERE `status IN ('DRAFT', 'SUBMITTED', 'VERIFIED_SS')`
+
+---
+
+## Table: `variance_resolutions`
+
+Resolution ledger documenting accounting actions taken to resolve cash count variances.
+
+| Column | Type | Nullable | Default | Description |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | PK |
+| `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
+| `session_id` | VARCHAR(32) | NO | — | FK → `cash_opname_sessions.id` (CASCADE) |
+| `opname_type` | VARCHAR(20) | NO | — | `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER` |
+| `kind` | VARCHAR(20) | NO | — | `REPLACED` (ganti fisik), `WRITE_OFF` (penghapusan selisih), `FOUND` (ditemukan) |
+| `amount_cents` | INTEGER | NO | 0 | Resolution amount in cents |
+| `reason` | TEXT | NO | — | Explanation / rationale for the resolution |
+| `proof_attachment_url` | VARCHAR(255) | YES | NULL | Slip setoran / nota bukti pendukung |
+| `status` | VARCHAR(20) | NO | `PENDING` | `PENDING`, `APPROVED`, `REJECTED` |
+| `created_by_id` | VARCHAR(32) | NO | — | FK → `users.id` (SAC / Pembuat) |
+| `approved_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (SS / SM penyetuju) |
+| `created_at` | DATETIME | NO | NOW() | |
+| `updated_at` | DATETIME | NO | NOW() | |
+
+**Indexes**: INDEX(`store_id`, `session_id`, `status`), INDEX(`store_id`, `kind`)
+
+---
+
+## Table: `opname_reference_lines`
+
+Polymorphic supporting documents for non-imprest opname sessions (e.g. POS register Z-Reports and bank cash deposits for KAS_BESAR, or float tracking).
+
+| Column | Type | Nullable | Default | Description |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | PK |
+| `session_id` | VARCHAR(32) | NO | — | FK → `cash_opname_sessions.id` (CASCADE) |
+| `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
+| `line_type` | VARCHAR(30) | NO | — | `Z_REPORT`, `BANK_DEPOSIT`, `FLOAT_INITIAL`, `FLOAT_RETURN` |
+| `reference_number` | VARCHAR(100) | NO | — | Z-Report Number, Register No, Slip No |
+| `amount_cents` | INTEGER | NO | 0 | Amount in cents |
+| `proof_attachment_url` | VARCHAR(255) | YES | NULL | Photo of physical receipt/slip |
+| `notes` | TEXT | YES | NULL | Extra details (e.g., POS terminal name) |
+| `created_at` | DATETIME | NO | NOW() | |
+| `updated_at` | DATETIME | NO | NOW() | |
+
+**Indexes**: INDEX(`session_id`, `line_type`), INDEX(`store_id`, `line_type`)
 
 ---
 
@@ -129,6 +181,8 @@
 | `session_id` | VARCHAR(32) | NO | — | FK → `cash_opname_sessions.id` (CASCADE) |
 | `item_definition_id` | VARCHAR(32) | NO | — | FK → `opname_item_definitions.id` |
 | `count` | INTEGER | NO | 0 | Number of items (≥ 0) |
+| `condition` | VARCHAR(20) | NO | `GOOD` | Physical condition (`GOOD`, `DAMAGED`) |
+| `expected_count` | INTEGER | NO | 0 | Expected book balance count (if stock-based) |
 | `subtotal_cents` | INTEGER | NO | 0 | count × nominal_cents |
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |

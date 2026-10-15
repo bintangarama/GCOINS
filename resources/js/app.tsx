@@ -1,6 +1,10 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { initializeTheme } from '@/hooks/use-appearance';
+
+// Initialize dark/light appearance from localStorage/system
+initializeTheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'G-COINS';
 

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DeleteVoucherAction
@@ -16,6 +17,10 @@ class DeleteVoucherAction
      */
     public function execute(PettyCashVoucher $voucher, User $actor, ?string $ipAddress = null): void
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         if ($voucher->requester_id !== $actor->id && $actor->role !== 'SYSTEM_ADMIN') {
             throw new AuthorizationException('Anda hanya dapat menghapus voucher draft milik sendiri.');
         }

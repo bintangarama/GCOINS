@@ -8,6 +8,7 @@ use App\Models\PettyCashVoucher;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -21,6 +22,10 @@ class BatchSettleVouchersAction
      */
     public function execute(array $voucherIds, User $actor, ?string $ipAddress = null): Collection
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         if ($actor->role !== 'SAC') {
             throw new AuthorizationException('FORBIDDEN_ROLE: Hanya SAC yang berwenang melakukan penyelesaian (settlement) voucher.');
         }

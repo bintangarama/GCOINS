@@ -13,25 +13,25 @@
 
 | Test ID | Description | Type |
 |---|---|---|
-| T-VAR-01 | Variance formula: Total = K_fisik + K_bon + K_bri | Unit |
-| T-VAR-02 | Target = imprest + V_prev | Unit |
-| T-VAR-03 | V_current = Total - Target | Unit |
-| T-VAR-04 | Carry-forward: new session reads V_prev from last APPROVED | Feature |
-| T-VAR-05 | First session: V_prev = 0 | Feature |
-| T-VAR-06 | BALANCED when V_current = 0 | Unit |
-| T-VAR-07 | SURPLUS when V_current > 0 | Unit |
-| T-VAR-08 | SHORTAGE when V_current < 0 | Unit |
+| T-VAR-01 | Raw discrepancy: TotalActual - TargetAmount | Unit/Feature |
+| T-VAR-02 | Cumulative resolved: sum of approved resolutions in variance ledger | Feature |
+| T-VAR-03 | Outstanding variance: RawDiscrepancy + CumulativeResolved | Feature |
+| T-VAR-04 | Carry-forward: new session carries forward unresolved outstanding variance | Feature |
+| T-VAR-05 | BALANCED when OutstandingVariance = 0 | Unit |
+| T-VAR-06 | SURPLUS when OutstandingVariance > 0, SHORTAGE when < 0 | Unit |
+| T-STR-01 | ThreePocketsReconciler (KAS_KECIL): Safe fisik + Bon gantung + Net BRI | Feature |
+| T-STR-02 | CashFlowReconciler (KAS_BESAR, ACTIVE_SELLING): Safe fisik vs (Opening + Z-Report - DRO) | Feature |
+| T-STR-03 | ConsignmentReconciler (MATERAI, GIFT_VOUCHER): Stok fisik vs target sistem | Feature |
+| T-SOD-01 | SAC cannot create user with role >= SS (403 Forbidden) | Feature |
+| T-SOD-02 | SAC cannot edit user to role >= SS (403 Forbidden) | Feature |
+| T-SOD-03 | User cannot change their own role (anti-privilege escalation) | Feature |
+| T-SOD-04 | SAC cannot reset PIN of SS, SM, or SYSTEM_ADMIN | Feature |
 | T-SAP-01 | SAC cannot approve own voucher (FORBIDDEN_SELF_APPROVAL) | Feature |
-| T-SAP-02 | SAC can approve other's voucher | Feature |
-| T-SAP-03 | SS can approve SAC's own voucher | Feature |
-| T-AMN-01 | Outflow rejected when amount > running balance | Feature |
-| T-AMN-02 | Outflow accepted when amount = running balance | Feature |
-| T-AMN-03 | Outflow accepted when amount < running balance | Feature |
+| T-AMN-01 | Outflow rejected when amount > running balance (Zero-Deficit Guard) | Feature |
 | T-DC-01 | SAC cannot approve own BRI outflow | Feature |
-| T-DC-02 | SS can approve SAC's BRI outflow | Feature |
-| T-LCK-01 | APPROVED session cannot be modified | Feature |
-| T-LCK-02 | APPROVED session items cannot be updated | Feature |
-| T-LCK-03 | APPROVED session BRI sub-ledger cannot be updated | Feature |
+| T-DC-02 | Tiered Outflow: Outflow > Rp 500.000 requires SM approval (SS forbidden) | Feature |
+| T-RES-01 | Tiered Write-Off: Write-off > Rp 1.000.000 requires SM approval (SS forbidden) | Feature |
+| T-LCK-01 | APPROVED session cannot be modified (items, references, snapshots immutable) | Feature |
 
 ### 🟡 High Priority
 
@@ -43,17 +43,19 @@
 | T-STM-04 | Voucher: DISBURSED → SETTLED valid (batch) | Feature |
 | T-STM-05 | Voucher: invalid transition rejected | Feature |
 | T-STM-06 | Opname: DRAFT → SUBMITTED → VERIFIED_SS → APPROVED | Feature |
-| T-STM-07 | Opname: SS reject → back to DRAFT | Feature |
-| T-STM-08 | Opname: SM reject → back to DRAFT | Feature |
+| T-STM-07 | Opname: SS reject → back to DRAFT with reason | Feature |
+| T-STM-08 | Opname: SM reject → back to DRAFT with reason | Feature |
 | T-STM-09 | BRI: INFLOW immediately APPROVED | Feature |
 | T-STM-10 | BRI: OUTFLOW → PENDING_SS → APPROVED | Feature |
+| T-RES-02 | Variance resolution: Store resolution (REPLACED / WRITE_OFF / FOUND) | Feature |
+| T-RES-03 | Variance resolution: Reject resolution leaves variance unchanged | Feature |
 | T-RBAC-01 | SOA cannot open opname session | Feature |
 | T-RBAC-02 | SOA cannot disburse cash | Feature |
 | T-RBAC-03 | SS cannot sign-off opname | Feature |
 | T-RBAC-04 | SM cannot create vouchers | Feature |
 | T-RBAC-05 | SYSTEM_ADMIN cannot modify financial data | Feature |
-| T-DEN-01 | 11 denominations: count × nominal = subtotal (all 11) | Unit |
-| T-DEN-02 | K_fisik = sum of all subtotals | Unit |
+| T-DEN-01 | Dynamic denominations: count × nominal = subtotal | Unit |
+| T-DEN-02 | K_fisik = sum of all item subtotals | Unit |
 | T-DEN-03 | Auto-heal: missing items created with count 0 | Feature |
 | T-BRI-01 | Running balance = Σ INFLOW(approved) - Σ OUTFLOW(approved) | Unit |
 | T-BRI-02 | K_bri = mutation - Σ allocations | Unit |
@@ -98,45 +100,65 @@ tests/
 │   │   ├── LoginTest.php
 │   │   ├── LogoutTest.php
 │   │   └── ChangePinTest.php
+│   ├── User/
+│   │   ├── UserManagementTest.php
+│   │   └── UserSodSecurityTest.php
 │   ├── Voucher/
 │   │   ├── CreateVoucherTest.php
 │   │   ├── ApproveVoucherTest.php
-│   │   ├── DisburseVoucherTest.php
-│   │   ├── SettleVoucherTest.php
-│   │   ├── RejectVoucherTest.php
+│   │   ├── DisburseAndSettleVoucherTest.php
 │   │   ├── SelfApprovalPreventionTest.php
+│   │   ├── VoucherSoftDeleteTest.php
 │   │   └── VoucherStateTransitionTest.php
 │   ├── Opname/
 │   │   ├── OpenSessionTest.php
 │   │   ├── UpdateDenominationsTest.php
-│   │   ├── SubmitSessionTest.php
-│   │   ├── VerifySessionTest.php
-│   │   ├── SignOffSessionTest.php
+│   │   ├── UpdateBriSubledgerTest.php
+│   │   ├── SignOffWorkflowTest.php
 │   │   ├── ImmutableLockTest.php
-│   │   └── CarryForwardTest.php
+│   │   ├── CarryForwardChainTest.php
+│   │   ├── SessionHistoryTest.php
+│   │   ├── SignedBaUploadTest.php
+│   │   ├── BacoExcelExportTest.php
+│   │   └── Strategy/
+│   │       ├── ThreePocketsReconcilerTest.php
+│   │       ├── CashFlowReconcilerTest.php
+│   │       ├── ConsignmentReconcilerTest.php
+│   │       ├── SerialStockReconcilerTest.php
+│   │       └── StockCountReconcilerTest.php
+│   ├── Resolution/
+│   │   └── ApproveResolutionActionTest.php
 │   ├── BriFund/
 │   │   ├── CreateInflowTest.php
 │   │   ├── CreateOutflowTest.php
 │   │   ├── ApproveOutflowTest.php
 │   │   ├── ZeroDeficitGuardTest.php
 │   │   └── DualControlTest.php
-│   ├── MultiTenancy/
-│   │   └── StoreIsolationTest.php
-│   └── Export/
-│       └── BacoExcelExportTest.php
+│   ├── Rbac/
+│   │   └── StoreScopeTest.php
+│   ├── Report/
+│   │   ├── BriPostingSummaryExportTest.php
+│   │   └── VoucherRecapExportTest.php
+│   ├── ImportExport/
+│   │   └── ImportExportTest.php
+│   ├── Notification/
+│   │   └── NotificationTest.php
+│   └── Admin/
+│       └── StoreSettingsTest.php
 └── TestCase.php
 ```
 
 ## 4. Test Data Factories
 
 ```php
-// Key factories needed:
+// Key factories implemented:
 StoreFactory::class          // Default store with config
-UserFactory::class           // Per role variants
+UserFactory::class           // Per role variants (SYSTEM_ADMIN, SM, SS, SAC, SOA)
 VoucherFactory::class        // Per status variants
-OpnameSessionFactory::class  // Per status variants
+OpnameSessionFactory::class  // Per status & type variants (KAS_KECIL, KAS_BESAR, etc.)
 BriFundPostingFactory::class // INFLOW/OUTFLOW variants
-ItemDefinitionFactory::class // 11 KAS_KECIL items
+ItemDefinitionFactory::class // Configurable denomination & physical item items
+VarianceResolutionFactory::class // REPLACED, WRITE_OFF, FOUND variants
 ```
 
 ## 5. Running Tests

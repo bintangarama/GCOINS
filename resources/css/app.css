@@ -13,6 +13,10 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
+    --font-mono:
+        ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas,
+        'Roboto Mono', monospace;
+
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
@@ -40,6 +44,15 @@
 
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+
+    --color-surplus: var(--surplus);
+    --color-surplus-foreground: var(--surplus-foreground);
 
     --color-border: var(--border);
     --color-input: var(--input);
@@ -78,6 +91,12 @@
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.627 0.194 149.214);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.145 0 0);
+    --surplus: oklch(0.6 0.18 220);
+    --surplus-foreground: oklch(0.985 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.488 0.217 264);
@@ -114,6 +133,12 @@
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.65 0.22 25);
     --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.696 0.17 162.48);
+    --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.769 0.188 70.08);
+    --warning-foreground: oklch(0.145 0 0);
+    --surplus: oklch(0.65 0.18 220);
+    --surplus-foreground: oklch(0.985 0 0);
     --border: oklch(0.269 0 0);
     --input: oklch(0.269 0 0);
     --ring: oklch(0.6 0.2 264);
@@ -142,6 +167,12 @@
     }
 }
 
+@utility num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    letter-spacing: -0.01em;
+}
+
 /* Print styles for report pages (Ctrl+P) */
 @media print {
     nav,
@@ -153,8 +184,13 @@
         display: none !important;
     }
 
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-size: 10pt;
+    }
+
     * {
-        background: white !important;
         box-shadow: none !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -162,18 +198,16 @@
 
     @page {
         size: A4 portrait;
-        margin: 0.5in;
+        margin: 8mm;
     }
 
-    table {
+    thead {
+        display: table-header-group;
+    }
+
+    tr,
+    .print-keep {
+        break-inside: avoid;
         page-break-inside: avoid;
-    }
-
-    tr {
-        page-break-inside: avoid;
-    }
-
-    body {
-        font-size: 10pt;
     }
 }

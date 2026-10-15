@@ -19,6 +19,9 @@ import {
     ArrowUpDown,
     KeyRound,
     ShieldCheck,
+    Sun,
+    Moon,
+    Monitor,
 } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
@@ -34,6 +37,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { resolveDefaultBreadcrumbs } from '@/lib/breadcrumbs';
+import { useAppearance } from '@/hooks/use-appearance';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 import { PageProps, Role } from '@/types/auth';
 import type { BreadcrumbItem } from '@/types/navigation';
 
@@ -47,6 +52,8 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
+    useFlashToast();
+    const { appearance, updateAppearance } = useAppearance();
     const { props, url } = usePage<PageProps>();
     const { auth, flash } = props;
     const user = auth.user;
@@ -107,7 +114,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     href: '/vouchers/settlement',
                     icon: Layers,
                     active: url === '/vouchers/settlement',
-                    show: hasRole('SAC', 'SYSTEM_ADMIN'),
+                    show: hasRole('SAC'),
                 },
             ],
         },
@@ -126,7 +133,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     href: '/opname',
                     icon: FileText,
                     active: url === '/opname',
-                    show: hasRole('SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'),
+                    show: hasRole('SS', 'SAC', 'SM', 'SYSTEM_ADMIN'),
                 },
             ],
         },
@@ -261,24 +268,29 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                 {/* Topbar */}
                 <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-2xs transition-colors">
                     {/* Left: Mobile trigger & Store Context */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
                         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                             <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="lg:hidden text-muted-foreground hover:text-foreground">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label="Buka menu navigasi"
+                                    className="lg:hidden text-muted-foreground hover:text-foreground size-10"
+                                >
                                     <Menu className="size-5" />
                                 </Button>
                             </SheetTrigger>
                             <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r-slate-800 text-slate-100">
                                 <SheetHeader className="sr-only">
-                                    <SheetTitle>Navigation Menu</SheetTitle>
+                                    <SheetTitle>Menu Navigasi</SheetTitle>
                                 </SheetHeader>
                                 {renderNavContent()}
                             </SheetContent>
                         </Sheet>
 
                         {/* Store Badge Display */}
-                        <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/80 px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
-                            <StoreIcon className="size-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground bg-muted/60 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border">
+                            <StoreIcon className="size-4 text-primary shrink-0" />
                             <span className="truncate max-w-[130px] sm:max-w-xs md:max-w-md">
                                 {user?.store ? `${user.store.code} — ${user.store.name}` : 'Sistem Pusat (Global)'}
                             </span>
@@ -291,8 +303,8 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-slate-100 dark:hover:bg-slate-800">
-                                    <div className="size-8 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-semibold flex items-center justify-center text-xs border border-blue-200 dark:border-blue-800">
+                                <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-muted/60">
+                                    <div className="size-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs border border-primary/20">
                                         {user?.name?.substring(0, 2).toUpperCase() || 'U'}
                                     </div>
                                     <div className="hidden sm:block text-left text-xs">
@@ -302,7 +314,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                                     <ChevronDown className="size-4 text-muted-foreground" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuContent align="end" className="w-60">
                                 <DropdownMenuLabel>
                                     <div>
                                         <p className="font-semibold text-sm">{user?.name}</p>
@@ -324,6 +336,56 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                                         </Link>
                                     </DropdownMenuItem>
                                 )}
+                                <DropdownMenuSeparator />
+
+                                {/* Theme Appearance Switcher */}
+                                <div className="px-2 py-1.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                        Tema Tampilan
+                                    </p>
+                                    <div className="grid grid-cols-3 gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateAppearance('light')}
+                                            className={`flex items-center justify-center gap-1 py-1 rounded text-xs font-semibold transition-all ${
+                                                appearance === 'light'
+                                                    ? 'bg-background text-foreground shadow-2xs font-bold'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                            title="Tema Terang"
+                                        >
+                                            <Sun className="size-3" />
+                                            <span>Terang</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateAppearance('dark')}
+                                            className={`flex items-center justify-center gap-1 py-1 rounded text-xs font-semibold transition-all ${
+                                                appearance === 'dark'
+                                                    ? 'bg-background text-foreground shadow-2xs font-bold'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                            title="Tema Gelap"
+                                        >
+                                            <Moon className="size-3" />
+                                            <span>Gelap</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateAppearance('system')}
+                                            className={`flex items-center justify-center gap-1 py-1 rounded text-xs font-semibold transition-all ${
+                                                appearance === 'system'
+                                                    ? 'bg-background text-foreground shadow-2xs font-bold'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                            title="Ikuti Pengaturan Sistem"
+                                        >
+                                            <Monitor className="size-3" />
+                                            <span>Auto</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer focus:bg-destructive/10 focus:text-destructive">
                                     <LogOut className="size-4 mr-2" />

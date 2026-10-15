@@ -24,6 +24,7 @@ import {
     DataTableCell,
     DataTableEmpty,
 } from '@/components/shared/DataTable';
+import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +63,8 @@ interface PaginatedData<T> {
     last_page: number;
     per_page: number;
     total: number;
+    from?: number | null;
+    to?: number | null;
     links: { url: string | null; label: string; active: boolean }[];
 }
 
@@ -383,31 +386,15 @@ export default function AuditLogs({
                         </DataTableBody>
                     </DataTable>
 
-                    {/* Pagination */}
-                    {logs.last_page > 1 && (
-                        <div className="flex items-center justify-between p-4 border-t border-slate-200">
-                            <p className="text-xs text-slate-500">
-                                Menampilkan halaman {logs.current_page} dari {logs.last_page} (Total {logs.total} log)
-                            </p>
-                            <div className="flex items-center gap-1">
-                                {logs.links.map((link, idx) => (
-                                    <Link
-                                        key={idx}
-                                        href={link.url || '#'}
-                                        preserveScroll
-                                        className={`px-3 py-1.5 rounded text-xs font-medium ${
-                                            link.active
-                                                ? 'bg-blue-600 text-white'
-                                                : !link.url
-                                                ? 'text-slate-300 pointer-events-none'
-                                                : 'text-slate-600 hover:bg-slate-100'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Standardized Responsive Pagination */}
+                    <Pagination
+                        links={logs.links}
+                        currentPage={logs.current_page}
+                        lastPage={logs.last_page}
+                        from={logs.from}
+                        to={logs.to}
+                        total={logs.total}
+                    />
                 </div>
 
                 {/* Detail Snapshot Modal */}

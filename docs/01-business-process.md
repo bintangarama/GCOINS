@@ -88,54 +88,63 @@ When a cash opname session is opened:
 - Manual sync button available as fallback
 - Breakdown modal shows per-entity detail
 
-## 4. Variance Engine & Carry-Forward
+## 4. Outstanding Variance Engine & Resolution Ledger
 
-### Formulas
+### Mathematical Model (Anti-Oscillation)
+
+Model rekonsiliasi G-COINS menggunakan model akuntansi presisi berbasis buku besar resolusi:
 
 ```
-Total Actual     = K_fisik + K_bon + K_bri
-Target Reconciled = Imprest_Fund + V_prev
-V_current        = Total_Actual - Target_Reconciled
+1. RawDiscrepancy      = Total_Actual - Target_Baseline
+2. CumulativeResolved  = Σ (amount WHERE resolution.status = 'APPROVED')
+3. OutstandingVariance = RawDiscrepancy + CumulativeResolved
 ```
+
+Dimana:
+- **`Total_Actual`**: Total nilai aktual yang dihitung (sesuai mode rekonsiliasi tipe opname).
+- **`Target_Baseline`**: Plafon dana tetap (imprest fund) atau saldo harapan kasir.
+- **`RawDiscrepancy`**: Selisih mentah sebelum resolusi audit disahkan.
+- **`CumulativeResolved`**: Akumulasi nilai tindakan penyelesaian yang telah disetujui resmi.
+- **`OutstandingVariance`**: Nilai selisih bersih yang belum terselesaikan dan menjadi dasar status audit.
 
 ### Variance Status
 
-| V_current | Status | Meaning |
+Status opname ditentukan secara langsung oleh `OutstandingVariance`:
+
+| Outstanding Variance | Status | Arti Akuntansi |
 |---|---|---|
-| = 0 | `BALANCED` | Cash matches perfectly |
-| > 0 | `SURPLUS` | More cash than expected |
-| < 0 | `SHORTAGE` | Less cash than expected |
+| = 0 | `BALANCED` | Kas fisik dan administrasi seimbang sempurna |
+| > 0 | `SURPLUS` | Kelebihan kas fisik terhadap catatan administrasi |
+| < 0 | `SHORTAGE` | Kekurangan kas fisik terhadap catatan administrasi |
 
-### Carry-Forward Chain
+### Resolution Ledger Lifecycle
 
-1. While session is DRAFT/SUBMITTED/VERIFIED_SS: V_current is **live** (real-time preview)
-2. When SM approves (sign-off): All values are **permanently locked** (immutable snapshot)
-3. Next session automatically reads the approved V_current as its V_prev
-4. **First-ever session**: V_prev = 0 (configurable via store settings)
+Jika terjadi selisih (`SURPLUS` atau `SHORTAGE`), selisih dicatat dan diselesaikan melalui entitas `variance_resolutions`:
 
-### Edge Cases
+1. **Jenis Resolusi (`kind`)**:
+   - `REPLACED`: Kasir mengganti kekurangan uang tunai ke dalam brankas.
+   - `WRITE_OFF`: Penghapusan selisih atas persetujuan pimpinan (toleransi selisih kasir).
+   - `FOUND`: Penemuan uang atau struk bukti transaksi yang sebelumnya tertinggal/terselip.
+2. **Ambang Batas Wewenang Approval Write-Off**:
+   - Write-off $\le \text{Rp } 1.000.000$: Dapat disetujui oleh Store Supervisor (SS) atau Store Manager (SM).
+   - Write-off $> \text{Rp } 1.000.000$: **Wajib disetujui oleh Store Manager (SM)**.
+3. Setelah resolusi disetujui (`status = APPROVED`), nilai `amount_cents` langsung diakumulasikan ke `cumulative_resolved_cents`, menetralkan `OutstandingVariance`.
 
-- **Shortage Replacement**: Session approved with SHORTAGE status. When cashier deposits replacement money, next session's physical cash increases, neutralizing the negative V_prev.
-- **Post-Disbursement Cancellation**: Voucher status → `REJECTED_REFUND_PENDING`. Staff returns cash → status → `REFUNDED` (exits K_bon).
+## 5. Five Opname Types (Fully Implemented Engine)
 
-## 5. Five Opname Types (Extensible Architecture)
+Sistem G-COINS mendukung 5 tipe cash count harian secara polimorfik tanpa skema database terfragmentasi:
 
-| Type | Code | Reconciliation Mode | Status |
-|---|---|---|---|
-| Kas Kecil | `KAS_KECIL` | THREE_POCKETS (physical + vouchers + bank) | **Phase 1 — Active** |
-| Kas Besar | `KAS_BESAR` | TBD (likely TWO_POCKETS or THREE_POCKETS) | Phase 2 |
-| Active Selling | `ACTIVE_SELLING` | TBD | Phase 2 |
-| Materai | `MATERAI` | PHYSICAL_ONLY (stamp counting) | Phase 2 |
-| Voucher Gramedia | `VOUCHER` | PHYSICAL_ONLY (gift card counting) | Phase 2 |
+| Tipe | Kode Enum | Dokumen | Strategi Reconciler | Komponen yang Dihitung |
+|---|---|---|---|---|
+| Kas Kecil (Imprest) | `KAS_KECIL` | KKCL | `ThreePocketsReconciler` | Kantong 1 (Kas Fisik) + Kantong 2 (Bon Gantung) + Kantong 3 (Net BRI) |
+| Kas Besar (Turnover) | `KAS_BESAR` | KBSR | `CashFlowReconciler` | Fisik Brankas vs. (Saldo Awal + Register POS Z-Report - Setoran Bank) |
+| Kas Bazar / Event | `ACTIVE_SELLING` | AKSL | `ConsignmentReconciler` | Kas Fisik Bazar vs. (Modal Awal + Penjualan Tunai - Setoran Kasir) |
+| Bea Materai Toko | `MATERAI` | MTR | `StockCountReconciler` | Stok Fisik Materai (keping/lembar) vs. Saldo Buku Materai Toko |
+| Gift Voucher Gramedia | `GIFT_VOUCHER` | GVCH | `StockCountReconciler` | Stok Fisik Lembar Voucher Gramedia vs. Saldo Buku Voucher Toko |
 
-All types share the same:
-- Session lifecycle (DRAFT → SUBMITTED → VERIFIED_SS → APPROVED)
-- Sign-off workflow (SAC → SS → SM)
-- Variance engine (V_prev → V_current → carry-forward)
-- Immutable snapshot on approval
-- Excel/PDF export
-
-Type-specific elements:
-- Different item definitions (11 denominations for KAS_KECIL, 2 stamps for MATERAI, etc.)
-- Different reconciliation modes (which "pockets" are active)
-- Different plafon amounts
+### Karakteristik Bersama Semua Tipe:
+- Menggunakan siklus workflow yang sama: `DRAFT` → `SUBMITTED` → `VERIFIED_SS` → `APPROVED`.
+- Dual control penandatanganan: Kasir (SAC) → Saksi Fisik (SS) → Persetujuan Final (SM).
+- `CountGrid` generik dengan numpad traversal, autosave 800ms, dan dynamic item grouping.
+- Kunci permanen tidak dapat diubah setelah approval (`Rule 4: Immutable Snapshot`).
+- Ekspor Berita Acara (BACO) Excel & PDF cetak.

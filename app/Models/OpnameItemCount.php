@@ -11,11 +11,19 @@ class OpnameItemCount extends Model
 {
     use HasCuid2, HasFactory;
 
+    public const CONDITION_GOOD = 'GOOD';
+
+    public const CONDITION_DAMAGED = 'DAMAGED';
+
+    public const CONDITION_EXPIRED = 'EXPIRED';
+
     protected $fillable = [
         'session_id',
         'item_definition_id',
         'count',
         'subtotal_cents',
+        'expected_count',
+        'condition',
     ];
 
     protected function casts(): array
@@ -23,6 +31,8 @@ class OpnameItemCount extends Model
         return [
             'count' => 'integer',
             'subtotal_cents' => 'integer',
+            'expected_count' => 'integer',
+            'condition' => 'string',
         ];
     }
 

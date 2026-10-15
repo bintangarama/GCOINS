@@ -82,42 +82,42 @@ app/
 │   │   ├── UpdateBriSubledgerAction.php
 │   │   ├── SubmitSessionAction.php
 │   │   ├── VerifySessionAction.php
-│   │   └── SignOffSessionAction.php
+│   │   ├── SignOffSessionAction.php
+│   │   └── UploadSignedBaScanAction.php
+│   ├── Resolution/
+│   │   ├── CreateResolutionAction.php
+│   │   ├── ApproveResolutionAction.php
+│   │   └── RejectResolutionAction.php
 │   ├── BriFund/
 │   │   ├── CreatePostingAction.php
 │   │   ├── ApproveOutflowAction.php
 │   │   └── RejectOutflowAction.php
 │   └── User/
 │       ├── CreateUserAction.php
+│       ├── ResetPinAction.php
 │       └── DeactivateUserAction.php
-├── Http/
-│   ├── Controllers/
-│   │   ├── Auth/
-│   │   ├── VoucherController.php
-│   │   ├── OpnameController.php
-│   │   ├── BriFundController.php
-│   │   ├── UserController.php
-│   │   ├── NotificationController.php
-│   │   ├── AuditLogController.php
-│   │   └── ImportExportController.php
-│   ├── Middleware/
-│   │   └── EnsureStoreScope.php
-│   └── Requests/
-│       ├── Voucher/
-│       ├── Opname/
-│       └── BriFund/
+├── Services/
+│   ├── DocumentNumberGenerator.php
+│   ├── BriBalanceService.php
+│   └── Opname/
+│       ├── Contracts/OpnameReconcilerInterface.php
+│       ├── OpnameReconcilerFactory.php
+│       └── Reconcilers/
+│           ├── ThreePocketsReconciler.php     # KAS_KECIL
+│           ├── CashFlowReconciler.php         # KAS_BESAR
+│           ├── ConsignmentReconciler.php      # ACTIVE_SELLING
+│           └── StockCountReconciler.php       # MATERAI & GIFT_VOUCHER
 ├── Models/
-│   ├── Store.php
-│   ├── StoreOpnameConfig.php
-│   ├── OpnameItemDefinition.php
-│   ├── User.php
 │   ├── CashOpnameSession.php
 │   ├── OpnameItemCount.php
+│   ├── VarianceResolution.php
+│   ├── OpnameReferenceLine.php
 │   ├── BriSubLedger.php
 │   ├── BriCustomAllocation.php
 │   ├── BriFundPosting.php
 │   ├── PettyCashVoucher.php
-│   ├── AuditLog.php
+│   ├── User.php
+│   └── Store.php
 │   ├── Attachment.php
 │   └── Notification.php
 ├── Scopes/
@@ -208,12 +208,15 @@ resources/
 │   │   │   ├── DataTable.tsx      # Reusable data table
 │   │   │   ├── StatusBadge.tsx    # Status color badges
 │   │   │   ├── NotificationBell.tsx
-│   │   │   ├── ImageCompressor.tsx # Client-side WebP compression
+│   │   │   ├── ImageUploader.tsx  # Drag-and-drop image uploader
 │   │   │   └── MoneyInput.tsx     # Rupiah-formatted input
-│   │   └── domain/
-│   │       ├── voucher/
-│   │       ├── opname/
-│   │       └── bri-fund/
+│   │   ├── opname/
+│   │   │   ├── CountGrid.tsx             # Generic numpad traversal count grid
+│   │   │   ├── DailyClosingSwitcher.tsx   # 5 opname types indicator switcher
+│   │   │   ├── KasBesarForm.tsx          # POS Z-Report & deposit sub-panel
+│   │   │   └── MobileApprovalCard.tsx    # Compact 1-column mobile approval card
+│   │   └── bri/
+│   │       └── BreakdownModal.tsx # Category allocation breakdown
 │   ├── pages/
 │   │   ├── Auth/
 │   │   │   └── Login.tsx
@@ -228,8 +231,6 @@ resources/
 │   │   │   ├── Index.tsx
 │   │   │   ├── Active.tsx
 │   │   │   ├── Show.tsx
-│   │   │   ├── Verify.tsx
-│   │   │   ├── SignOff.tsx
 │   │   │   └── Report.tsx
 │   │   ├── BriFund/
 │   │   │   ├── Overview.tsx
@@ -244,14 +245,10 @@ resources/
 │   │   │   └── ImportExport.tsx
 │   │   ├── Notifications.tsx
 │   │   └── Profile.tsx
-│   ├── hooks/
-│   │   ├── useMoneyFormat.ts
-│   │   ├── useImageCompression.ts
-│   │   └── useNotifications.ts
 │   └── lib/
 │       ├── utils.ts
 │       ├── money.ts               # Cents ↔ display conversion
-│       └── validators.ts          # Zod schemas
+│       └── image-compressor.ts    # Client-side 1280x1920 <=250KB WebP/JPEG compressor
 ├── css/
 │   └── app.css                    # Tailwind + custom styles
 └── views/

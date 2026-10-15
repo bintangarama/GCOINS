@@ -10,6 +10,9 @@ use App\Actions\Opname\UpdateBriSubledgerAction;
 use App\Actions\Opname\UpdateDenominationsAction;
 use App\Actions\Opname\UploadSignedBaScanAction;
 use App\Actions\Opname\VerifySessionAction;
+use App\Actions\Resolution\ApproveResolutionAction;
+use App\Actions\Resolution\CreateResolutionAction;
+use App\Actions\Resolution\RejectResolutionAction;
 use App\Exports\BacoExport;
 use App\Http\Requests\Opname\RejectOpnameRequest;
 use App\Http\Requests\Opname\SignOffOpnameRequest;
@@ -18,8 +21,12 @@ use App\Http\Requests\Opname\UpdateDenominationsRequest;
 use App\Http\Requests\Opname\UploadSignedBaRequest;
 use App\Models\AuditLog;
 use App\Models\CashOpnameSession;
+use App\Models\OpnameReferenceLine;
 use App\Models\PettyCashVoucher;
+use App\Models\VarianceResolution;
 use App\Services\BriBalanceService;
+use App\Services\Opname\OpnameReconcilerFactory;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -105,6 +112,11 @@ class OpnameController extends Controller
         $user = $request->user();
         $storeId = $user->store_id;
 
+        $activeType = $request->query('type', CashOpnameSession::TYPE_KAS_KECIL);
+        if (! in_array($activeType, CashOpnameSession::TYPES, true)) {
+            $activeType = CashOpnameSession::TYPE_KAS_KECIL;
+        }
+
         $session = null;
         $disbursedVouchers = [];
         $briCategoryBalances = [
@@ -116,14 +128,46 @@ class OpnameController extends Controller
             'TOTAL' => 0,
         ];
         $briEntities = [];
+        $dailySummaries = [];
 
         if ($storeId) {
             $briCategoryBalances = $this->briBalanceService->getAllCategoryBalances($storeId);
             $briEntities = $this->briBalanceService->getEntitiesWithBalances($storeId);
 
-            // First find active pending/draft session
+            // Fetch daily status summaries for all 5 opname types
+            foreach (CashOpnameSession::TYPES as $type) {
+                $sessionForType = CashOpnameSession::where('store_id', $storeId)
+                    ->where('opname_type', $type)
+                    ->whereIn('status', [
+                        CashOpnameSession::STATUS_DRAFT,
+                        CashOpnameSession::STATUS_SUBMITTED,
+                        CashOpnameSession::STATUS_VERIFIED_SS,
+                    ])
+                    ->latest()
+                    ->first();
+
+                if (! $sessionForType) {
+                    $sessionForType = CashOpnameSession::where('store_id', $storeId)
+                        ->where('opname_type', $type)
+                        ->whereDate('date', now()->toDateString())
+                        ->latest('approved_sm_at')
+                        ->latest('created_at')
+                        ->first();
+                }
+
+                $dailySummaries[$type] = [
+                    'type' => $type,
+                    'status' => $sessionForType ? $sessionForType->status : 'NOT_STARTED',
+                    'session_id' => $sessionForType?->id,
+                    'opname_number' => $sessionForType?->opname_number,
+                    'total_actual_cents' => $sessionForType?->total_actual_cents ?? 0,
+                    'variance_status' => $sessionForType?->variance_status,
+                ];
+            }
+
+            // First find active pending/draft session for selected type
             $session = CashOpnameSession::where('store_id', $storeId)
-                ->where('opname_type', CashOpnameSession::TYPE_KAS_KECIL)
+                ->where('opname_type', $activeType)
                 ->whereIn('status', [
                     CashOpnameSession::STATUS_DRAFT,
                     CashOpnameSession::STATUS_SUBMITTED,
@@ -135,7 +179,7 @@ class OpnameController extends Controller
             // If no active draft/pending session, grab the latest approved session for review/status display
             if (! $session) {
                 $session = CashOpnameSession::where('store_id', $storeId)
-                    ->where('opname_type', CashOpnameSession::TYPE_KAS_KECIL)
+                    ->where('opname_type', $activeType)
                     ->where('status', CashOpnameSession::STATUS_APPROVED)
                     ->latest('approved_sm_at')
                     ->latest('created_at')
@@ -156,22 +200,29 @@ class OpnameController extends Controller
                     },
                     'itemCounts.itemDefinition',
                     'subLedger.customAllocations',
+                    'referenceLines',
                     'createdBy',
                     'verifiedBySs',
                     'approvedBySm',
+                    'varianceResolutions.createdBy:id,name,nik,role',
+                    'varianceResolutions.approvedBy:id,name,nik,role',
                 ]);
 
-                // Outstanding vouchers (Pocket 2: K_bon)
-                $disbursedVouchers = PettyCashVoucher::where('store_id', $storeId)
-                    ->where('status', PettyCashVoucher::STATUS_DISBURSED)
-                    ->with('requester:id,name,nik')
-                    ->latest()
-                    ->get(['id', 'voucher_number', 'requester_id', 'purpose', 'amount_cents', 'category', 'disbursed_at']);
+                // Outstanding vouchers (Pocket 2: K_bon) - only for KAS_KECIL
+                if ($session->opname_type === CashOpnameSession::TYPE_KAS_KECIL) {
+                    $disbursedVouchers = PettyCashVoucher::where('store_id', $storeId)
+                        ->where('status', PettyCashVoucher::STATUS_DISBURSED)
+                        ->with('requester:id,name,nik')
+                        ->latest()
+                        ->get(['id', 'voucher_number', 'requester_id', 'purpose', 'amount_cents', 'category', 'disbursed_at']);
+                }
             }
         }
 
         return Inertia::render('Opname/Active', [
             'session' => $session,
+            'activeType' => $activeType,
+            'dailySummaries' => $dailySummaries,
             'disbursedVouchers' => $disbursedVouchers,
             'briCategoryBalances' => $briCategoryBalances,
             'briEntities' => $briEntities,
@@ -196,9 +247,85 @@ class OpnameController extends Controller
         $user = $request->user();
         Gate::authorize('create', CashOpnameSession::class);
 
-        $session = $action->execute($user, CashOpnameSession::TYPE_KAS_KECIL, $request->ip());
+        $opnameType = $request->input('opname_type', $request->query('type', CashOpnameSession::TYPE_KAS_KECIL));
+        if (! in_array($opnameType, CashOpnameSession::TYPES, true)) {
+            $opnameType = CashOpnameSession::TYPE_KAS_KECIL;
+        }
 
-        return redirect()->route('opname.active')->with('success', "Sesi Cash Opname {$session->opname_number} berhasil dibuka.");
+        $session = $action->execute($user, $opnameType, $request->ip());
+
+        return redirect()->route('opname.active', ['type' => $opnameType])->with('success', "Sesi Cash Opname {$session->opname_number} berhasil dibuka.");
+    }
+
+    /**
+     * Add a reference line (e.g. Z-Report, Bank Deposit, Consignment Sales, etc.)
+     */
+    public function storeReferenceLine(Request $request, CashOpnameSession $session): RedirectResponse
+    {
+        if ($session->status !== CashOpnameSession::STATUS_DRAFT) {
+            abort(403, 'Sesi opname hanya dapat diedit saat berstatus DRAFT.');
+        }
+
+        $validated = $request->validate([
+            'line_type' => ['required', 'string', 'max:50'],
+            'reference_number' => ['required', 'string', 'max:100'],
+            'quantity' => ['nullable', 'integer', 'min:0'],
+            'amount_cents' => ['required', 'integer'],
+            'proof_attachment_url' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $session->referenceLines()->create($validated);
+
+        // Recompute session via Reconciler
+        $reconciler = app(OpnameReconcilerFactory::class)->make($session->opname_type);
+        $result = $reconciler->compute($session);
+
+        $session->update([
+            'physical_total_cents' => $result->physicalTotalCents,
+            'total_actual_cents' => $result->totalActualCents,
+            'target_reconciled_cents' => $result->targetCents,
+            'raw_discrepancy_cents' => $result->rawDiscrepancyCents,
+            'cumulative_resolved_cents' => $result->cumulativeResolvedCents,
+            'outstanding_variance_cents' => $result->outstandingVarianceCents,
+            'current_variance_cents' => $result->outstandingVarianceCents,
+            'variance_status' => $result->varianceStatus,
+        ]);
+
+        return redirect()->back()->with('success', 'Data referensi berhasil ditambahkan.');
+    }
+
+    /**
+     * Delete a reference line.
+     */
+    public function destroyReferenceLine(CashOpnameSession $session, OpnameReferenceLine $referenceLine): RedirectResponse
+    {
+        if ($session->status !== CashOpnameSession::STATUS_DRAFT) {
+            abort(403, 'Sesi opname hanya dapat diedit saat berstatus DRAFT.');
+        }
+
+        if ($referenceLine->session_id !== $session->id) {
+            abort(404);
+        }
+
+        $referenceLine->delete();
+
+        // Recompute session via Reconciler
+        $reconciler = app(OpnameReconcilerFactory::class)->make($session->opname_type);
+        $result = $reconciler->compute($session);
+
+        $session->update([
+            'physical_total_cents' => $result->physicalTotalCents,
+            'total_actual_cents' => $result->totalActualCents,
+            'target_reconciled_cents' => $result->targetCents,
+            'raw_discrepancy_cents' => $result->rawDiscrepancyCents,
+            'cumulative_resolved_cents' => $result->cumulativeResolvedCents,
+            'outstanding_variance_cents' => $result->outstandingVarianceCents,
+            'current_variance_cents' => $result->outstandingVarianceCents,
+            'variance_status' => $result->varianceStatus,
+        ]);
+
+        return redirect()->back()->with('success', 'Data referensi berhasil dihapus.');
     }
 
     /**
@@ -359,6 +486,8 @@ class OpnameController extends Controller
             'createdBy:id,name,nik,role',
             'verifiedBySs:id,name,nik,role',
             'approvedBySm:id,name,nik,role',
+            'varianceResolutions.createdBy:id,name,nik,role',
+            'varianceResolutions.approvedBy:id,name,nik,role',
         ]);
 
         // If session is APPROVED, retrieve immutable snapshot of disbursed vouchers from AuditLog
@@ -369,13 +498,10 @@ class OpnameController extends Controller
                 ->latest()
                 ->first();
 
-            if (! empty($audit?->new_values['snapshot']['vouchers_disbursed'])) {
-                $disbursedVouchers = $audit->new_values['snapshot']['vouchers_disbursed'];
+            if (isset($audit?->new_values['snapshot']['vouchers_disbursed'])) {
+                $disbursedVouchers = (array) $audit->new_values['snapshot']['vouchers_disbursed'];
             }
-        }
-
-        // If not in audit snapshot or not approved, query current disbursed vouchers
-        if (empty($disbursedVouchers)) {
+        } else {
             $disbursedVouchers = PettyCashVoucher::where('store_id', $session->store_id)
                 ->where('status', PettyCashVoucher::STATUS_DISBURSED)
                 ->with('requester:id,name,nik')
@@ -436,6 +562,8 @@ class OpnameController extends Controller
             'createdBy:id,name,nik,role',
             'verifiedBySs:id,name,nik,role',
             'approvedBySm:id,name,nik,role',
+            'varianceResolutions.createdBy:id,name,nik,role',
+            'varianceResolutions.approvedBy:id,name,nik,role',
         ]);
 
         $disbursedVouchers = [];
@@ -445,12 +573,10 @@ class OpnameController extends Controller
                 ->latest()
                 ->first();
 
-            if (! empty($audit?->new_values['snapshot']['vouchers_disbursed'])) {
-                $disbursedVouchers = $audit->new_values['snapshot']['vouchers_disbursed'];
+            if (isset($audit?->new_values['snapshot']['vouchers_disbursed'])) {
+                $disbursedVouchers = (array) $audit->new_values['snapshot']['vouchers_disbursed'];
             }
-        }
-
-        if (empty($disbursedVouchers)) {
+        } else {
             $disbursedVouchers = PettyCashVoucher::where('store_id', $session->store_id)
                 ->where('status', PettyCashVoucher::STATUS_DISBURSED)
                 ->with('requester:id,name,nik')
@@ -481,13 +607,85 @@ class OpnameController extends Controller
     ): RedirectResponse {
         Gate::authorize('uploadSignedBa', $session);
 
-        $action->execute(
-            $session,
-            $request->file('signed_ba'),
-            $request->user(),
-            $request->ip()
-        );
+        try {
+            $action->execute(
+                $session,
+                $request->file('signed_ba'),
+                $request->user(),
+                $request->ip()
+            );
 
-        return redirect()->back()->with('success', 'Scan Berita Acara fisik bertanda tangan berhasil diunggah.');
+            return redirect()->back()->with('success', 'Scan Berita Acara fisik bertanda tangan berhasil diunggah.');
+        } catch (\DomainException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Submit a new variance resolution entry.
+     */
+    public function storeResolution(
+        Request $request,
+        CashOpnameSession $session,
+        CreateResolutionAction $action
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'kind' => ['required', 'string', 'in:REPLACED,WRITE_OFF,FOUND'],
+            'amount_cents' => ['required', 'integer', 'min:1'],
+            'reason' => ['required', 'string', 'max:1000'],
+            'proof_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:5120'],
+        ]);
+
+        try {
+            $action->execute(
+                $session,
+                $validated,
+                $request->user(),
+                $request->file('proof_file'),
+                $request->ip()
+            );
+
+            return redirect()->back()->with('success', 'Pengajuan resolusi selisih berhasil disimpan.');
+        } catch (\DomainException|\InvalidArgumentException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Approve a pending variance resolution.
+     */
+    public function approveResolution(
+        Request $request,
+        VarianceResolution $resolution,
+        ApproveResolutionAction $action
+    ): RedirectResponse {
+        try {
+            $action->execute($resolution, $request->user(), $request->ip());
+
+            return redirect()->back()->with('success', 'Resolusi selisih berhasil disetujui.');
+        } catch (\DomainException|AuthorizationException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a pending variance resolution.
+     */
+    public function rejectResolution(
+        Request $request,
+        VarianceResolution $resolution,
+        RejectResolutionAction $action
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'rejection_reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $action->execute($resolution, $validated['rejection_reason'], $request->user(), $request->ip());
+
+            return redirect()->back()->with('success', 'Resolusi selisih berhasil ditolak.');
+        } catch (\DomainException|AuthorizationException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 }

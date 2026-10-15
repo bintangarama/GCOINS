@@ -1,7 +1,14 @@
+export type OpnameType =
+    | 'KAS_KECIL'
+    | 'KAS_BESAR'
+    | 'ACTIVE_SELLING'
+    | 'MATERAI'
+    | 'GIFT_VOUCHER';
+
 export interface OpnameItemDefinition {
     id: string;
     store_id: string;
-    opname_type: string;
+    opname_type: OpnameType | string;
     label: string;
     nominal_cents: number;
     unit: string;
@@ -16,7 +23,23 @@ export interface OpnameItemCount {
     item_definition_id: string;
     count: number;
     subtotal_cents: number;
+    expected_count?: number;
+    condition?: 'GOOD' | 'DAMAGED' | 'EXPIRED' | string;
     item_definition?: OpnameItemDefinition;
+}
+
+export interface OpnameReferenceLine {
+    id: string;
+    session_id: string;
+    line_type: string;
+    reference_number: string;
+    quantity?: number;
+    amount_cents: number;
+    proof_attachment_url?: string | null;
+    notes?: string | null;
+    meta_json?: Record<string, unknown> | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface BriCustomAllocation {
@@ -45,11 +68,23 @@ export interface BriSubLedger {
 export type OpnameStatus = 'DRAFT' | 'SUBMITTED' | 'VERIFIED_SS' | 'APPROVED' | 'REJECTED';
 export type VarianceStatus = 'BALANCED' | 'SURPLUS' | 'SHORTAGE';
 
+export interface DailyOpnameSummary {
+    type: OpnameType;
+    label: string;
+    description: string;
+    status: OpnameStatus | 'NOT_STARTED';
+    session_id?: string | null;
+    opname_number?: string | null;
+    variance_status?: VarianceStatus | null;
+    total_actual_cents?: number;
+    current_variance_cents?: number;
+}
+
 export interface CashOpnameSession {
     id: string;
     store_id: string;
     opname_number: string;
-    opname_type: string;
+    opname_type: OpnameType | string;
     status: OpnameStatus;
     date: string;
     imprest_fund_cents: number;
@@ -60,6 +95,9 @@ export interface CashOpnameSession {
     total_actual_cents: number;
     target_reconciled_cents: number;
     current_variance_cents: number;
+    raw_discrepancy_cents?: number;
+    cumulative_resolved_cents?: number;
+    outstanding_variance_cents?: number;
     variance_status: VarianceStatus;
     created_by_id: string;
     verified_by_ss_id: string | null;
@@ -78,6 +116,31 @@ export interface CashOpnameSession {
     store?: { id: string; name: string; code: string; address?: string };
     item_counts?: OpnameItemCount[];
     sub_ledger?: BriSubLedger;
+    variance_resolutions?: VarianceResolution[];
+    reference_lines?: OpnameReferenceLine[];
+}
+
+export type VarianceResolutionKind = 'REPLACED' | 'WRITE_OFF' | 'FOUND';
+export type VarianceResolutionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface VarianceResolution {
+    id: string;
+    store_id: string;
+    session_id: string;
+    opname_type: string;
+    kind: VarianceResolutionKind;
+    amount_cents: number;
+    reason: string;
+    proof_attachment_url?: string | null;
+    status: VarianceResolutionStatus;
+    created_by_id: string;
+    approved_by_id?: string | null;
+    approved_at?: string | null;
+    rejection_reason?: string | null;
+    created_at?: string;
+    updated_at?: string;
+    created_by?: { id: string; name: string; nik: string; role?: string };
+    approved_by?: { id: string; name: string; nik: string; role?: string };
 }
 
 export interface DisbursedVoucher {

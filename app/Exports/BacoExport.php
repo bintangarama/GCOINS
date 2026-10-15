@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\AuditLog;
 use App\Models\CashOpnameSession;
 use App\Models\PettyCashVoucher;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
@@ -23,7 +24,11 @@ class BacoExport implements Export, WithEvents, WithTitle
 
     public function __construct(
         protected CashOpnameSession $session
-    ) {}
+    ) {
+        if (! Auth::check() && $session->createdBy) {
+            Auth::setUser($session->createdBy);
+        }
+    }
 
     public function title(): string
     {
@@ -376,9 +381,9 @@ class BacoExport implements Export, WithEvents, WithTitle
         $totalActualRow = $row;
         $row++;
 
-        // 4.2 Plafon Imprest
+        // 4.2 Plafon Kas Tetap (Base Imprest Fund)
         $sheet->setCellValue("A{$row}", '4.2');
-        $sheet->setCellValue("B{$row}", 'Plafon Kas Tetap (Imprest Fund)');
+        $sheet->setCellValue("B{$row}", 'Plafon Kas Tetap (Base Imprest Fund)');
         $sheet->setCellValue("E{$row}", $session->imprest_fund_cents / 100);
         $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode(self::ACCOUNTING_FORMAT);
         $sheet->getStyle("A{$row}:E{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
@@ -386,27 +391,29 @@ class BacoExport implements Export, WithEvents, WithTitle
         $imprestRow = $row;
         $row++;
 
-        // 4.3 Selisih Periode Lalu (V_prev)
+        // 4.3 Selisih Mentah (Raw Discrepancy = Total Riil - Plafon)
         $sheet->setCellValue("A{$row}", '4.3');
-        $sheet->setCellValue("B{$row}", 'Selisih Periode Sebelumnya (V_prev)');
-        $sheet->setCellValue("E{$row}", $session->previous_variance_cents / 100);
+        $sheet->setCellValue("B{$row}", 'Selisih Mentah Kas (Raw Discrepancy = Riil - Plafon)');
+        $sheet->setCellValue("E{$row}", "=E{$totalActualRow}-E{$imprestRow}");
         $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode(self::ACCOUNTING_FORMAT);
         $sheet->getStyle("A{$row}:E{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $sheet->getStyle("A{$row}:E{$row}")->getFont()->setSize(9);
-        $vPrevRow = $row;
+        $rawDiscrepancyRow = $row;
         $row++;
 
-        // Target Rekonsiliasi (Plafon + V_prev)
-        $sheet->setCellValue("B{$row}", 'TARGET REKONSILIASI (Plafon + V_prev)');
-        $sheet->setCellValue("E{$row}", "=E{$imprestRow}+E{$vPrevRow}");
-        $this->styleSubtotalRow($sheet, $row);
-        $sheet->getStyle("A{$row}:E{$row}")->getFont()->setBold(true)->setSize(10);
-        $targetReconciledRow = $row;
+        // 4.4 Total Resolusi Sah (Approved Resolution Ledger)
+        $sheet->setCellValue("A{$row}", '4.4');
+        $sheet->setCellValue("B{$row}", 'Total Resolusi Disahkan (Approved Resolution Ledger)');
+        $sheet->setCellValue("E{$row}", $session->cumulative_resolved_cents / 100);
+        $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode(self::ACCOUNTING_FORMAT);
+        $sheet->getStyle("A{$row}:E{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("A{$row}:E{$row}")->getFont()->setSize(9);
+        $resolvedRow = $row;
         $row++;
 
-        // Final Variance: Total Actual - Target Reconciled
-        $sheet->setCellValue("B{$row}", 'SELISIH KAS (V_current = Aktual - Target)');
-        $sheet->setCellValue("E{$row}", "=E{$totalActualRow}-E{$targetReconciledRow}");
+        // 4.5 Outstanding Variance Final
+        $sheet->setCellValue("B{$row}", 'OUTSTANDING VARIANCE (Selisih Riil Akhir)');
+        $sheet->setCellValue("E{$row}", "=E{$rawDiscrepancyRow}+E{$resolvedRow}");
         $this->styleGrandTotalRow($sheet, $row);
         $sheet->getStyle("B{$row}:E{$row}")->getFont()->setSize(11)->setBold(true);
         $sheet->getStyle("E{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FEF08A'); // yellow accent
@@ -414,7 +421,7 @@ class BacoExport implements Export, WithEvents, WithTitle
         $row++;
 
         // Status Badge Row
-        $sheet->setCellValue("B{$row}", 'STATUS HASIL OPNAME:');
+        $sheet->setCellValue("B{$row}", 'STATUS HASIL OPNAME (Berdasarkan Outstanding):');
         $sheet->setCellValue("E{$row}", $session->variance_status);
         $sheet->getStyle("B{$row}")->getFont()->setBold(true)->setSize(9);
         $sheet->getStyle("E{$row}")->getFont()->setBold(true)->setSize(10);
@@ -528,9 +535,11 @@ class BacoExport implements Export, WithEvents, WithTitle
                 ->latest()
                 ->first();
 
-            if (! empty($audit?->new_values['snapshot']['vouchers_disbursed'])) {
-                return $audit->new_values['snapshot']['vouchers_disbursed'];
+            if (isset($audit?->new_values['snapshot']['vouchers_disbursed'])) {
+                return (array) $audit->new_values['snapshot']['vouchers_disbursed'];
             }
+
+            return [];
         }
 
         return PettyCashVoucher::where('store_id', $session->store_id)

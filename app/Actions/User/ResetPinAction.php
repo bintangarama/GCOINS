@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class ResetPinAction
 {
@@ -14,11 +15,21 @@ class ResetPinAction
      */
     public function execute(User $targetUser, string $newPin = '123456', ?string $ipAddress = null): void
     {
+        if (strlen($newPin) < 6) {
+            throw new \InvalidArgumentException('PIN minimal 6 digit.');
+        }
+
         $actor = Auth::user();
 
-        $targetUser->update([
+        $updateData = [
             'pin_hash' => Hash::make($newPin),
-        ]);
+        ];
+
+        if (Schema::hasColumn('users', 'must_change_pin')) {
+            $updateData['must_change_pin'] = true;
+        }
+
+        $targetUser->update($updateData);
 
         if ($actor) {
             AuditLog::create([

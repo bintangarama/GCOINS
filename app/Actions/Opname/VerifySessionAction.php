@@ -8,6 +8,7 @@ use App\Models\CashOpnameSession;
 use App\Models\User;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VerifySessionAction
@@ -27,6 +28,10 @@ class VerifySessionAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 9: Valid state transition SUBMITTED -> VERIFIED_SS
         if ($session->status !== CashOpnameSession::STATUS_SUBMITTED) {
             throw new DomainException('Hanya sesi berstatus SUBMITTED yang dapat diverifikasi oleh saksi.');

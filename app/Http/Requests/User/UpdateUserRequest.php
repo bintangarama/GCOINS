@@ -25,9 +25,19 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $allowedRoles = ['SOA', 'SS', 'SAC', 'SM'];
-        if ($this->user()?->role === 'SYSTEM_ADMIN') {
-            $allowedRoles[] = 'SYSTEM_ADMIN';
+        $actor = $this->user();
+        $targetUser = $this->route('user');
+
+        $allowedRoles = match ($actor?->role) {
+            'SYSTEM_ADMIN' => ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'],
+            'SM' => ['SOA', 'SS', 'SAC', 'SM'],
+            'SAC' => ['SOA', 'SAC'],
+            default => [],
+        };
+
+        // User cannot change their own role (anti self-privilege escalation)
+        if ($actor && $targetUser && $actor->id === $targetUser->id) {
+            $allowedRoles = [$actor->role];
         }
 
         return [

@@ -9,6 +9,7 @@ use App\Models\Store;
 use App\Models\StoreOpnameConfig;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Database\Seeders\StoreSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Hash;
 
@@ -215,4 +216,34 @@ test('OpenSessionAction: resumes existing DRAFT session instead of creating dupl
 
     expect($session2->id)->toBe($session1->id)
         ->and(CashOpnameSession::count())->toBe(1);
+});
+
+test('StoreSeeder seeds all 5 opname types and allows opening sessions for all of them', function () {
+    $this->seed(StoreSeeder::class);
+
+    $action = app(OpenSessionAction::class);
+
+    // 1. KAS_KECIL (already has 11 items)
+    $kasKecil = $action->execute($this->sacUser, CashOpnameSession::TYPE_KAS_KECIL);
+    expect($kasKecil->itemCounts)->toHaveCount(11);
+
+    // 2. KAS_BESAR
+    $kasBesar = $action->execute($this->sacUser, CashOpnameSession::TYPE_KAS_BESAR);
+    expect($kasBesar->itemCounts)->toHaveCount(11)
+        ->and($kasBesar->opname_type)->toBe('KAS_BESAR');
+
+    // 3. ACTIVE_SELLING
+    $aksel = $action->execute($this->sacUser, CashOpnameSession::TYPE_ACTIVE_SELLING);
+    expect($aksel->itemCounts)->toHaveCount(11)
+        ->and($aksel->opname_type)->toBe('ACTIVE_SELLING');
+
+    // 4. MATERAI (3 items: 10k, 6k, 3k)
+    $materai = $action->execute($this->sacUser, CashOpnameSession::TYPE_MATERAI);
+    expect($materai->itemCounts)->toHaveCount(3)
+        ->and($materai->opname_type)->toBe('MATERAI');
+
+    // 5. GIFT_VOUCHER (4 items: 100k, 50k, 25k, 10k)
+    $giftVoucher = $action->execute($this->sacUser, CashOpnameSession::TYPE_GIFT_VOUCHER);
+    expect($giftVoucher->itemCounts)->toHaveCount(4)
+        ->and($giftVoucher->opname_type)->toBe('GIFT_VOUCHER');
 });

@@ -22,6 +22,8 @@ erDiagram
     users ||--o{ notifications : "receives"
 
     cash_opname_sessions ||--o{ opname_item_counts : "has many"
+    cash_opname_sessions ||--o{ variance_resolutions : "has many"
+    cash_opname_sessions ||--o{ opname_reference_lines : "has many"
     cash_opname_sessions ||--|| bri_sub_ledgers : "has one"
 
     opname_item_definitions ||--o{ opname_item_counts : "defines"
@@ -85,10 +87,38 @@ erDiagram
         integer total_actual_cents
         integer target_reconciled_cents
         integer current_variance_cents
+        integer raw_discrepancy_cents
+        integer cumulative_resolved_cents
+        integer outstanding_variance_cents
         varchar variance_status
         varchar created_by_id FK
         varchar verified_by_ss_id FK
         varchar approved_by_sm_id FK
+    }
+
+    variance_resolutions {
+        varchar id PK
+        varchar store_id FK
+        varchar session_id FK
+        varchar opname_type
+        varchar kind
+        integer amount_cents
+        text reason
+        varchar proof_attachment_url
+        varchar status
+        varchar created_by_id FK
+        varchar approved_by_id FK
+    }
+
+    opname_reference_lines {
+        varchar id PK
+        varchar session_id FK
+        varchar store_id FK
+        varchar line_type
+        varchar reference_number
+        integer amount_cents
+        varchar proof_attachment_url
+        text notes
     }
 
     opname_item_counts {
@@ -96,6 +126,8 @@ erDiagram
         varchar session_id FK
         varchar item_definition_id FK
         integer count
+        varchar condition
+        integer expected_count
         integer subtotal_cents
     }
 

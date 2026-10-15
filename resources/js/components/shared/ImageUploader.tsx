@@ -1,15 +1,17 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { compressImageToWebP, CompressionResult } from '@/lib/image-compressor';
-import { Camera, CheckCircle2, Image as ImageIcon, Loader2, Trash2, ZoomIn } from 'lucide-react';
+import { Camera, CheckCircle2, Loader2, Trash2, ZoomIn, UploadCloud } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface ImageUploaderProps {
+export interface ImageUploaderProps {
     label: string;
     description?: string;
     required?: boolean;
     error?: string;
     initialUrl?: string | null;
+    value?: string | null;
     onChange: (file: File | null) => void;
 }
 
@@ -19,20 +21,31 @@ export function ImageUploader({
     required = false,
     error,
     initialUrl = null,
+    value = null,
     onChange,
 }: ImageUploaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(initialUrl);
+    const activeUrl = value || initialUrl;
+    const [previewUrl, setPreviewUrl] = useState<string | null>(activeUrl);
     const [isCompressing, setIsCompressing] = useState<boolean>(false);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
     const [compressionInfo, setCompressionInfo] = useState<{
         originalKb: number;
         compressedKb: number;
         ratio: number;
     } | null>(null);
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    useEffect(() => {
+        if (activeUrl !== undefined && activeUrl !== previewUrl) {
+            setPreviewUrl(activeUrl);
+        }
+    }, [activeUrl]);
+
+    const processFile = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            toast.error('Berkas harus berupa gambar (JPG, PNG, WebP).');
+            return;
+        }
 
         setIsCompressing(true);
         try {
@@ -51,11 +64,40 @@ export function ImageUploader({
             onChange(result.file);
         } catch (err) {
             console.error('Compression error:', err);
-            // Fallback to original file
+            toast.warning('Kompresi otomatis gagal. Menggunakan berkas asli.');
             setPreviewUrl(URL.createObjectURL(file));
             onChange(file);
         } finally {
             setIsCompressing(false);
+        }
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            void processFile(file);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            void processFile(file);
         }
     };
 
@@ -71,12 +113,12 @@ export function ImageUploader({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground">
+                <label className="text-sm font-semibold text-foreground">
                     {label} {required && <span className="text-destructive">*</span>}
                 </label>
                 {compressionInfo && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        <CheckCircle2 className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <CheckCircle2 className="size-3" />
                         {compressionInfo.originalKb}KB → {compressionInfo.compressedKb}KB WebP (-{compressionInfo.ratio}%)
                     </span>
                 )}
@@ -88,59 +130,80 @@ export function ImageUploader({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handleFileSelect}
             />
 
             {!previewUrl ? (
-                <div
+                <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors duration-150 flex flex-col items-center justify-center gap-2 hover:bg-muted/40 ${
-                        error ? 'border-destructive/60 bg-destructive/5' : 'border-border'
-                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`w-full relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-150 flex flex-col items-center justify-center gap-2 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                        isDragging ? 'border-primary bg-primary/5 scale-[0.99]' : ''
+                    } ${error ? 'border-destructive/60 bg-destructive/5' : 'border-border'}`}
                 >
                     {isCompressing ? (
                         <div className="flex flex-col items-center gap-2 py-2">
-                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                            <span className="text-xs text-muted-foreground font-medium">Mengompresi ke WebP (≤250KB)...</span>
+                            <Loader2 className="size-8 text-primary animate-spin" />
+                            <span className="text-xs text-muted-foreground font-semibold">
+                                Mengompresi ke WebP (≤250KB)...
+                            </span>
                         </div>
                     ) : (
                         <>
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                <Camera className="w-5 h-5" />
+                            <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                {isDragging ? <UploadCloud className="size-6" /> : <Camera className="size-6" />}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                                <span className="font-semibold text-primary">Klik untuk ambil foto / upload</span> atau tarik gambar ke sini
+                                <span className="font-bold text-primary">Klik untuk ambil foto / upload</span> atau tarik gambar ke sini
                             </div>
-                            <span className="text-[10px] text-muted-foreground">Otomatis dikompresi ke WebP (≤ 250KB)</span>
+                            <span className="text-[11px] text-muted-foreground">
+                                Format JPG/PNG/WebP, otomatis dikompresi ≤ 250KB
+                            </span>
                         </>
                     )}
-                </div>
+                </button>
             ) : (
-                <div className="relative group border rounded-lg overflow-hidden bg-muted/20 p-2 flex items-center gap-3">
+                <div className="relative group border border-border rounded-xl overflow-hidden bg-muted/20 p-2.5 flex items-center gap-3">
                     <img
                         src={previewUrl}
-                        alt="Preview"
-                        className="w-16 h-16 object-cover rounded-md border shrink-0 bg-background"
+                        alt="Preview Foto"
+                        className="size-16 object-cover rounded-lg border border-border shrink-0 bg-background"
                     />
 
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{label}</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{label}</p>
                         <p className="text-[11px] text-muted-foreground">Format: WebP terkompresi</p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button size="icon" variant="outline" type="button" className="h-8 w-8" title="Lihat Foto">
-                                    <ZoomIn className="w-4 h-4 text-muted-foreground" />
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    type="button"
+                                    className="size-9"
+                                    title="Lihat Pratinjau Foto"
+                                >
+                                    <ZoomIn className="size-4 text-muted-foreground" />
+                                    <span className="sr-only">Perbesar Foto</span>
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl p-2 bg-background/95 backdrop-blur-sm">
+                            <DialogContent className="max-w-2xl p-3 bg-background/95 backdrop-blur-sm">
+                                <DialogHeader>
+                                    <DialogTitle className="text-sm font-semibold truncate">
+                                        Pratinjau: {label}
+                                    </DialogTitle>
+                                </DialogHeader>
                                 <img
                                     src={previewUrl}
                                     alt="Enlarged view"
-                                    className="w-full max-h-[75vh] object-contain rounded-md"
+                                    className="w-full max-h-[75vh] object-contain rounded-lg border border-border"
                                 />
                             </DialogContent>
                         </Dialog>
@@ -149,17 +212,18 @@ export function ImageUploader({
                             size="icon"
                             variant="destructive"
                             type="button"
-                            className="h-8 w-8"
+                            className="size-9"
                             onClick={handleRemove}
                             title="Hapus Foto"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="size-4" />
+                            <span className="sr-only">Hapus Foto</span>
                         </Button>
                     </div>
                 </div>
             )}
 
-            {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+            {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
         </div>
     );
 }

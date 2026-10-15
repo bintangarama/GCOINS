@@ -27,8 +27,16 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
+        if ($user->id === $model->id) {
+            return false;
+        }
+
         if ($user->role === 'SYSTEM_ADMIN') {
             return true;
+        }
+
+        if ($user->role === 'SAC' && in_array($model->role, ['SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            return false;
         }
 
         return in_array($user->role, ['SAC', 'SM'], true) && $user->store_id === $model->store_id;
@@ -39,8 +47,16 @@ class UserPolicy
      */
     public function resetPin(User $user, User $model): bool
     {
+        if ($user->id === $model->id) {
+            return false;
+        }
+
         if ($user->role === 'SYSTEM_ADMIN') {
             return true;
+        }
+
+        if ($user->role === 'SAC' && in_array($model->role, ['SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            return false;
         }
 
         return in_array($user->role, ['SAC', 'SM'], true) && $user->store_id === $model->store_id;
@@ -57,6 +73,10 @@ class UserPolicy
 
         if ($user->role === 'SYSTEM_ADMIN') {
             return true;
+        }
+
+        if ($user->role === 'SAC' && in_array($model->role, ['SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            return false;
         }
 
         return in_array($user->role, ['SAC', 'SM'], true) && $user->store_id === $model->store_id;

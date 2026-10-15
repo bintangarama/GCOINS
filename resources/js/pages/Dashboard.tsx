@@ -105,8 +105,14 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                     </Badge>
                 </PageHeader>
 
-                {/* 4 Summary Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Summary Cards */}
+                <div
+                    className={`grid grid-cols-1 sm:grid-cols-2 ${
+                        ['SOA', 'SYSTEM_ADMIN'].includes(user?.role || '')
+                            ? 'lg:grid-cols-3'
+                            : 'lg:grid-cols-4'
+                    } gap-4`}
+                >
                     {/* Card 1: Kas Kecil Fund */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -140,34 +146,38 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                 {data.pending_vouchers_count}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {data.pending_vouchers_count > 0
-                                    ? 'Voucher Menunggu Verifikasi'
-                                    : 'Tidak ada antrean'}
+                                {user?.role === 'SOA'
+                                    ? 'Total Antrean Toko'
+                                    : data.pending_vouchers_count > 0
+                                      ? 'Voucher Menunggu Verifikasi'
+                                      : 'Tidak ada antrean'}
                             </p>
                         </CardContent>
                     </Card>
 
-                    {/* Card 3: BRI Mutasi Outflow */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Outflow BRI
-                            </CardTitle>
-                            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                                <Building2 className="w-4 h-4" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
-                                {data.pending_outflows_count}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {data.pending_outflows_count > 0
-                                    ? 'Pending Dual-Control Review'
-                                    : 'Tidak ada antrean'}
-                            </p>
-                        </CardContent>
-                    </Card>
+                    {/* Card 3: BRI Mutasi Outflow (Hidden for SOA & SYSTEM_ADMIN) */}
+                    {!['SOA', 'SYSTEM_ADMIN'].includes(user?.role || '') && (
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Outflow BRI
+                                </CardTitle>
+                                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                    <Building2 className="w-4 h-4" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-xl sm:text-2xl font-bold font-mono text-foreground">
+                                    {data.pending_outflows_count}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {data.pending_outflows_count > 0
+                                        ? 'Pending Dual-Control Review'
+                                        : 'Tidak ada antrean'}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Card 4: Status Cash Opname */}
                     <Card>
@@ -233,7 +243,26 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                     </Link>
                                 )}
 
-                                {['SAC', 'SM'].includes(user?.role || '') && (
+                                {['SS', 'SM'].includes(user?.role || '') && (
+                                    <Link
+                                        href="/vouchers/pending"
+                                        className="p-4 rounded-xl border border-border hover:border-purple-500/50 hover:bg-purple-50/20 dark:hover:bg-purple-950/20 transition-all flex items-start gap-3 group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                            <Receipt className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-foreground group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                                Antrean Approval Bon
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                Review & setujui pengajuan voucher staf
+                                            </p>
+                                        </div>
+                                    </Link>
+                                )}
+
+                                {user?.role === 'SAC' && (
                                     <Link
                                         href="/opname/active"
                                         className="p-4 rounded-xl border border-border hover:border-emerald-500/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 transition-all flex items-start gap-3 group"
@@ -247,6 +276,44 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                             </h4>
                                             <p className="text-xs text-muted-foreground mt-0.5">
                                                 Input 11 pecahan uang fisik harian
+                                            </p>
+                                        </div>
+                                    </Link>
+                                )}
+
+                                {user?.role === 'SS' && (
+                                    <Link
+                                        href="/opname/active"
+                                        className="p-4 rounded-xl border border-border hover:border-emerald-500/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 transition-all flex items-start gap-3 group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                            <Coins className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                                Verifikasi Sesi Opname
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                Saksikan hitung fisik brankas (SS)
+                                            </p>
+                                        </div>
+                                    </Link>
+                                )}
+
+                                {user?.role === 'SM' && (
+                                    <Link
+                                        href="/opname/active"
+                                        className="p-4 rounded-xl border border-border hover:border-emerald-500/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 transition-all flex items-start gap-3 group"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                            <Coins className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                                Sign-Off Cash Opname
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                Persetujuan akhir & kunci sesi toko (SM)
                                             </p>
                                         </div>
                                     </Link>
@@ -301,12 +368,14 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                     <Activity className="w-4 h-4 text-primary" />
                                     <CardTitle className="text-base font-bold text-foreground">Aktivitas Terbaru</CardTitle>
                                 </div>
-                                <Link
-                                    href="/admin/audit-logs"
-                                    className="text-xs font-medium text-primary hover:underline"
-                                >
-                                    Lihat Semua
-                                </Link>
+                                {['SAC', 'SM', 'SYSTEM_ADMIN'].includes(user?.role || '') && (
+                                    <Link
+                                        href="/admin/audit-logs"
+                                        className="text-xs font-medium text-primary hover:underline"
+                                    >
+                                        Lihat Semua
+                                    </Link>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent>

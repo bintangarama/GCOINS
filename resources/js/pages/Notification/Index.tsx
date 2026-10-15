@@ -18,6 +18,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { Pagination } from '@/components/shared/Pagination';
 import { NotificationItem } from '@/types/notification';
 
 interface PaginatedData<T> {
@@ -51,11 +53,19 @@ export default function NotificationIndex({
         router.post(`/notifications/${id}/read`, {}, { preserveScroll: true });
     };
 
+    const [deleteId, setDeleteId] = React.useState<string | null>(null);
+
     const handleDelete = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm('Hapus notifikasi ini?')) {
-            router.delete(`/notifications/${id}`, { preserveScroll: true });
-        }
+        setDeleteId(id);
+    };
+
+    const confirmDelete = () => {
+        if (!deleteId) return;
+        router.delete(`/notifications/${deleteId}`, {
+            preserveScroll: true,
+            onSuccess: () => setDeleteId(null),
+        });
     };
 
     const getNotificationUrl = (item: NotificationItem): string => {
@@ -274,31 +284,23 @@ export default function NotificationIndex({
                 )}
 
                 {/* Pagination */}
-                {notifications.last_page > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <p className="text-xs text-muted-foreground">
-                            Menampilkan halaman {notifications.current_page} dari {notifications.last_page} (Total {notifications.total} data)
-                        </p>
-                        <div className="flex items-center gap-1">
-                            {notifications.links.map((link, idx) => (
-                                <Link
-                                    key={idx}
-                                    href={link.url || '#'}
-                                    preserveScroll
-                                    className={`px-3 py-1.5 rounded text-xs font-medium ${
-                                        link.active
-                                            ? 'bg-primary text-primary-foreground'
-                                            : !link.url
-                                            ? 'text-muted-foreground/40 pointer-events-none'
-                                            : 'text-foreground hover:bg-muted'
-                                    }`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    links={notifications.links}
+                    currentPage={notifications.current_page}
+                    lastPage={notifications.last_page}
+                    total={notifications.total}
+                />
             </div>
+
+            <ConfirmDialog
+                open={Boolean(deleteId)}
+                onOpenChange={(open) => !open && setDeleteId(null)}
+                title="Hapus Notifikasi?"
+                description="Notifikasi ini akan dihapus permanen dari daftar pemberitahuan Anda."
+                confirmText="Hapus"
+                variant="destructive"
+                onConfirm={confirmDelete}
+            />
         </AppLayout>
     );
 }

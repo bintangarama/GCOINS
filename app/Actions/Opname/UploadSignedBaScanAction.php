@@ -41,6 +41,11 @@ class UploadSignedBaScanAction
             throw new DomainException('Scan Berita Acara fisik hanya dapat diunggah setelah verifikasi saksi atau pengesahan final.');
         }
 
+        // Immutability Guard: Cannot overwrite existing scan on APPROVED session
+        if ($session->status === CashOpnameSession::STATUS_APPROVED && ! empty($session->signed_ba_scan_url)) {
+            throw new DomainException('Dokumen scan Berita Acara yang sudah disahkan final (APPROVED) bersifat permanen dan tidak dapat ditimpa.');
+        }
+
         return DB::transaction(function () use ($session, $file, $actor, $ipAddress) {
             $storeCode = $session->store?->code ?? 'STORE';
             $subPath = "uploads/opname/{$storeCode}/".now()->format('Y/m');

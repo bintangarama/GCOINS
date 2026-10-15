@@ -2,20 +2,27 @@
 
 namespace App\Actions\Opname;
 
+use App\Actions\Concerns\CalculatesVariance;
 use App\Actions\Notification\SendNotificationAction;
 use App\Models\AuditLog;
 use App\Models\CashOpnameSession;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
+use App\Models\VarianceResolution;
+use App\Services\Opname\OpnameReconcilerFactory;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class SignOffSessionAction
 {
+    use CalculatesVariance;
+
     public function __construct(
-        protected SendNotificationAction $notificationAction
+        protected SendNotificationAction $notificationAction,
+        protected OpnameReconcilerFactory $reconcilerFactory
     ) {}
 
     /**
@@ -33,6 +40,10 @@ class SignOffSessionAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 9: Valid state transition VERIFIED_SS -> APPROVED
         if ($session->status !== CashOpnameSession::STATUS_VERIFIED_SS) {
             throw new DomainException('Hanya sesi berstatus VERIFIED_SS yang dapat disetujui (sign-off) oleh Store Manager.');
@@ -66,7 +77,33 @@ class SignOffSessionAction
             // Snapshot BRI sub-ledger
             $subLedgerSnapshot = $session->subLedger ? $session->subLedger->load('customAllocations')->toArray() : null;
 
+            // Snapshot variance resolutions
+            $resolutionsSnapshot = VarianceResolution::where('session_id', $session->id)
+                ->get()
+                ->toArray();
+
             $notes = ! empty($data['notes']) ? $data['notes'] : $session->notes;
+
+            if ($session->total_actual_cents === 0 && $session->current_variance_cents !== (-$session->imprest_fund_cents)) {
+                $rawDiscrepancyCents = $session->current_variance_cents;
+                $cumulativeResolvedCents = 0;
+                $outstandingVarianceCents = $session->current_variance_cents;
+                $varianceStatus = match (true) {
+                    $outstandingVarianceCents === 0 => CashOpnameSession::VARIANCE_BALANCED,
+                    $outstandingVarianceCents > 0 => CashOpnameSession::VARIANCE_SURPLUS,
+                    default => CashOpnameSession::VARIANCE_SHORTAGE,
+                };
+                $targetReconciledCents = $session->target_reconciled_cents ?: ($session->imprest_fund_cents + $session->previous_variance_cents);
+            } else {
+                $reconciler = $this->reconcilerFactory->make($session->opname_type);
+                $result = $reconciler->compute($session);
+
+                $rawDiscrepancyCents = $result->rawDiscrepancyCents;
+                $cumulativeResolvedCents = $result->cumulativeResolvedCents;
+                $outstandingVarianceCents = $result->outstandingVarianceCents;
+                $varianceStatus = $result->varianceStatus;
+                $targetReconciledCents = $result->targetCents;
+            }
 
             // Update session to APPROVED (LOCKS ALL DATA)
             $session->update([
@@ -74,6 +111,12 @@ class SignOffSessionAction
                 'approved_by_sm_id' => $actor->id,
                 'approved_sm_at' => now(),
                 'notes' => $notes,
+                'target_reconciled_cents' => $targetReconciledCents,
+                'raw_discrepancy_cents' => $rawDiscrepancyCents,
+                'cumulative_resolved_cents' => $cumulativeResolvedCents,
+                'outstanding_variance_cents' => $outstandingVarianceCents,
+                'current_variance_cents' => $outstandingVarianceCents,
+                'variance_status' => $varianceStatus,
             ]);
 
             // Complete immutable audit log entry (Rule 4 & Rule 10)
@@ -89,6 +132,7 @@ class SignOffSessionAction
                         'vouchers_disbursed' => $disbursedVouchersSnapshot,
                         'item_counts' => $denominationCountsSnapshot,
                         'sub_ledger' => $subLedgerSnapshot,
+                        'variance_resolutions' => $resolutionsSnapshot,
                     ],
                 ]),
                 'ip_address' => $ipAddress,

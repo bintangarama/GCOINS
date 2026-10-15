@@ -15,6 +15,8 @@ class StoreScope implements Scope
     public function apply(Builder $builder, Model $model): void
     {
         if (! Auth::check()) {
+            $builder->whereRaw('1 = 0');
+
             return;
         }
 
@@ -27,6 +29,8 @@ class StoreScope implements Scope
 
         if ($user->store_id) {
             $builder->where($model->getTable().'.store_id', $user->store_id);
+        } else {
+            $builder->whereRaw('1 = 0');
         }
     }
 }

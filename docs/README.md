@@ -10,11 +10,11 @@
 | # | Document | Description |
 |---|---|---|
 | 00 | [Project Overview](./00-project-overview.md) | Ringkasan project, goals, tech stack |
-| 01 | [Business Process](./01-business-process.md) | Alur bisnis, model 3 kantong, variance engine |
+| 01 | [Business Process](./01-business-process.md) | Alur bisnis, model 3 kantong & 5 tipe opname, Outstanding Variance & Resolution Ledger |
 | 02 | [Functional Requirements](./02-functional-requirements.md) | Daftar fitur per modul |
 | 03 | [Non-Functional Requirements](./03-non-functional-requirements.md) | Performance, security, availability |
 | 04 | [Users & Roles](./04-users-and-roles.md) | 5 roles, RBAC matrix, SoD rules |
-| 05 | [Business Rules](./05-business-rules.md) | Non-negotiable invariants |
+| 05 | [Business Rules](./05-business-rules.md) | 14 non-negotiable business invariants (SoD, Dual Control, Outstanding Variance) |
 | 06 | [Workflow & State Machine](./06-workflow-state-machine.md) | State diagrams, transition rules |
 | 07 | [Database Design](./07-database-design.md) | Full schema, semua tabel, constraints |
 | 08 | [ERD](./08-erd.md) | Entity Relationship Diagram |

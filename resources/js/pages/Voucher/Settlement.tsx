@@ -23,6 +23,7 @@ import {
     DataTableEmpty,
 } from '@/components/shared/DataTable';
 import { formatMoney } from '@/lib/money';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { PettyCashVoucher } from '@/types/voucher';
 
 interface SettlementProps {
@@ -51,26 +52,26 @@ export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
         .filter((v) => selectedIds.includes(v.id))
         .reduce((sum, v) => sum + v.amount_cents, 0);
 
+    const [showSettleConfirm, setShowSettleConfirm] = useState(false);
+
     const handleBatchSettle = () => {
         if (selectedIds.length === 0) return;
+        setShowSettleConfirm(true);
+    };
 
-        if (
-            confirm(
-                `Yakin ingin menyelesaikan (settle) ${selectedIds.length} voucher dengan total ${formatMoney(
-                    selectedTotalCents
-                )}? Voucher yang diselesaikan akan keluar dari perhitungan K_bon.`
-            )
-        ) {
-            setIsSubmitting(true);
-            router.post(
-                '/vouchers/batch-settle',
-                { voucher_ids: selectedIds },
-                {
-                    onSuccess: () => setSelectedIds([]),
-                    onFinish: () => setIsSubmitting(false),
-                }
-            );
-        }
+    const confirmBatchSettle = () => {
+        setIsSubmitting(true);
+        router.post(
+            '/vouchers/batch-settle',
+            { voucher_ids: selectedIds },
+            {
+                onSuccess: () => {
+                    setSelectedIds([]);
+                    setShowSettleConfirm(false);
+                },
+                onFinish: () => setIsSubmitting(false),
+            }
+        );
     };
 
     return (
@@ -248,6 +249,17 @@ export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
                     </DataTable>
                 </Card>
             </div>
+
+            <ConfirmDialog
+                open={showSettleConfirm}
+                onOpenChange={setShowSettleConfirm}
+                title="Penyelesaian Voucher Kas Kecil?"
+                description={`Anda akan menyelesaikan ${selectedIds.length} voucher terpilih dengan total nominal ${formatMoney(selectedTotalCents)}.`}
+                riskNote="Voucher yang diselesaikan akan berstatus SETTLED dan keluar dari perhitungan K_bon rekonsiliasi kas kecil."
+                confirmText="Selesaikan Voucher"
+                isLoading={isSubmitting}
+                onConfirm={confirmBatchSettle}
+            />
         </AppLayout>
     );
 }

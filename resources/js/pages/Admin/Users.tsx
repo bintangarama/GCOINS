@@ -43,6 +43,8 @@ import {
     DataTableEmpty,
 } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { Pagination } from '@/components/shared/Pagination';
 import { PageProps, Role, Store, User } from '@/types/auth';
 import usersRoutes from '@/routes/admin/users';
 
@@ -51,6 +53,8 @@ interface PaginatedUsers {
     current_page: number;
     last_page: number;
     total: number;
+    from?: number | null;
+    to?: number | null;
     links: { url: string | null; label: string; active: boolean }[];
 }
 
@@ -134,11 +138,17 @@ export default function UsersPage({ users, stores }: UsersProps) {
         });
     };
 
+    const [statusConfirmUser, setStatusConfirmUser] = useState<User | null>(null);
+
     const handleToggleStatus = (user: User) => {
-        const action = user.is_active ? 'menonaktifkan' : 'mengaktifkan';
-        if (confirm(`Apakah Anda yakin ingin ${action} akun ${user.name}?`)) {
-            router.post(usersRoutes.toggleStatus.url(user.id));
-        }
+        setStatusConfirmUser(user);
+    };
+
+    const confirmToggleStatus = () => {
+        if (!statusConfirmUser) return;
+        router.post(usersRoutes.toggleStatus.url(statusConfirmUser.id), {}, {
+            onSuccess: () => setStatusConfirmUser(null),
+        });
     };
 
     const filteredUsers = users.data.filter(
@@ -284,6 +294,15 @@ export default function UsersPage({ users, stores }: UsersProps) {
                                 )}
                             </DataTableBody>
                         </DataTable>
+
+                        <Pagination
+                            links={users.links}
+                            currentPage={users.current_page}
+                            lastPage={users.last_page}
+                            from={users.from}
+                            to={users.to}
+                            total={users.total}
+                        />
                     </CardContent>
                 </Card>
             </div>
@@ -505,6 +524,18 @@ export default function UsersPage({ users, stores }: UsersProps) {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Confirm Dialog for Status Toggle */}
+            <ConfirmDialog
+                open={Boolean(statusConfirmUser)}
+                onOpenChange={(open) => !open && setStatusConfirmUser(null)}
+                title={statusConfirmUser?.is_active ? 'Nonaktifkan Pengguna?' : 'Aktifkan Pengguna?'}
+                description={`Apakah Anda yakin ingin ${statusConfirmUser?.is_active ? 'menonaktifkan' : 'mengaktifkan'} akun ${statusConfirmUser?.name}?`}
+                riskNote={statusConfirmUser?.is_active ? 'Pengguna yang dinonaktifkan tidak akan dapat masuk ke sistem atau melakukan proses cash opname.' : undefined}
+                confirmText={statusConfirmUser?.is_active ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan'}
+                variant={statusConfirmUser?.is_active ? 'destructive' : 'default'}
+                onConfirm={confirmToggleStatus}
+            />
         </AppLayout>
     );
 }

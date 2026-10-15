@@ -32,7 +32,10 @@ import {
     DataTableRow,
     DataTableCell,
     DataTableEmpty,
+    DataTableMobileList,
+    DataTableMobileCard,
 } from '@/components/shared/DataTable';
+import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
 import { PaginatedVouchers, PettyCashVoucher } from '@/types/voucher';
 
@@ -104,105 +107,198 @@ export default function PendingApprovalsPage({
 
                 {/* Table */}
                 <Card className="border shadow-sm overflow-hidden">
-                    <DataTable>
-                        <DataTableHead>
-                            <tr>
-                                <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
-                                <DataTableHeaderCell>Tanggal Diajukan</DataTableHeaderCell>
-                                <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
-                                <DataTableHeaderCell>Kategori</DataTableHeaderCell>
-                                <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Status Anti-Self</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Aksi Cepat</DataTableHeaderCell>
-                            </tr>
-                        </DataTableHead>
-                        <DataTableBody>
-                            {vouchers.data.length === 0 ? (
-                                <DataTableEmpty
-                                    colSpan={8}
-                                    icon={<Check className="w-10 h-10 text-emerald-500 stroke-1" />}
-                                    message="Semua voucher telah diproses"
-                                    description="Tidak ada antrean voucher yang menunggu verifikasi atau persetujuan saat ini."
-                                    action={
-                                        <Link href="/vouchers">
-                                            <Button variant="outline" size="sm" className="text-xs h-8">
-                                                Lihat Riwayat Voucher
-                                            </Button>
-                                        </Link>
-                                    }
-                                />
-                            ) : (
-                                vouchers.data.map((v) => {
+                    {/* Desktop View */}
+                    <div className="hidden sm:block">
+                        <DataTable>
+                            <DataTableHead>
+                                <tr>
+                                    <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Tanggal Diajukan</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Kategori</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Status Anti-Self</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Aksi Cepat</DataTableHeaderCell>
+                                </tr>
+                            </DataTableHead>
+                            <DataTableBody>
+                                {vouchers.data.length === 0 ? (
+                                    <DataTableEmpty
+                                        colSpan={8}
+                                        icon={<Check className="w-10 h-10 text-emerald-500 stroke-1" />}
+                                        message="Semua voucher telah diproses"
+                                        description="Tidak ada antrean voucher yang menunggu verifikasi atau persetujuan saat ini."
+                                        action={
+                                            <Link href="/vouchers">
+                                                <Button variant="outline" size="sm" className="text-xs h-8">
+                                                    Lihat Riwayat Voucher
+                                                </Button>
+                                            </Link>
+                                        }
+                                    />
+                                ) : (
+                                    vouchers.data.map((v) => {
+                                        const isSelfApprovalBlocked =
+                                            currentUserRole === 'SAC' && v.requester_id === currentUserId;
+
+                                        return (
+                                            <DataTableRow key={v.id}>
+                                                <DataTableCell className="font-mono font-semibold text-primary">
+                                                    {v.voucher_number}
+                                                </DataTableCell>
+                                                <DataTableCell className="text-muted-foreground whitespace-nowrap">
+                                                    {new Date(v.created_at).toLocaleDateString('id-ID', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </DataTableCell>
+                                                <DataTableCell>
+                                                    <div className="font-medium text-foreground">{v.requester?.name}</div>
+                                                    <div className="text-[10px] text-muted-foreground font-mono">
+                                                        {v.requester?.nik} ({v.requester?.role})
+                                                    </div>
+                                                </DataTableCell>
+                                                <DataTableCell>
+                                                    <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
+                                                        {v.category}
+                                                    </span>
+                                                </DataTableCell>
+                                                <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
+                                                    {v.purpose}
+                                                </DataTableCell>
+                                                <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
+                                                    {formatMoney(v.amount_cents)}
+                                                </DataTableCell>
+                                                <DataTableCell align="center" className="whitespace-nowrap">
+                                                    {isSelfApprovalBlocked ? (
+                                                        <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                            <ShieldAlert className="w-3 h-3" />
+                                                            Milik Sendiri (Perlu SS/SM)
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                                                            Siap Diverifikasi
+                                                        </span>
+                                                    )}
+                                                </DataTableCell>
+                                                <DataTableCell align="center" className="whitespace-nowrap">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <Link href={`/vouchers/${v.id}`}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-7 px-2 text-xs"
+                                                                title="Buka Detail"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        </Link>
+
+                                                        {!isSelfApprovalBlocked && (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    disabled={isProcessing}
+                                                                    onClick={() => handleApprove(v)}
+                                                                    className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                                    Setujui
+                                                                </Button>
+
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    disabled={isProcessing}
+                                                                    onClick={() => {
+                                                                        setSelectedVoucher(v);
+                                                                        setRejectDialogOpen(true);
+                                                                    }}
+                                                                    className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                                                                >
+                                                                    <XCircle className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </DataTableCell>
+                                            </DataTableRow>
+                                        );
+                                    })
+                                )}
+                            </DataTableBody>
+                        </DataTable>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="sm:hidden">
+                        {vouchers.data.length === 0 ? (
+                            <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                                <Check className="w-10 h-10 text-emerald-500 stroke-1 mb-1" />
+                                <p className="text-sm font-semibold text-foreground">Semua voucher telah diproses</p>
+                                <p className="text-xs text-muted-foreground">Tidak ada antrean voucher saat ini.</p>
+                                <Link href="/vouchers" className="mt-2">
+                                    <Button variant="outline" size="sm" className="text-xs h-9">
+                                        Lihat Riwayat Voucher
+                                    </Button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <DataTableMobileList>
+                                {vouchers.data.map((v) => {
                                     const isSelfApprovalBlocked =
                                         currentUserRole === 'SAC' && v.requester_id === currentUserId;
 
                                     return (
-                                        <DataTableRow key={v.id}>
-                                            <DataTableCell className="font-mono font-semibold text-primary">
-                                                {v.voucher_number}
-                                            </DataTableCell>
-                                            <DataTableCell className="text-muted-foreground whitespace-nowrap">
-                                                {new Date(v.created_at).toLocaleDateString('id-ID', {
-                                                    day: '2-digit',
-                                                    month: 'short',
-                                                    year: 'numeric',
-                                                })}
-                                            </DataTableCell>
-                                            <DataTableCell>
-                                                <div className="font-medium text-foreground">{v.requester?.name}</div>
-                                                <div className="text-[10px] text-muted-foreground font-mono">
-                                                    {v.requester?.nik} ({v.requester?.role})
-                                                </div>
-                                            </DataTableCell>
-                                            <DataTableCell>
-                                                <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
-                                                    {v.category}
+                                        <DataTableMobileCard key={v.id}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="font-mono font-semibold text-xs text-primary">
+                                                    {v.voucher_number}
                                                 </span>
-                                            </DataTableCell>
-                                            <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
-                                                {v.purpose}
-                                            </DataTableCell>
-                                            <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
-                                                {formatMoney(v.amount_cents)}
-                                            </DataTableCell>
-                                            <DataTableCell align="center" className="whitespace-nowrap">
                                                 {isSelfApprovalBlocked ? (
                                                     <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                         <ShieldAlert className="w-3 h-3" />
-                                                        Milik Sendiri (Perlu SS/SM)
+                                                        Perlu SS/SM
                                                     </span>
                                                 ) : (
                                                     <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-                                                        Siap Diverifikasi
+                                                        Siap Verifikasi
                                                     </span>
                                                 )}
-                                            </DataTableCell>
-                                            <DataTableCell align="center" className="whitespace-nowrap">
-                                                <div className="flex items-center justify-center gap-1.5">
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                                <span className="font-medium text-foreground">{v.requester?.name}</span>
+                                                <span>
+                                                    {new Date(v.created_at).toLocaleDateString('id-ID', {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">{v.purpose}</p>
+                                            <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                                                <span className="font-mono num font-bold text-sm text-foreground">
+                                                    {formatMoney(v.amount_cents)}
+                                                </span>
+                                                <div className="flex items-center gap-1.5">
                                                     <Link href={`/vouchers/${v.id}`}>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-7 px-2 text-xs"
-                                                            title="Buka Detail"
-                                                        >
+                                                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
                                                             <Eye className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </Link>
-
                                                     {!isSelfApprovalBlocked && (
                                                         <>
                                                             <Button
                                                                 size="sm"
                                                                 disabled={isProcessing}
                                                                 onClick={() => handleApprove(v)}
-                                                                className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                                                                className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
                                                             >
                                                                 <CheckCircle className="w-3.5 h-3.5" />
                                                                 Setujui
                                                             </Button>
-
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
@@ -211,20 +307,29 @@ export default function PendingApprovalsPage({
                                                                     setSelectedVoucher(v);
                                                                     setRejectDialogOpen(true);
                                                                 }}
-                                                                className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                                                                className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10"
                                                             >
                                                                 <XCircle className="w-3.5 h-3.5" />
                                                             </Button>
                                                         </>
                                                     )}
                                                 </div>
-                                            </DataTableCell>
-                                        </DataTableRow>
+                                            </div>
+                                        </DataTableMobileCard>
                                     );
-                                })
-                            )}
-                        </DataTableBody>
-                    </DataTable>
+                                })}
+                            </DataTableMobileList>
+                        )}
+                    </div>
+
+                    <Pagination
+                        links={vouchers.links}
+                        currentPage={vouchers.current_page}
+                        lastPage={vouchers.last_page}
+                        from={vouchers.from}
+                        to={vouchers.to}
+                        total={vouchers.total}
+                    />
                 </Card>
             </div>
 

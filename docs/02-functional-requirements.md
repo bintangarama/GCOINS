@@ -19,11 +19,18 @@
 - Authenticated user can change their own PIN
 - Requires current PIN verification before change
 
-### FR-AUTH-05: User CRUD (SAC, SM, SYSTEM_ADMIN)
-- Create user: NIK, name, role, initial PIN, phone number (optional)
+### FR-AUTH-05: User CRUD & Segregation of Duties (SoD)
+- Create user: NIK, name, role, initial PIN (min 6 digits), phone number (optional)
 - Edit user: name, role, phone number, active status
-- Deactivate user: soft — set `is_active = false`
-- Reset PIN: SAC/SM can reset any user's PIN in their store; SYSTEM_ADMIN can reset any user
+- **Segregation of Duties (SoD)**:
+  - SAC DILARANG membuat atau mengubah user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`. Hanya SM dan SYSTEM_ADMIN yang berwenang mengelola role $\ge$ SS.
+  - User DILARANG mengubah rolenya sendiri (anti-privilege escalation).
+- Deactivate user: soft — set `is_active = false`. User tidak bisa menonaktifkan dirinya sendiri.
+- **PIN Reset Safeguards**:
+  - SAC hanya boleh me-reset PIN user dengan role `SOA` atau `SAC`.
+  - SAC DILARANG me-reset PIN milik `SS`, `SM`, atau `SYSTEM_ADMIN`.
+  - User tidak boleh me-reset PIN miliknya sendiri via endpoint admin.
+  - Reset PIN menghasilkan PIN sementara 6 digit tanpa mencetak PIN terbuka di response log.
 
 ### FR-AUTH-06: SYSTEM_ADMIN Store Management
 - Create new store (code, name, address, imprest fund)
@@ -113,9 +120,12 @@
 - Status: `PENDING_SS`
 - Running balance does **not** decrease until approved
 
-### FR-BRI-03: Approve OUTFLOW
+### FR-BRI-03: Approve OUTFLOW (Tiered Dual Control)
 - Roles: SS, SM
-- **Dual Control**: SAC cannot approve their own outflow
+- **Tiered Dual Control & Anti Self-Approval**:
+  - Creator DILARANG meng-approve outflow buatannya sendiri (anti self-approval).
+  - Outflow $\le$ Rp 500.000: dapat disetujui oleh **SS** atau **SM**.
+  - Outflow > Rp 500.000: **WAJIB SM** (Store Manager). Upaya approval oleh SS akan ditolak (403 Forbidden).
 - Status: `PENDING_SS` → `APPROVED`
 - Running balance decreases
 
@@ -140,70 +150,78 @@
 
 ---
 
-## Module 4: Cash Opname Session
+## Module 4: Polymorphic Cash Opname Engine & Resolution Ledger
 
-### FR-OPN-01: Open Session
+### FR-OPN-01: Open Session (Polymorphic Engine)
 - Role: SAC only
-- Check for existing DRAFT session (resume if exists)
-- If none: create new session with auto-generated number
-- Auto-fetch V_prev from last APPROVED session (or 0 if first-ever)
-- Initialize item counts to 0 (based on opname type's item definitions)
-- Auto-populate BRI running balances
+- Mendukung 5 tipe kas opname: `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER`
+- Resume existing DRAFT session jika ada di tanggal dan tipe yang sama (didukung SQLite partial unique index)
+- Auto-fetch unresolved outstanding variance dari sesi APPROVED sebelumnya per tipe opname
+- Inisialisasi item counts (sesuai `opname_item_definitions` toko)
+- Inisialisasi dynamic reference lines (Z-Report, Modal Awal, Setoran DRO)
 
-### FR-OPN-02: Input Denomination Counts
-- Role: SAC only (during DRAFT)
-- Display all item definitions for this opname type
-- Input count per item, auto-calculate subtotal and K_fisik
-- Keyboard navigation: Enter/Tab moves to next row (numpad-friendly)
-- Auto-heal: ensure all defined items appear even if DB records are missing
+### FR-OPN-02: Input Denomination & Item Counts
+- Role: SAC only (selama status DRAFT)
+- Menampilkan item counts secara dinamis berdasarkan `group_label` dan tipe opname:
+  - Uang Kertas & Uang Logam (KAS_KECIL, KAS_BESAR, ACTIVE_SELLING)
+  - Keping Materai 10k/6k (MATERAI) dengan status kondisi Fisik Baik / Rusak
+  - Lembar Gift Voucher (GIFT_VOUCHER)
+- Keyboard traversal kasir: Enter / Panah Bawah otomatis berpindah dan menyeleksi (`select()`) input berikutnya
+- Debounce autosave 800ms: perubahan nominal tersimpan otomatis di latar belakang tanpa refresh
 
-### FR-OPN-03: BRI Sub-Ledger Input
-- Role: SAC only (during DRAFT)
-- Manual input: BRI mutation balance (from bank statement photo)
-- Auto-calculated: category allocations (from BRI fund postings)
-- Auto-calculated: K_bri = mutation - Σ allocations
-- Upload bank statement photo
-- Manual sync button to refresh allocations
-- Breakdown modal per category/entity
+### FR-OPN-03: Strategy Reconcilers & Reference Lines
+- **Strategy Pattern Reconciler** mengeksekusi rekonsiliasi sesuai tipe:
+  1. `ThreePocketsReconciler` (`KAS_KECIL`): Fisik safe + Bon gantung (DISBURSED) + Net BRI pooling vs Plafon Imprest
+  2. `CashFlowReconciler` (`KAS_BESAR`, `ACTIVE_SELLING`): Fisik safe vs (Opening Float + Sales Z-Report - Bank Drops/DRO)
+  3. `ConsignmentReconciler` (`MATERAI`, `GIFT_VOUCHER`): Fisik stok vs Target konsinyasi / Saldo stok sistem
+- **Reference Lines**: Input dinamis baris referensi (Z-Report, Modal Awal, Setoran Bank/DRO)
+- **Bukti Fisik Z-Report**: Pada `KAS_BESAR`, wajib menginput minimal 1 Z-Report dan mengunggah foto struk Z-Report fisik sebelum submit
 
-### FR-OPN-04: Live Variance Preview
-- Real-time calculation shown while DRAFT:
-  - Total Actual = K_fisik + K_bon + K_bri
-  - Target = Imprest + V_prev
-  - V_current = Total - Target
-  - Status badge: BALANCED / SURPLUS / SHORTAGE
+### FR-OPN-04: Precision Accounting (Outstanding Variance & Resolution Ledger)
+- Menghilangkan bug osilasi variance dengan formula akuntansi standar buku besar:
+  - $\text{RawDiscrepancy} = \text{TotalActual} - \text{TargetAmount}$
+  - $\text{CumulativeResolved} = \sum \text{approved resolutions}$
+  - $\text{OutstandingVariance} = \text{RawDiscrepancy} + \text{CumulativeResolved}$
+- Status variance dievaluasi murni dari $\text{OutstandingVariance}$:
+  - `BALANCED` ($\text{OutstandingVariance} = 0$)
+  - `SURPLUS` ($\text{OutstandingVariance} > 0$)
+  - `SHORTAGE` ($\text{OutstandingVariance} < 0$)
 
-### FR-OPN-05: Submit to Supervisor
+### FR-OPN-05: Variance Resolution Management
+- SAC dapat mengajukan penyelesaian selisih (`REPLACED`, `WRITE_OFF`, `FOUND`)
+- **Tiered Write-Off Approval**:
+  - Write-off $\le$ Rp 1.000.000: dapat disetujui oleh **SS** atau **SM**
+  - Write-off > Rp 1.000.000: **WAJIB SM** (Store Manager)
+- Resolusi yang disetujui (`APPROVED`) langsung menambah `cumulative_resolved_cents` dan menetralkan outstanding variance
+
+### FR-OPN-06: Submit to Supervisor
 - Role: SAC
+- Validasi: semua item telah diisi. Jika `KAS_BESAR`, minimal 1 Z-report dan foto bukti fisik telah diunggah
 - Status: `DRAFT` → `SUBMITTED`
-- Triggers in-app notification to SS
+- Triggers in-app notification ke SS
 
-### FR-OPN-06: SS Verification (Witness)
+### FR-OPN-07: SS Verification (Witness)
 - Role: SS only
-- SS physically verifies cash in safe matches the counts
+- SS memverifikasi fisik uang di brankas cocok dengan input SAC
 - Status: `SUBMITTED` → `VERIFIED_SS`
-- Records `verified_by_ss_id` and `verified_ss_at`
-- Can reject → status back to `DRAFT` with reason
+- Rekam `verified_by_ss_id` dan `verified_ss_at`
+- Jika tidak sesuai: Reject → kembali ke `DRAFT` dengan alasan wajib
 
-### FR-OPN-07: SM Sign-Off (Final Approval)
+### FR-OPN-08: SM Sign-Off (Final Approval & Immutable Lock)
 - Role: SM only
-- SM reviews reconciliation, variance status, and notes
-- Requires `confirm_understanding: true` checkbox
+- SM meninjau rekonsiliasi, reference lines, foto bukti, dan resolusi selisih
+- Wajib mencentang persetujuan `confirm_understanding: true`
 - Status: `VERIFIED_SS` → `APPROVED`
-- **Triggers permanent lock**: all values become read-only
-- V_current becomes V_prev for next session
-- Records `approved_by_sm_id` and `approved_sm_at`
-- Can reject → status back to `DRAFT` with reason
+- **Permanent Lock**: Semua data item counts, reference lines, dan resolusi terkunci permanen
+- Outstanding variance yang belum selesai terbawa ke sesi berikutnya per tipe opname
 
-### FR-OPN-08: Session History
-- List of all sessions (past and current)
-- Filterable by: status, date range, opname type
-- Status badges with color coding
+### FR-OPN-09: Session History & Detail View
+- Filter riwayat sesi berdasarkan status, rentang tanggal, dan 5 tipe opname
+- Tampilan detail read-only lengkap dengan tab reference lines, audit timeline, dan resolusi selisih
 
-### FR-OPN-09: Session Detail (Read-Only)
-- Full breakdown of all values
-- Denomination table, BRI sub-ledger, voucher list
-- Sign-off timeline
+### FR-OPN-10: Client-Side Resilience & UX Enhancements
+- **Multi-tier WebP Compressor**: Kompresi foto bukti di browser (max 1280x1920 px, $\le$ 250KB WebP) dengan fallback penskalaan dimensi
+- **Unsaved Changes Guard**: Peringatan `beforeunload` jika user bernavigasi saat autosave sedang berlangsung
 
 ---
 

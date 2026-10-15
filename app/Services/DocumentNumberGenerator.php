@@ -30,7 +30,8 @@ class DocumentNumberGenerator
         CashOpnameSession::TYPE_KAS_BESAR => 'KBSR',
         CashOpnameSession::TYPE_ACTIVE_SELLING => 'AKSL',
         CashOpnameSession::TYPE_MATERAI => 'MATR',
-        CashOpnameSession::TYPE_VOUCHER => 'VCHR',
+        CashOpnameSession::TYPE_GIFT_VOUCHER => 'GVCH',
+        'VOUCHER' => 'VCHR',
     ];
 
     /**

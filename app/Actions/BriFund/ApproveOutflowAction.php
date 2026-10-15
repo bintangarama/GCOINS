@@ -10,10 +10,16 @@ use App\Models\BriFundPosting;
 use App\Models\User;
 use App\Services\BriBalanceService;
 use DomainException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 class ApproveOutflowAction
 {
+    /**
+     * Threshold for mandatory Store Manager approval (Rp 100.000.000,00 = 10.000.000.000 cents).
+     */
+    public const SM_MANDATORY_THRESHOLD_CENTS = 10000000000;
+
     public function __construct(
         protected BriBalanceService $balanceService,
         protected SendNotificationAction $notificationAction
@@ -23,8 +29,9 @@ class ApproveOutflowAction
      * Approve a pending BRI outflow posting.
      * Enforces:
      * 1. Dual Control (Rule 6): creator != approver; must be SS or SM
-     * 2. Zero-Deficit Guard (Rule 7): Checked a SECOND time at approval
-     * 3. Valid State Transition (Rule 9): PENDING_SS -> APPROVED
+     * 2. Tiered Approval: >= Rp 100.000.000 requires SM approval directly
+     * 3. Zero-Deficit Guard (Rule 7): Checked a SECOND time at approval
+     * 4. Valid State Transition (Rule 9): PENDING_SS -> APPROVED
      */
     public function execute(BriFundPosting $posting, User $actor, ?string $ipAddress = null): BriFundPosting
     {
@@ -41,6 +48,13 @@ class ApproveOutflowAction
         // Must be SS or SM
         if (! in_array($actor->role, ['SS', 'SM'], true)) {
             throw new DomainException('Hanya Store Supervisor (SS) atau Store Manager (SM) yang dapat menyetujui pengeluaran dana BRI.');
+        }
+
+        // Tiered Outflow Approval: >= Rp 100.000.000 requires SM approval directly
+        if ($posting->amount_cents >= self::SM_MANDATORY_THRESHOLD_CENTS) {
+            if ($actor->role !== 'SM') {
+                throw new AuthorizationException('Penarikan dana >= Rp 100.000.000 wajib mendapatkan persetujuan langsung dari Store Manager.');
+            }
         }
 
         // Rule 6: Dual Control (creator != approver)

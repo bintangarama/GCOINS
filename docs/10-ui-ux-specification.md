@@ -161,32 +161,41 @@
   - Cancel (SAC/SM, when DISBURSED)
   - Confirm Refund (SAC, when REJECTED_REFUND_PENDING)
 
-### 4.6. Active Opname Session (`/opname/active`)
-- **Section 1: Denomination Input**
-  - Table: 11 rows (or per item definitions)
-  - Columns: No, Group, Pecahan, Jumlah (editable input), Subtotal (auto-calc)
-  - Total K_fisik at bottom
-  - Numpad-friendly: Enter/Tab moves to next row
+### 4.6. Active Opname Workspace (`/opname/active`)
 
-- **Section 2: Outstanding Vouchers (K_bon)**
-  - Auto-populated list of DISBURSED vouchers
-  - Columns: No. Voucher, Pemohon, Keperluan, Nominal
-  - Total K_bon at bottom
-  - Read-only (informational)
+- **Top Indicator: Daily Closing Switcher (`<DailyClosingSwitcher>`)**
+  - 5 interactive cards showing daily status: `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER`.
+  - Badges: `NOT_STARTED` (abu-abu), `DRAFT` (biru), `SUBMITTED` (amber), `VERIFIED_SS` (indigo), `APPROVED` (hijau).
+  - One-click navigation and instant creation for unstarted sessions.
 
-- **Section 3: BRI Reconciliation (K_bri)**
-  - Input: Saldo Mutasi BRI (manual from bank statement)
-  - Auto-calculated rows: B2B, Event, Aksel, Anonymous, Custom
-  - Each row has breakdown button `[👁️ Detail]` → modal with entity list
-  - Upload: bank statement photo
-  - Net K_bri at bottom
+- **Section 1: Generic Count Grid (`<CountGrid>`)**
+  - Dynamically groups items by `item_definition.group_label` (tidak lagi hardcoded terbatas pada Uang Kertas & Logam).
+  - Renders physical units cleanly: lembar, keping, pcs.
+  - Traversal Numpad Kasir:
+    - Tombol <kbd>Enter</kbd> / <kbd>Panah Bawah</kbd> otomatis memindahkan fokus ke input berikutnya dan memilih teks (`select()`).
+    - Tombol <kbd>Panah Atas</kbd> memindahkan fokus ke input sebelumnya.
+    - Pada baris item terakhir, menekan <kbd>Enter</kbd> otomatis memindahkan fokus ke tombol **Simpan Pecahan**.
+  - Autosave dengan debounce 800ms setelah kasir selesai mengetik pecahan.
+  - `beforeunload` guard aktif jika status input dirty (`isDenomDirty === true`).
 
-- **Section 4: Variance Summary (sticky/fixed at bottom)**
-  - Total Actual = K_fisik + K_bon + K_bri
-  - Target = Imprest + V_prev
-  - **V_current = Total - Target** (large, prominent)
-  - Status badge: BALANCED (green) / SURPLUS (blue) / SHORTAGE (red)
-  - Submit button: "Ajukan Verifikasi Saksi"
+- **Section 2: Sub-Panel KAS_BESAR (`<KasBesarForm>`)** *(Hanya untuk tipe KAS_BESAR)*
+  - Register POS Z-Report: No. Mesin Kasir, No. Z-Report, Total Penjualan Tunai Sistem, dan upload foto fisik struk Z-Report.
+  - Setoran Bank: No. Slip Setoran Bank, nominal disetor, dan upload foto slip setoran bank.
+  - Client-Side Validation: Tombol "Ajukan Verifikasi Saksi" dinonaktifkan jika belum ada minimal 1 data Z-Report atau ada Z-Report yang belum melampirkan foto bukti fisik struk Z-Report.
+
+- **Section 3: Outstanding Vouchers (K_bon) & Mutasi BRI (K_bri)** *(Khusus KAS_KECIL)*
+  - Auto-populated list of DISBURSED vouchers.
+  - Mutasi Rekening Koran BRI dan alokasi dana non-kas kecil (B2B, Event, Aksel, Anonymous, Custom).
+  - Breakdown modal per entitas alokasi.
+
+- **Section 4: Mobile Approval Card (`<MobileApprovalCard>`)** *(Viewport mobile `< lg`)*
+  - Ringkasan 1-kolom padat: Total Fisik, Target Baseline, Outstanding Variance.
+  - Checkbox `confirm_understanding` dengan area sentuh ramah jempol tangan (touch-target min 48px).
+  - Tombol aksi verifikasi SS dan sign-off SM yang mudah dijangkau dengan satu tangan di depan brankas.
+
+- **Section 5: Sticky Live Discrepancy & Action Bar**
+  - Floating bottom bar menampilkan metrik aktual, target plafon, dan status `Outstanding Variance` (`BALANCED` / `SURPLUS` / `SHORTAGE`).
+  - Action buttons kontekstual: Simpan Pecahan, Simpan BRI, Ajukan Verifikasi (SAC), Verifikasi Saksi (SS), Sign-Off & Setujui (SM).
 
 ### 4.7. Print/Report View (`/opname/:id/report`)
 - Clean A4 layout matching Excel BACO format
@@ -202,18 +211,20 @@
 - Input: user types digits, auto-formats as they type
 - No decimals (Rupiah only, no sen in daily cash operations)
 
-### Image Upload with Compression
-1. User clicks upload / takes photo (mobile camera)
-2. Client-side: read file → Canvas API → resize (max 1280×1920) → WebP 75%
-3. Show preview with compressed size indicator
-4. On form submit: upload compressed WebP to server
+### Hardened Client-Side Image Compression (`image-compressor.ts`)
+1. User clicks upload / captures photo via mobile camera.
+2. Dimensi dibatasi maksimal proporsional $1280 \times 1920\text{ px}$.
+3. Strict Size Guard ($\le 250\text{ KB}$):
+   - Iterasi kualitas Canvas dari 0.85 turun bertahap hingga 0.3.
+   - Jika pada kualitas 0.3 ukuran masih $> 250\text{ KB}$, kompresor otomatis melakukan *two-stage dimensional scaling* (skala turun 80% &rarr; 60%) hingga ukuran file wajib $\le 250\text{ KB}$.
+4. Fallback Safari iOS: Jika `canvas.toBlob` tidak menghasilkan tipe `image/webp`, file otomatis disimpan sebagai format JPEG terkompresi dengan ekstensi `.jpg` yang valid (mencegah file JPEG yang dinamai `.webp` palsu).
 
-### Denomination Numpad Input
-- Large input fields for easy numpad entry
-- Enter key → move to next denomination row
-- Tab key → move to next denomination row
-- Auto-calculate subtotal (count × nominal) and grand total in real-time
-- Visual highlight on currently active row
+### Denomination Numpad Traversal
+- Input numerik besar dengan format font monospaced.
+- <kbd>Enter</kbd> / <kbd>Panah Bawah</kbd> &rarr; loncat ke pecahan berikutnya dan langsung `select()`.
+- <kbd>Panah Atas</kbd> &rarr; kembali ke pecahan sebelumnya.
+- <kbd>Enter</kbd> pada baris pecahan terakhir &rarr; langsung memindahkan fokus ke tombol simpan.
+- Debounce 800ms menyimpan otomatis tanpa mengganggu alur ketik kasir.
 
 ### Notification Bell
 - Bell icon in topbar with unread count badge (red circle)

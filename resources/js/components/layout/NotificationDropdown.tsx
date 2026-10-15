@@ -90,7 +90,7 @@ export function NotificationDropdown() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-foreground relative hover:bg-muted"
+                    className="size-10 sm:size-9 text-muted-foreground hover:text-foreground relative hover:bg-muted"
                     aria-label="Notifikasi"
                 >
                     <Bell className="w-5 h-5" />

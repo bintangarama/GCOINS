@@ -8,6 +8,7 @@ use App\Models\CashOpnameSession;
 use App\Models\User;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -31,6 +32,10 @@ class RejectSessionAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         $reason = trim($data['reason'] ?? '');
         if (empty($reason)) {
             throw new InvalidArgumentException('Alasan penolakan wajib disertakan.');

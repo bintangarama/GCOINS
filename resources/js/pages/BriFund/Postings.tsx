@@ -15,7 +15,10 @@ import {
     DataTableRow,
     DataTableCell,
     DataTableEmpty,
+    DataTableMobileList,
+    DataTableMobileCard,
 } from '@/components/shared/DataTable';
+import { Pagination } from '@/components/shared/Pagination';
 import { PaginatedBriPostings, BriFundPosting } from '@/types/bri';
 import { formatMoney } from '@/lib/money';
 import {
@@ -275,67 +278,172 @@ export default function BriFundPostings({
 
                 {/* Postings Table */}
                 <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                    <DataTable>
-                        <DataTableHead>
-                            <tr>
-                                <DataTableHeaderCell>Tanggal & Waktu</DataTableHeaderCell>
-                                <DataTableHeaderCell>Tipe & Kategori</DataTableHeaderCell>
-                                <DataTableHeaderCell>Entitas / Rekanan</DataTableHeaderCell>
-                                <DataTableHeaderCell>Keterangan / Keperluan</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Bukti</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                                <DataTableHeaderCell>Petugas</DataTableHeaderCell>
-                            </tr>
-                        </DataTableHead>
-                        <DataTableBody>
-                            {postings.data.length === 0 ? (
-                                <DataTableEmpty
-                                    colSpan={8}
-                                    icon={<Building2 className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
-                                    message="Tidak ada mutasi yang sesuai filter"
-                                    description="Coba ubah kata kunci pencarian, rentang tanggal, atau kriteria filter lainnya."
-                                    action={
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {(search || category !== 'all' || entityName !== 'all' || type !== 'all' || status !== 'all' || dateFrom || dateTo) && (
-                                                <Button variant="outline" size="sm" onClick={handleReset} className="text-xs h-8">
-                                                    Reset Filter
-                                                </Button>
-                                            )}
-                                            <Link href="/bri-funds/create">
-                                                <Button size="sm" className="text-xs h-8 gap-1.5">
-                                                    <PlusCircle className="w-3.5 h-3.5" />
-                                                    Catat Mutasi Baru
-                                                </Button>
-                                            </Link>
-                                        </div>
-                                    }
-                                />
-                            ) : (
-                                postings.data.map((item) => (
-                                    <DataTableRow key={item.id}>
-                                        <DataTableCell className="font-mono text-muted-foreground whitespace-nowrap">
-                                            {new Date(item.created_at).toLocaleDateString('id-ID', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}{' '}
-                                            <span className="text-[10px] block opacity-70">
-                                                {new Date(item.created_at).toLocaleTimeString('id-ID', {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit',
-                                                })}
-                                            </span>
-                                        </DataTableCell>
-                                        <DataTableCell className="whitespace-nowrap">
+                    {/* Desktop View */}
+                    <div className="hidden md:block">
+                        <DataTable>
+                            <DataTableHead>
+                                <tr>
+                                    <DataTableHeaderCell>Tanggal & Waktu</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Tipe & Kategori</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Entitas / Rekanan</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Keterangan / Keperluan</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Bukti</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Petugas</DataTableHeaderCell>
+                                </tr>
+                            </DataTableHead>
+                            <DataTableBody>
+                                {postings.data.length === 0 ? (
+                                    <DataTableEmpty
+                                        colSpan={8}
+                                        icon={<Building2 className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
+                                        message="Tidak ada mutasi yang sesuai filter"
+                                        description="Coba ubah kata kunci pencarian, rentang tanggal, atau kriteria filter lainnya."
+                                        action={
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {(search || category !== 'all' || entityName !== 'all' || type !== 'all' || status !== 'all' || dateFrom || dateTo) && (
+                                                    <Button variant="outline" size="sm" onClick={handleReset} className="text-xs h-8">
+                                                        Reset Filter
+                                                    </Button>
+                                                )}
+                                                <Link href="/bri-funds/create">
+                                                    <Button size="sm" className="text-xs h-8 gap-1.5">
+                                                        <PlusCircle className="w-3.5 h-3.5" />
+                                                        Catat Mutasi Baru
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        }
+                                    />
+                                ) : (
+                                    postings.data.map((item) => (
+                                        <DataTableRow key={item.id}>
+                                            <DataTableCell className="font-mono text-muted-foreground whitespace-nowrap">
+                                                {new Date(item.created_at).toLocaleDateString('id-ID', {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                })}{' '}
+                                                <span className="text-[10px] block opacity-70">
+                                                    {new Date(item.created_at).toLocaleTimeString('id-ID', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    })}
+                                                </span>
+                                            </DataTableCell>
+                                            <DataTableCell className="whitespace-nowrap">
+                                                <div className="flex items-center gap-1.5">
+                                                    {item.type === 'INFLOW' ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                            <ArrowDownLeft className="h-3 w-3" />
+                                                            INFLOW
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                            <ArrowUpRight className="h-3 w-3" />
+                                                            OUTFLOW
+                                                        </span>
+                                                    )}
+                                                    <span className="font-mono text-[10px] text-muted-foreground px-1 py-0.5 rounded bg-muted">
+                                                        {item.category}
+                                                    </span>
+                                                </div>
+                                            </DataTableCell>
+                                            <DataTableCell>
+                                                <Link
+                                                    href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}
+                                                    className="font-semibold text-foreground hover:text-primary transition-colors"
+                                                >
+                                                    {item.entity_name}
+                                                </Link>
+                                                {item.custom_category_name && (
+                                                    <span className="text-[10px] text-muted-foreground block">
+                                                        {item.custom_category_name}
+                                                    </span>
+                                                )}
+                                            </DataTableCell>
+                                            <DataTableCell className="max-w-xs truncate text-muted-foreground" title={item.purpose}>
+                                                {item.purpose}
+                                            </DataTableCell>
+                                            <DataTableCell align="right" mono className="font-bold whitespace-nowrap">
+                                                <span className={item.type === 'INFLOW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                                    {item.type === 'INFLOW' ? '+' : '-'} {formatMoney(item.amount_cents)}
+                                                </span>
+                                            </DataTableCell>
+                                            <DataTableCell align="center">
+                                                {item.proof_attachment_url ? (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                                        onClick={() => setSelectedProofUrl(item.proof_attachment_url)}
+                                                    >
+                                                        <Image className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">-</span>
+                                                )}
+                                            </DataTableCell>
+                                            <DataTableCell align="center" className="whitespace-nowrap">
+                                                <StatusBadge status={item.status} />
+                                                {item.rejection_reason && (
+                                                    <span className="text-[10px] text-destructive block mt-0.5 max-w-[150px] truncate" title={item.rejection_reason}>
+                                                        {item.rejection_reason}
+                                                    </span>
+                                                )}
+                                            </DataTableCell>
+                                            <DataTableCell className="whitespace-nowrap">
+                                                <div className="text-[11px]">
+                                                    <span className="font-medium text-foreground">{item.created_by?.name || '-'}</span>
+                                                    {item.approved_by && (
+                                                        <span className="text-[10px] text-muted-foreground block">
+                                                            Acc: {item.approved_by.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </DataTableCell>
+                                        </DataTableRow>
+                                    ))
+                                )}
+                            </DataTableBody>
+                        </DataTable>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="md:hidden">
+                        {postings.data.length === 0 ? (
+                            <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                                <Building2 className="w-10 h-10 text-muted-foreground/40 stroke-1 mb-1" />
+                                <p className="text-sm font-semibold text-foreground">Tidak ada mutasi yang sesuai filter</p>
+                                <p className="text-xs text-muted-foreground">Coba ubah kata kunci atau kriteria filter.</p>
+                                <div className="flex items-center gap-2 mt-3">
+                                    {(search || category !== 'all' || entityName !== 'all' || type !== 'all' || status !== 'all' || dateFrom || dateTo) && (
+                                        <Button variant="outline" size="sm" onClick={handleReset} className="text-xs h-9">
+                                            Reset Filter
+                                        </Button>
+                                    )}
+                                    <Link href="/bri-funds/create">
+                                        <Button size="sm" className="text-xs h-9 gap-1.5">
+                                            <PlusCircle className="w-3.5 h-3.5" />
+                                            Catat Mutasi
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : (
+                            <DataTableMobileList>
+                                {postings.data.map((item) => (
+                                    <DataTableMobileCard key={item.id}>
+                                        <div className="flex items-center justify-between gap-2">
                                             <div className="flex items-center gap-1.5">
                                                 {item.type === 'INFLOW' ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                                                         <ArrowDownLeft className="h-3 w-3" />
                                                         INFLOW
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                                                         <ArrowUpRight className="h-3 w-3" />
                                                         OUTFLOW
                                                     </span>
@@ -344,91 +452,54 @@ export default function BriFundPostings({
                                                     {item.category}
                                                 </span>
                                             </div>
-                                        </DataTableCell>
-                                        <DataTableCell>
+                                            <StatusBadge status={item.status} />
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
                                             <Link
                                                 href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}
                                                 className="font-semibold text-foreground hover:text-primary transition-colors"
                                             >
                                                 {item.entity_name}
                                             </Link>
-                                            {item.custom_category_name && (
-                                                <span className="text-[10px] text-muted-foreground block">
-                                                    {item.custom_category_name}
-                                                </span>
-                                            )}
-                                        </DataTableCell>
-                                        <DataTableCell className="max-w-xs truncate text-muted-foreground" title={item.purpose}>
-                                            {item.purpose}
-                                        </DataTableCell>
-                                        <DataTableCell align="right" mono className="font-bold whitespace-nowrap">
-                                            <span className={item.type === 'INFLOW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                            <span className="text-muted-foreground text-[11px]">
+                                                {new Date(item.created_at).toLocaleDateString('id-ID', {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                })}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{item.purpose}</p>
+                                        <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                                            <span className={`font-mono num font-bold text-sm ${item.type === 'INFLOW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                 {item.type === 'INFLOW' ? '+' : '-'} {formatMoney(item.amount_cents)}
                                             </span>
-                                        </DataTableCell>
-                                        <DataTableCell align="center">
-                                            {item.proof_attachment_url ? (
+                                            {item.proof_attachment_url && (
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                                    size="sm"
+                                                    className="h-8 px-2 text-xs gap-1 text-muted-foreground"
                                                     onClick={() => setSelectedProofUrl(item.proof_attachment_url)}
                                                 >
-                                                    <Image className="h-4 w-4" />
+                                                    <Image className="h-3.5 w-3.5" />
+                                                    Bukti
                                                 </Button>
-                                            ) : (
-                                                <span className="text-[11px] text-muted-foreground">-</span>
                                             )}
-                                        </DataTableCell>
-                                        <DataTableCell align="center" className="whitespace-nowrap">
-                                            <StatusBadge status={item.status} />
-                                            {item.rejection_reason && (
-                                                <span className="text-[10px] text-destructive block mt-0.5 max-w-[150px] truncate" title={item.rejection_reason}>
-                                                    {item.rejection_reason}
-                                                </span>
-                                            )}
-                                        </DataTableCell>
-                                        <DataTableCell className="whitespace-nowrap">
-                                            <div className="text-[11px]">
-                                                <span className="font-medium text-foreground">{item.created_by?.name || '-'}</span>
-                                                {item.approved_by && (
-                                                    <span className="text-[10px] text-muted-foreground block">
-                                                        Acc: {item.approved_by.name}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </DataTableCell>
-                                    </DataTableRow>
-                                ))
-                            )}
-                        </DataTableBody>
-                    </DataTable>
-
-                    {/* Pagination */}
-                    {postings.last_page > 1 && (
-                        <div className="flex items-center justify-between p-4 border-t border-border bg-muted/20">
-                            <span className="text-xs text-muted-foreground font-mono">
-                                Menampilkan {postings.data.length} dari {postings.total} mutasi
-                            </span>
-                            <div className="flex items-center gap-1">
-                                {postings.links.map((link, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => link.url && router.get(link.url)}
-                                        disabled={!link.url}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                        className={`px-2.5 py-1 text-xs rounded border transition-colors ${
-                                            link.active
-                                                ? 'bg-primary text-primary-foreground border-primary font-bold'
-                                                : link.url
-                                                ? 'hover:bg-muted text-foreground border-border'
-                                                : 'opacity-40 cursor-not-allowed border-transparent text-muted-foreground'
-                                        }`}
-                                    />
+                                        </div>
+                                    </DataTableMobileCard>
                                 ))}
-                            </div>
-                        </div>
-                    )}
+                            </DataTableMobileList>
+                        )}
+                    </div>
+
+                    {/* Standardized Responsive Pagination */}
+                    <Pagination
+                        links={postings.links}
+                        currentPage={postings.current_page}
+                        lastPage={postings.last_page}
+                        from={postings.from}
+                        to={postings.to}
+                        total={postings.total}
+                    />
                 </div>
             </div>
 

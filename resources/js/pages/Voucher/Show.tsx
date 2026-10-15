@@ -30,6 +30,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { formatMoney } from '@/lib/money';
 import { PettyCashVoucher } from '@/types/voucher';
 
@@ -70,10 +72,16 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
         );
     };
 
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     const handleDelete = () => {
-        if (confirm('Yakin ingin menghapus draft voucher ini?')) {
-            router.delete(`/vouchers/${voucher.id}`);
-        }
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = () => {
+        router.delete(`/vouchers/${voucher.id}`, {
+            onSuccess: () => setShowDeleteConfirm(false),
+        });
     };
 
     return (
@@ -88,34 +96,19 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
             <Head title={`Voucher ${voucher.voucher_number}`} />
 
             <div className="max-w-5xl flex flex-col gap-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/70 pb-4">
-                    <div className="flex items-center gap-3">
-                        <Button asChild variant="ghost" size="icon" className="size-9">
-                            <Link href="/vouchers">
-                                <ArrowLeft className="size-4" />
-                            </Link>
-                        </Button>
-                        <div>
-                            <div className="flex items-center gap-2.5">
-                                <h1 className="text-xl font-bold font-mono tracking-tight text-foreground">
-                                    {voucher.voucher_number}
-                                </h1>
-                                <StatusBadge status={voucher.status} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Dibuat pada {new Date(voucher.created_at).toLocaleDateString('id-ID', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })} WIB
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Action Bar */}
+                <PageHeader
+                    title={voucher.voucher_number}
+                    description={`Dibuat pada ${new Date(voucher.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    })} WIB`}
+                    backHref="/vouchers"
+                    backLabel="Kembali ke Daftar Bon"
+                    badge={<StatusBadge status={voucher.status} />}
+                >
                     <div className="flex flex-wrap items-center gap-2">
                         {can.delete && (
                             <Button
@@ -201,7 +194,7 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                             </Button>
                         )}
                     </div>
-                </div>
+                </PageHeader>
 
                 {/* Rejection / Cancellation alerts if any */}
                 {voucher.rejection_reason && (
@@ -521,6 +514,17 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Hapus Draft Bon?"
+                description={`Apakah Anda yakin ingin menghapus pengajuan bon kas kecil nomor ${voucher.voucher_number}?`}
+                riskNote="Draft voucher yang dihapus tidak dapat dipulihkan kembali."
+                confirmText="Hapus Draft"
+                variant="destructive"
+                onConfirm={confirmDelete}
+            />
         </AppLayout>
     );
 }

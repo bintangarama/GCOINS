@@ -108,13 +108,27 @@ export default function OpnameShowPage({
     };
 
     const isLocked = session.status === 'APPROVED';
+    const isKasKecil = (session.opname_type || 'KAS_KECIL') === 'KAS_KECIL';
+    const isKasBesar = session.opname_type === 'KAS_BESAR';
 
     const itemCounts = session.item_counts || [];
-    const paperMoney = itemCounts.filter((item) => item.item_definition?.group_label === 'Uang Kertas');
-    const coinMoney = itemCounts.filter((item) => item.item_definition?.group_label === 'Uang Logam');
-    const otherItems = itemCounts.filter(
-        (item) => item.item_definition?.group_label !== 'Uang Kertas' && item.item_definition?.group_label !== 'Uang Logam'
-    );
+    const groupedItems = React.useMemo(() => {
+        const groups: Record<string, typeof itemCounts> = {};
+        const sorted = [...itemCounts].sort((a, b) => {
+            const orderA = a.item_definition?.sort_order ?? 999;
+            const orderB = b.item_definition?.sort_order ?? 999;
+            return orderA - orderB;
+        });
+
+        for (const item of sorted) {
+            const group = item.item_definition?.group_label || 'Pecahan / Barang';
+            if (!groups[group]) {
+                groups[group] = [];
+            }
+            groups[group].push(item);
+        }
+        return groups;
+    }, [itemCounts]);
 
     return (
         <AppLayout
@@ -183,7 +197,7 @@ export default function OpnameShowPage({
                                 Sesi Telah Disetujui & Dikunci Permanen
                             </p>
                             <p className="mt-0.5">
-                                Seluruh perhitungan fisik kas, bon gantung, dan rekonsiliasi BRI telah terkunci permanen sesuai <strong>Rule 4 (Immutable Snapshot)</strong>. Selisih akhir <strong>{session.current_variance_cents > 0 ? '+' : ''}{formatMoney(session.current_variance_cents)}</strong> tercatat permanen dan dijadikan saldo awal selisih (V_prev) sesi berikutnya.
+                                Seluruh perhitungan fisik kas, bon gantung, dan rekonsiliasi BRI telah terkunci permanen sesuai <strong>Rule 4 (Immutable Snapshot)</strong>. Outstanding variance akhir <strong>{(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}{formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}</strong> tercatat permanen dalam buku besar rekonsiliasi kas.
                             </p>
                             {session.notes && (
                                 <p className="mt-1.5 font-medium italic text-emerald-900 dark:text-emerald-100">
@@ -393,9 +407,78 @@ export default function OpnameShowPage({
                 {/* Three Pockets Breakdown Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Pocket 1: Denominations Table (7 cols on lg) */}
-                    <div className="lg:col-span-7 space-y-6">
-                        <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
-                            <CardHeader className="bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 pb-4">
+                    {/* Mobile Approval / Summary Compact 1-Column Card (< lg) */}
+                    <div className="block lg:hidden col-span-12">
+                        <Card className="border-border shadow-xs bg-card">
+                            <CardHeader className="bg-muted/40 pb-3 border-b border-border">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                                            <ShieldCheck className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-sm font-bold text-foreground">
+                                                Ringkasan Mobile Opname
+                                            </CardTitle>
+                                            <CardDescription className="text-xs">
+                                                {session.opname_type.replace('_', ' ')} • {session.opname_number}
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                    <StatusBadge status={session.status} />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-4 space-y-3 text-xs">
+                                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                                    <div className="p-2.5 rounded-lg bg-muted/40 border border-border">
+                                        <span className="text-[10px] text-muted-foreground block font-sans">Total Fisik</span>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                            {formatMoney(session.physical_total_cents)}
+                                        </span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-muted/40 border border-border">
+                                        <span className="text-[10px] text-muted-foreground block font-sans">Target Plafon</span>
+                                        <span className="font-bold text-foreground text-sm">
+                                            {formatMoney(session.imprest_fund_cents)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between font-mono">
+                                    <div>
+                                        <span className="text-[10px] text-muted-foreground block font-sans font-semibold uppercase">
+                                            Outstanding Variance
+                                        </span>
+                                        <StatusBadge status={session.variance_status} />
+                                    </div>
+                                    <span className={`text-base font-extrabold ${
+                                        session.variance_status === 'BALANCED'
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : session.variance_status === 'SURPLUS'
+                                            ? 'text-indigo-600 dark:text-indigo-400'
+                                            : 'text-red-600 dark:text-red-400'
+                                    }`}>
+                                        {(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}
+                                        {formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}
+                                    </span>
+                                </div>
+
+                                {session.status !== 'APPROVED' && (
+                                    <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-10">
+                                        <Link href="/opname/active">
+                                            <Coins className="w-4 h-4 mr-1.5" />
+                                            Buka di Workspace Aktif
+                                        </Link>
+                                    </Button>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Table of Physical Items (Dynamic Grouping) */}
+                    <div className={isKasKecil ? 'lg:col-span-7 space-y-6' : 'lg:col-span-12 space-y-6'}>
+                        <Card className="border-border shadow-xs">
+                            <CardHeader className="bg-muted/40 border-b border-border pb-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
                                         <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400">
@@ -403,15 +486,15 @@ export default function OpnameShowPage({
                                         </div>
                                         <div>
                                             <CardTitle className="text-base font-bold text-foreground">
-                                                Kantong 1 — Kas Fisik Brankas (K_fisik)
+                                                Penghitungan Fisik ({session.opname_type.replace('_', ' ')})
                                             </CardTitle>
                                             <CardDescription className="text-xs">
-                                                Hasil penghitungan fisik uang kertas dan uang logam
+                                                Hasil opname fisik per pecahan / unit
                                             </CardDescription>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-[11px] text-muted-foreground block">Total K_fisik</span>
+                                        <span className="text-[11px] text-muted-foreground block">Total Fisik</span>
                                         <span className="font-mono text-lg font-bold text-emerald-600 dark:text-emerald-400">
                                             {formatMoney(session.physical_total_cents)}
                                         </span>
@@ -420,52 +503,48 @@ export default function OpnameShowPage({
                             </CardHeader>
                             <CardContent className="p-0">
                                 <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-muted-foreground uppercase font-semibold text-[11px] border-b border-border">
+                                    <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold text-[11px] border-b border-border">
                                         <tr>
                                             <th className="py-2.5 px-4 w-12 text-center">No</th>
-                                            <th className="py-2.5 px-4">Pecahan</th>
+                                            <th className="py-2.5 px-4">Pecahan / Barang</th>
                                             <th className="py-2.5 px-4 text-center">Satuan</th>
-                                            <th className="py-2.5 px-4 text-right">Jumlah</th>
+                                            <th className="py-2.5 px-4 text-right">Jumlah Fisik</th>
                                             <th className="py-2.5 px-4 text-right">Subtotal</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {/* Paper Money */}
-                                        <tr className="bg-slate-100/50 dark:bg-slate-800/50 font-bold text-muted-foreground">
-                                            <td colSpan={5} className="py-1 px-4 text-[11px]">Uang Kertas</td>
-                                        </tr>
-                                        {paperMoney.map((item, idx) => (
-                                            <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                                                <td className="py-2 px-4 text-center text-muted-foreground">{idx + 1}</td>
-                                                <td className="py-2 px-4 font-semibold text-foreground">{item.item_definition?.label}</td>
-                                                <td className="py-2 px-4 text-center text-muted-foreground">{item.item_definition?.unit}</td>
-                                                <td className="py-2 px-4 text-right font-mono font-bold">{item.count}</td>
-                                                <td className="py-2 px-4 text-right font-mono font-semibold text-foreground">
-                                                    {formatMoney(item.subtotal_cents)}
-                                                </td>
-                                            </tr>
-                                        ))}
-
-                                        {/* Coin Money */}
-                                        <tr className="bg-slate-100/50 dark:bg-slate-800/50 font-bold text-muted-foreground">
-                                            <td colSpan={5} className="py-1 px-4 text-[11px]">Uang Logam</td>
-                                        </tr>
-                                        {coinMoney.map((item, idx) => (
-                                            <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                                                <td className="py-2 px-4 text-center text-muted-foreground">{paperMoney.length + idx + 1}</td>
-                                                <td className="py-2 px-4 font-semibold text-foreground">{item.item_definition?.label}</td>
-                                                <td className="py-2 px-4 text-center text-muted-foreground">{item.item_definition?.unit}</td>
-                                                <td className="py-2 px-4 text-right font-mono font-bold">{item.count}</td>
-                                                <td className="py-2 px-4 text-right font-mono font-semibold text-foreground">
-                                                    {formatMoney(item.subtotal_cents)}
-                                                </td>
-                                            </tr>
+                                        {Object.entries(groupedItems).map(([groupName, items]) => (
+                                            <React.Fragment key={groupName}>
+                                                <tr className="bg-muted/60 font-bold text-muted-foreground">
+                                                    <td colSpan={5} className="py-1 px-4 text-[11px] uppercase tracking-wider">
+                                                        {groupName} ({items.length} Item)
+                                                    </td>
+                                                </tr>
+                                                {items.map((item, idx) => (
+                                                    <tr key={item.id} className="hover:bg-muted/30">
+                                                        <td className="py-2 px-4 text-center text-muted-foreground">{idx + 1}</td>
+                                                        <td className="py-2 px-4 font-semibold text-foreground">
+                                                            {item.item_definition?.label}
+                                                            {item.condition && item.condition !== 'GOOD' && (
+                                                                <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-600">
+                                                                    {item.condition}
+                                                                </Badge>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-2 px-4 text-center text-muted-foreground">{item.item_definition?.unit || 'lembar'}</td>
+                                                        <td className="py-2 px-4 text-right font-mono font-bold">{item.count}</td>
+                                                        <td className="py-2 px-4 text-right font-mono font-semibold text-foreground">
+                                                            {formatMoney(item.subtotal_cents)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                     <tfoot className="bg-emerald-50/40 dark:bg-emerald-950/30 border-t border-emerald-200 dark:border-emerald-800 font-bold text-xs">
                                         <tr>
                                             <td colSpan={4} className="py-3 px-4 text-right uppercase">
-                                                Total Kas Fisik (K_fisik):
+                                                Total Kas Fisik:
                                             </td>
                                             <td className="py-3 px-4 text-right font-mono text-emerald-600 dark:text-emerald-400 text-sm">
                                                 {formatMoney(session.physical_total_cents)}
@@ -475,159 +554,286 @@ export default function OpnameShowPage({
                                 </table>
                             </CardContent>
                         </Card>
+
+                        {/* Reference Lines for KAS_BESAR */}
+                        {isKasBesar && session.reference_lines && session.reference_lines.length > 0 && (
+                            <Card className="border-border shadow-xs">
+                                <CardHeader className="bg-muted/40 border-b border-border pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm font-bold text-foreground">
+                                            Rincian Dokumen Pendukung (Z-Report & Setoran Bank)
+                                        </CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold text-[11px] border-b border-border">
+                                            <tr>
+                                                <th className="py-2 px-4">Tipe</th>
+                                                <th className="py-2 px-4">No. Referensi / Register</th>
+                                                <th className="py-2 px-4 text-right">Nominal</th>
+                                                <th className="py-2 px-4 text-center">Bukti Struk</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {session.reference_lines.map((ref) => (
+                                                <tr key={ref.id} className="hover:bg-muted/30">
+                                                    <td className="py-2 px-4 font-semibold">
+                                                        <Badge variant="outline" className={ref.line_type === 'Z_REPORT' ? 'border-blue-400 text-blue-600' : 'border-amber-400 text-amber-600'}>
+                                                            {ref.line_type === 'Z_REPORT' ? 'Z-Report POS' : 'Setoran Bank'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="py-2 px-4 font-mono font-medium">{ref.reference_number}</td>
+                                                    <td className="py-2 px-4 text-right font-mono font-bold">
+                                                        {ref.line_type === 'BANK_DEPOSIT' ? '-' : '+'}{formatMoney(ref.amount_cents)}
+                                                    </td>
+                                                    <td className="py-2 px-4 text-center">
+                                                        {ref.proof_attachment_url ? (
+                                                            <a href={ref.proof_attachment_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center justify-center gap-1">
+                                                                <ExternalLink className="w-3.5 h-3.5" /> Lihat
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-muted-foreground italic">-</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
-                    {/* Pocket 2 & Pocket 3 (5 cols on lg) */}
-                    <div className="lg:col-span-5 space-y-6">
-                        {/* Pocket 2: Bon Gantung (K_bon) */}
-                        <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
-                            <CardHeader className="bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400">
-                                            <Receipt className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-sm font-bold text-foreground">
-                                                Kantong 2 — Bon Gantung (K_bon)
-                                            </CardTitle>
-                                            <CardDescription className="text-xs">
-                                                {isLocked ? 'Snapshot voucher DISBURSED saat approval' : 'Daftar voucher DISBURSED aktif'}
-                                            </CardDescription>
-                                        </div>
-                                    </div>
-                                    <span className="font-mono text-sm font-bold text-purple-600 dark:text-purple-400">
-                                        {formatMoney(session.vouchers_total_cents)}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-3">
-                                {disbursedVouchers.length === 0 ? (
-                                    <div className="text-center py-6 text-muted-foreground text-xs">
-                                        Tidak ada bon gantung pada sesi ini.
-                                    </div>
-                                ) : (
-                                    <div className="divide-y divide-border max-h-64 overflow-y-auto pr-1">
-                                        {disbursedVouchers.map((v) => (
-                                            <div key={v.id} className="py-2 flex items-center justify-between text-xs">
-                                                <div className="truncate mr-2">
-                                                    <p className="font-mono font-medium text-foreground truncate">
-                                                        {v.voucher_number}
-                                                    </p>
-                                                    <p className="text-muted-foreground truncate text-[11px]">
-                                                        {v.requester?.name || 'Pemohon'} • {v.purpose}
-                                                    </p>
-                                                </div>
-                                                <span className="font-mono font-semibold text-foreground shrink-0">
-                                                    {formatMoney(v.amount_cents)}
-                                                </span>
+                    {/* Pocket 2 & Pocket 3 (Hanya ditampilkan untuk KAS_KECIL) */}
+                    {isKasKecil && (
+                        <div className="lg:col-span-5 space-y-6">
+                            {/* Pocket 2: Bon Gantung (K_bon) */}
+                            <Card className="border-border shadow-xs">
+                                <CardHeader className="bg-muted/40 border-b border-border pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400">
+                                                <Receipt className="w-4 h-4" />
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Pocket 3: BRI Sub-Ledger (K_bri) */}
-                        <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
-                            <CardHeader className="bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400">
-                                            <Building2 className="w-4 h-4" />
+                                            <div>
+                                                <CardTitle className="text-sm font-bold text-foreground">
+                                                    Kantong 2 — Bon Gantung (K_bon)
+                                                </CardTitle>
+                                                <CardDescription className="text-xs">
+                                                    {isLocked ? 'Snapshot voucher DISBURSED saat approval' : 'Daftar voucher DISBURSED aktif'}
+                                                </CardDescription>
+                                            </div>
                                         </div>
+                                        <span className="font-mono text-sm font-bold text-purple-600 dark:text-purple-400">
+                                            {formatMoney(session.vouchers_total_cents)}
+                                        </span>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-3">
+                                    {disbursedVouchers.length === 0 ? (
+                                        <div className="text-center py-6 text-muted-foreground text-xs">
+                                            Tidak ada bon gantung pada sesi ini.
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-border max-h-64 overflow-y-auto pr-1">
+                                            {disbursedVouchers.map((v) => (
+                                                <div key={v.id} className="py-2 flex items-center justify-between text-xs">
+                                                    <div className="truncate mr-2">
+                                                        <p className="font-mono font-medium text-foreground truncate">
+                                                            {v.voucher_number}
+                                                        </p>
+                                                        <p className="text-muted-foreground truncate text-[11px]">
+                                                            {v.requester?.name || 'Pemohon'} • {v.purpose}
+                                                        </p>
+                                                    </div>
+                                                    <span className="font-mono font-semibold text-foreground shrink-0">
+                                                        {formatMoney(v.amount_cents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Pocket 3: BRI Sub-Ledger (K_bri) */}
+                            <Card className="border-border shadow-xs">
+                                <CardHeader className="bg-muted/40 border-b border-border pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400">
+                                                <Building2 className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-sm font-bold text-foreground">
+                                                    Kantong 3 — Mutasi BRI (K_bri)
+                                                </CardTitle>
+                                                <CardDescription className="text-xs">
+                                                    Rekonsiliasi mutasi bank dan alokasi dana
+                                                </CardDescription>
+                                            </div>
+                                        </div>
+                                        <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                                            {formatMoney(session.bri_clean_balance_cents)}
+                                        </span>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-4 space-y-3 text-xs">
+                                    <div className="flex justify-between items-center py-1 font-mono">
+                                        <span className="text-muted-foreground font-sans">Saldo Mutasi Bank:</span>
+                                        <span className="font-bold text-foreground">
+                                            {formatMoney(session.sub_ledger?.bri_mutation_total_cents || 0)}
+                                        </span>
+                                    </div>
+
+                                    <div className="border-t border-border pt-2 space-y-1.5 text-muted-foreground font-mono">
+                                        <div className="flex justify-between">
+                                            <span className="font-sans">Alokasi B2B:</span>
+                                            <span>- {formatMoney(session.sub_ledger?.b2b_allocation_cents || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-sans">Alokasi Event:</span>
+                                            <span>- {formatMoney(session.sub_ledger?.event_allocation_cents || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-sans">Alokasi Akselerasi:</span>
+                                            <span>- {formatMoney(session.sub_ledger?.aksel_allocation_cents || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-sans">Alokasi Anonymous:</span>
+                                            <span>- {formatMoney(session.sub_ledger?.anonymous_allocation_cents || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-sans">Alokasi Custom Lainnya:</span>
+                                            <span>- {formatMoney(session.sub_ledger?.custom_allocations_total_cents || 0)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-border pt-2 flex justify-between items-center bg-blue-50/50 dark:bg-blue-950/30 p-2.5 rounded-lg">
                                         <div>
-                                            <CardTitle className="text-sm font-bold text-foreground">
-                                                Kantong 3 — Mutasi BRI (K_bri)
-                                            </CardTitle>
-                                            <CardDescription className="text-xs">
-                                                Rekonsiliasi mutasi bank dan alokasi dana
-                                            </CardDescription>
+                                            <span className="font-bold text-blue-900 dark:text-blue-100 block">
+                                                Net Kas Kecil di BRI (K_bri)
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground font-sans">
+                                                Mutasi - Total Alokasi
+                                            </span>
                                         </div>
-                                    </div>
-                                    <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
-                                        {formatMoney(session.bri_clean_balance_cents)}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-4 space-y-3 text-xs">
-                                <div className="flex justify-between items-center py-1 font-mono">
-                                    <span className="text-muted-foreground font-sans">Saldo Mutasi Bank:</span>
-                                    <span className="font-bold text-foreground">
-                                        {formatMoney(session.sub_ledger?.bri_mutation_total_cents || 0)}
-                                    </span>
-                                </div>
-
-                                <div className="border-t border-border pt-2 space-y-1.5 text-muted-foreground font-mono">
-                                    <div className="flex justify-between">
-                                        <span className="font-sans">Alokasi B2B:</span>
-                                        <span>- {formatMoney(session.sub_ledger?.b2b_allocation_cents || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-sans">Alokasi Event:</span>
-                                        <span>- {formatMoney(session.sub_ledger?.event_allocation_cents || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-sans">Alokasi Akselerasi:</span>
-                                        <span>- {formatMoney(session.sub_ledger?.aksel_allocation_cents || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-sans">Alokasi Anonymous:</span>
-                                        <span>- {formatMoney(session.sub_ledger?.anonymous_allocation_cents || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-sans">Alokasi Custom Lainnya:</span>
-                                        <span>- {formatMoney(session.sub_ledger?.custom_allocations_total_cents || 0)}</span>
-                                    </div>
-                                </div>
-
-                                <div className="border-t border-border pt-2 flex justify-between items-center bg-blue-50/50 dark:bg-blue-950/30 p-2.5 rounded-lg">
-                                    <div>
-                                        <span className="font-bold text-blue-900 dark:text-blue-100 block">
-                                            Net Kas Kecil di BRI (K_bri)
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground font-sans">
-                                            Mutasi - Total Alokasi
+                                        <span className="font-mono text-base font-extrabold text-blue-600 dark:text-blue-400">
+                                            {formatMoney(session.bri_clean_balance_cents)}
                                         </span>
                                     </div>
-                                    <span className="font-mono text-base font-extrabold text-blue-600 dark:text-blue-400">
-                                        {formatMoney(session.bri_clean_balance_cents)}
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
+
+                {/* Section: Variance Resolution Ledger (if resolutions exist) */}
+                {session.variance_resolutions && session.variance_resolutions.length > 0 && (
+                    <Card className="border-slate-200 dark:border-slate-800 shadow-xs">
+                        <CardHeader className="bg-slate-50/70 dark:bg-slate-900/70 border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-sm font-bold text-foreground">
+                                    Buku Besar Resolusi Selisih (Resolution Ledger)
+                                </CardTitle>
+                                <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                    +{formatMoney(session.cumulative_resolved_cents ?? 0)} Disahkan
+                                </span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-slate-50 dark:bg-slate-900/50 text-muted-foreground uppercase font-semibold text-[11px] border-b border-border">
+                                    <tr>
+                                        <th className="py-2.5 px-4">Jenis</th>
+                                        <th className="py-2.5 px-4 text-right">Nominal</th>
+                                        <th className="py-2.5 px-4">Alasan</th>
+                                        <th className="py-2.5 px-4 text-center">Status</th>
+                                        <th className="py-2.5 px-4">Diajukan Oleh</th>
+                                        <th className="py-2.5 px-4">Disetujui Oleh</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {session.variance_resolutions.map((res) => (
+                                        <tr key={res.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                                            <td className="py-2 px-4 font-semibold text-foreground">{res.kind}</td>
+                                            <td className="py-2 px-4 text-right font-mono font-bold text-foreground">
+                                                {formatMoney(res.amount_cents)}
+                                            </td>
+                                            <td className="py-2 px-4 text-muted-foreground">{res.reason}</td>
+                                            <td className="py-2 px-4 text-center">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        res.status === 'APPROVED'
+                                                            ? 'border-emerald-500 text-emerald-700 bg-emerald-50 dark:bg-emerald-950 text-[10px]'
+                                                            : res.status === 'REJECTED'
+                                                            ? 'border-red-500 text-red-700 bg-red-50 dark:bg-red-950 text-[10px]'
+                                                            : 'border-amber-500 text-amber-700 bg-amber-50 dark:bg-amber-950 text-[10px]'
+                                                    }
+                                                >
+                                                    {res.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="py-2 px-4 text-muted-foreground">
+                                                {res.created_by?.name || '-'}
+                                            </td>
+                                            <td className="py-2 px-4 text-muted-foreground">
+                                                {res.approved_by?.name || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Final Variance Summary Banner */}
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-md">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs w-full md:w-auto font-mono">
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-border">
-                                <span className="text-muted-foreground block text-[11px] font-sans">K_fisik (Safe)</span>
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs w-full md:w-auto font-mono">
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">K_fisik (Safe)</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
                                     {formatMoney(session.physical_total_cents)}
                                 </span>
                             </div>
 
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-border">
-                                <span className="text-muted-foreground block text-[11px] font-sans">K_bon (Bon)</span>
-                                <span className="font-bold text-purple-600 dark:text-purple-400 text-sm">
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">K_bon (Bon)</span>
+                                <span className="font-bold text-purple-600 dark:text-purple-400 text-xs sm:text-sm">
                                     {formatMoney(session.vouchers_total_cents)}
                                 </span>
                             </div>
 
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-border">
-                                <span className="text-muted-foreground block text-[11px] font-sans">K_bri (Net BRI)</span>
-                                <span className="font-bold text-blue-600 dark:text-blue-400 text-sm">
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">K_bri (Net BRI)</span>
+                                <span className="font-bold text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
                                     {formatMoney(session.bri_clean_balance_cents)}
                                 </span>
                             </div>
 
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-border">
-                                <span className="text-muted-foreground block text-[11px] font-sans">Target (Plafon+V_prev)</span>
-                                <span className="font-bold text-foreground text-sm">
-                                    {formatMoney(session.target_reconciled_cents)}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">Plafon Imprest</span>
+                                <span className="font-bold text-foreground text-xs sm:text-sm">
+                                    {formatMoney(session.imprest_fund_cents)}
+                                </span>
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">Selisih Mentah</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+                                    {(session.raw_discrepancy_cents ?? (session.total_actual_cents - session.imprest_fund_cents)) > 0 ? '+' : ''}
+                                    {formatMoney(session.raw_discrepancy_cents ?? (session.total_actual_cents - session.imprest_fund_cents))}
+                                </span>
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-border">
+                                <span className="text-muted-foreground block text-[10px] font-sans">Resolusi Sah</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                                    + {formatMoney(session.cumulative_resolved_cents ?? 0)}
                                 </span>
                             </div>
                         </div>
@@ -635,7 +841,7 @@ export default function OpnameShowPage({
                         <div className="text-right w-full md:w-auto flex md:flex-col items-center md:items-end justify-between md:justify-center">
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground font-semibold uppercase">
-                                    Selisih Rekonsiliasi (V_current)
+                                    Outstanding Variance
                                 </span>
                                 <StatusBadge status={session.variance_status} />
                             </div>
@@ -658,8 +864,8 @@ export default function OpnameShowPage({
                                             : 'text-red-600 dark:text-red-400'
                                     }`}
                                 >
-                                    {session.current_variance_cents > 0 ? '+' : ''}
-                                    {formatMoney(session.current_variance_cents)}
+                                    {(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}
+                                    {formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}
                                 </span>
                             </div>
                         </div>

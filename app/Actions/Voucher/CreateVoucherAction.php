@@ -11,6 +11,7 @@ use App\Models\StoreOpnameConfig;
 use App\Models\User;
 use App\Services\DocumentNumberGenerator;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -36,6 +37,10 @@ class CreateVoucherAction
      */
     public function execute(array $data, User $actor, ?string $ipAddress = null): PettyCashVoucher
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         if ($data['amount_cents'] <= 0) {
             throw new InvalidArgumentException('Nominal voucher harus lebih besar dari 0.');
         }

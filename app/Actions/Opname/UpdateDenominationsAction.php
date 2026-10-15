@@ -6,18 +6,23 @@ use App\Models\AuditLog;
 use App\Models\CashOpnameSession;
 use App\Models\OpnameItemCount;
 use App\Models\OpnameItemDefinition;
-use App\Models\PettyCashVoucher;
 use App\Models\User;
+use App\Services\Opname\OpnameReconcilerFactory;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class UpdateDenominationsAction
 {
+    public function __construct(
+        protected OpnameReconcilerFactory $reconcilerFactory
+    ) {}
+
     /**
      * Update denomination counts for a cash opname session.
      *
-     * @param  array<int, array{item_definition_id: string, count: int}>  $items
+     * @param  array<int, array{item_definition_id: string, count: int, expected_count?: int, condition?: string}>  $items
      *
      * @throws DomainException
      * @throws AuthorizationException
@@ -28,6 +33,10 @@ class UpdateDenominationsAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 4: Immutable snapshot on approval
         if ($session->status === CashOpnameSession::STATUS_APPROVED) {
             throw new DomainException('SESSION_LOCKED: Sesi opname yang sudah disetujui tidak dapat diubah.');
@@ -63,15 +72,25 @@ class UpdateDenominationsAction
 
                 $subtotalCents = $count * $definition->nominal_cents;
 
+                $updatePayload = [
+                    'count' => $count,
+                    'subtotal_cents' => $subtotalCents,
+                ];
+
+                if (isset($itemData['expected_count'])) {
+                    $updatePayload['expected_count'] = max(0, (int) $itemData['expected_count']);
+                }
+
+                if (! empty($itemData['condition'])) {
+                    $updatePayload['condition'] = strtoupper((string) $itemData['condition']);
+                }
+
                 OpnameItemCount::updateOrCreate(
                     [
                         'session_id' => $session->id,
                         'item_definition_id' => $definition->id,
                     ],
-                    [
-                        'count' => $count,
-                        'subtotal_cents' => $subtotalCents,
-                    ]
+                    $updatePayload
                 );
             }
 
@@ -91,33 +110,22 @@ class UpdateDenominationsAction
                 }
             }
 
-            // Recalculate totals
-            $physicalTotalCents = (int) OpnameItemCount::where('session_id', $session->id)->sum('subtotal_cents');
-
-            $vouchersTotalCents = (int) PettyCashVoucher::where('store_id', $session->store_id)
-                ->where('status', PettyCashVoucher::STATUS_DISBURSED)
-                ->sum('amount_cents');
-
-            $briCleanBalanceCents = $session->subLedger?->net_kas_kecil_bri_cents ?? 0;
-
-            $totalActualCents = $physicalTotalCents + $vouchersTotalCents + $briCleanBalanceCents;
-            $targetReconciledCents = $session->imprest_fund_cents + $session->previous_variance_cents;
-            $currentVarianceCents = $totalActualCents - $targetReconciledCents;
-
-            $varianceStatus = match (true) {
-                $currentVarianceCents === 0 => CashOpnameSession::VARIANCE_BALANCED,
-                $currentVarianceCents > 0 => CashOpnameSession::VARIANCE_SURPLUS,
-                default => CashOpnameSession::VARIANCE_SHORTAGE,
-            };
+            // Delegate calculation to polymorphic reconciler
+            $session->unsetRelation('itemCounts');
+            $reconciler = $this->reconcilerFactory->make($session->opname_type);
+            $result = $reconciler->compute($session);
 
             $session->update([
-                'physical_total_cents' => $physicalTotalCents,
-                'vouchers_total_cents' => $vouchersTotalCents,
-                'bri_clean_balance_cents' => $briCleanBalanceCents,
-                'total_actual_cents' => $totalActualCents,
-                'target_reconciled_cents' => $targetReconciledCents,
-                'current_variance_cents' => $currentVarianceCents,
-                'variance_status' => $varianceStatus,
+                'physical_total_cents' => $result->physicalTotalCents,
+                'vouchers_total_cents' => $result->vouchersTotalCents,
+                'bri_clean_balance_cents' => $result->briCleanBalanceCents,
+                'total_actual_cents' => $result->totalActualCents,
+                'target_reconciled_cents' => $result->targetCents,
+                'raw_discrepancy_cents' => $result->rawDiscrepancyCents,
+                'cumulative_resolved_cents' => $result->cumulativeResolvedCents,
+                'outstanding_variance_cents' => $result->outstandingVarianceCents,
+                'current_variance_cents' => $result->outstandingVarianceCents,
+                'variance_status' => $result->varianceStatus,
             ]);
 
             // Audit log
@@ -128,7 +136,7 @@ class UpdateDenominationsAction
                 'action' => 'UPDATE_DENOMINATIONS',
                 'performed_by_id' => $actor->id,
                 'old_values' => ['physical_total_cents' => $oldPhysicalTotal],
-                'new_values' => ['physical_total_cents' => $physicalTotalCents],
+                'new_values' => ['physical_total_cents' => $result->physicalTotalCents],
                 'ip_address' => $ipAddress,
             ]);
 

@@ -104,4 +104,3 @@ test('login attempts are rate limited after 5 failed attempts', function () {
 
     $response->assertStatus(429);
 });
-

@@ -7,7 +7,7 @@
 Before writing any code, the AI agent MUST:
 
 1. **Read the relevant `/docs` file** for the module being worked on
-2. **Check `05-business-rules.md`** — all 12 rules are non-negotiable
+2. **Check `05-business-rules.md`** — all 14 business rules are non-negotiable
 3. **Check `07-database-design.md`** — ensure schema consistency
 4. **Check existing Action classes** — avoid duplicating logic
 5. **Run `php artisan test`** after every meaningful change
@@ -18,8 +18,8 @@ Before writing any code, the AI agent MUST:
 
 | Convention | Rule |
 |---|---|
-| **PHP Version** | 8.3+ features allowed (typed properties, enums, match, fibers) |
-| **Style** | PSR-12, enforced via Laravel Pint (`./vendor/bin/pint`) |
+| **PHP Version** | 8.4+ features allowed (typed properties, enums, match, constructor property promotion) |
+| **Style** | PSR-12, enforced via Laravel Pint (`./vendor/bin/pint --dirty --format agent`) |
 | **Models** | Eloquent models in `app/Models/`. Use `$casts`, `$fillable`, relationships. |
 | **Controllers** | Thin controllers — delegate business logic to Action classes |
 | **Actions** | One class = one business operation. Located in `app/Actions/{Domain}/` |
@@ -27,7 +27,7 @@ Before writing any code, the AI agent MUST:
 | **Policies** | Authorization in `app/Policies/`. Register in `AuthServiceProvider`. |
 | **Money** | **ALWAYS INTEGER CENTS**. Never use float/double for money. Column suffix: `_cents` |
 | **Naming** | snake_case for DB columns, camelCase for PHP variables, PascalCase for classes |
-| **Enums** | Use PHP 8.1 backed enums for status, role, category values |
+| **Enums** | Use PHP backed enums for status, role, category values |
 | **Tests** | Pest PHP. Feature tests for business flows, Unit tests for calculations. |
 
 ### TypeScript / React
@@ -63,21 +63,22 @@ Before writing any code, the AI agent MUST:
 - **DO** wrap financial state changes in database transactions
 - **DO** create audit log entries for every financial status change
 - **DO** check permissions via Policies before every action
-- **DO** validate anti self-approval at the Action layer (not just UI)
+- **DO** validate anti self-approval and tiered dual control at the Action layer (not just UI)
 - **DO** validate zero-deficit guard at both creation AND approval time
+- **DO** calculate variance via the Outstanding Variance + Resolution Ledger formula
 - **DO** use `store_id` scope on every query (via Global Scope)
 - **DO** write tests for new business rules immediately
 - **DO** use Inertia's `router.visit()` or `useForm` for navigation/forms
-- **DO** compress images client-side before upload
+- **DO** compress images client-side before upload (WebP $\le$ 250KB)
 - **DO** use proper HTTP methods (GET for reads, POST for actions, PUT for updates)
 - **DO** format money consistently: `Rp 5.000.000` (no decimals for display)
 
 ### ❌ DON'T
 
 - **DON'T** use float/double for money. EVER.
-- **DON'T** bypass RBAC checks — even for "quick fixes"
+- **DON'T** bypass RBAC or SoD checks — SAC cannot manage $\ge$ SS roles or reset SS/SM PINs
 - **DON'T** modify APPROVED opname sessions — they are immutable
-- **DON'T** break the carry-forward chain (V_prev → V_current)
+- **DON'T** bypass the Outstanding Variance & Resolution Ledger model
 - **DON'T** create REST API endpoints — use Inertia controllers only
 - **DON'T** put business logic in controllers — use Actions
 - **DON'T** hardcode store-specific values — use `store_opname_configs`

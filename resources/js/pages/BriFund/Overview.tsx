@@ -9,6 +9,17 @@ import { formatMoney } from '@/lib/money';
 import { BreakdownModal } from '@/components/bri/BreakdownModal';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
+    DataTable,
+    DataTableHead,
+    DataTableHeaderCell,
+    DataTableBody,
+    DataTableRow,
+    DataTableCell,
+    DataTableEmpty,
+    DataTableMobileList,
+    DataTableMobileCard,
+} from '@/components/shared/DataTable';
+import {
     Building2,
     PlusCircle,
     ArrowUpRight,
@@ -242,29 +253,31 @@ export default function BriFundOverview({
                     </div>
 
                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead className="bg-muted/50 border-b border-border">
+                        {/* Desktop View */}
+                        <div className="hidden md:block">
+                            <DataTable>
+                                <DataTableHead>
                                     <tr>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Nama Entitas / Rekanan</th>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Kategori</th>
-                                        <th className="text-right font-medium text-muted-foreground py-3 px-4">Total Pemasukan</th>
-                                        <th className="text-right font-medium text-muted-foreground py-3 px-4">Total Pengeluaran</th>
-                                        <th className="text-right font-medium text-muted-foreground py-3 px-4">Saldo Berjalan</th>
-                                        <th className="text-center font-medium text-muted-foreground py-3 px-4">Aksi</th>
+                                        <DataTableHeaderCell>Nama Entitas / Rekanan</DataTableHeaderCell>
+                                        <DataTableHeaderCell>Kategori</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="right">Total Pemasukan</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="right">Total Pengeluaran</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="right">Saldo Berjalan</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="center">Aksi</DataTableHeaderCell>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/60">
+                                </DataTableHead>
+                                <DataTableBody>
                                     {entities.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="text-center py-12 text-muted-foreground">
-                                                Belum ada mutasi dana BRI yang dicatat. Silakan klik tombol "Catat Mutasi" di atas.
-                                            </td>
-                                        </tr>
+                                        <DataTableEmpty
+                                            colSpan={6}
+                                            icon={<Building2 className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
+                                            message="Belum ada mutasi dana BRI yang dicatat"
+                                            description="Klik tombol Catat Mutasi di atas untuk memulai pencatatan."
+                                        />
                                     ) : (
                                         entities.map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                                                <td className="py-3 px-4">
+                                            <DataTableRow key={idx}>
+                                                <DataTableCell>
                                                     <div>
                                                         <span className="font-semibold text-foreground text-sm">
                                                             {item.entity_name}
@@ -278,47 +291,100 @@ export default function BriFundOverview({
                                                             {item.postings_count} mutasi tercatat
                                                         </span>
                                                     </div>
-                                                </td>
-                                                <td className="py-3 px-4">
+                                                </DataTableCell>
+                                                <DataTableCell>
                                                     <Badge variant="outline" className="font-mono text-xs">
                                                         {item.category}
                                                     </Badge>
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                                                </DataTableCell>
+                                                <DataTableCell align="right" mono className="text-emerald-600 dark:text-emerald-400">
                                                     <span className="inline-flex items-center gap-1 font-medium">
                                                         <ArrowDownLeft className="h-3 w-3" />
                                                         {formatMoney(item.inflow_total_cents)}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono text-amber-600 dark:text-amber-400">
+                                                </DataTableCell>
+                                                <DataTableCell align="right" mono className="text-amber-600 dark:text-amber-400">
                                                     <span className="inline-flex items-center gap-1 font-medium">
                                                         <ArrowUpRight className="h-3 w-3" />
                                                         {formatMoney(item.outflow_total_cents)}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4 text-right">
-                                                    <div className="font-mono font-bold text-sm text-foreground">
+                                                </DataTableCell>
+                                                <DataTableCell align="right">
+                                                    <div className="font-mono num font-bold text-sm text-foreground">
                                                         {formatMoney(item.running_balance_cents)}
                                                     </div>
                                                     {item.pending_outflow_cents > 0 && (
-                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono block">
+                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono num block">
                                                             Pending: {formatMoney(item.pending_outflow_cents)}
                                                         </span>
                                                     )}
-                                                </td>
-                                                <td className="py-3 px-4 text-center">
+                                                </DataTableCell>
+                                                <DataTableCell align="center">
                                                     <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
                                                         <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
                                                             Rincian
                                                             <ChevronRight className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </Link>
-                                                </td>
-                                            </tr>
+                                                </DataTableCell>
+                                            </DataTableRow>
                                         ))
                                     )}
-                                </tbody>
-                            </table>
+                                </DataTableBody>
+                            </DataTable>
+                        </div>
+
+                        {/* Mobile View */}
+                        <div className="md:hidden">
+                            {entities.length === 0 ? (
+                                <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                                    <Building2 className="w-10 h-10 text-muted-foreground/40 stroke-1 mb-1" />
+                                    <p className="text-sm font-semibold text-foreground">Belum ada mutasi dana BRI</p>
+                                    <p className="text-xs text-muted-foreground">Silakan klik tombol Catat Mutasi di atas.</p>
+                                </div>
+                            ) : (
+                                <DataTableMobileList>
+                                    {entities.map((item, idx) => (
+                                        <DataTableMobileCard key={idx}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="font-semibold text-sm text-foreground">{item.entity_name}</span>
+                                                <Badge variant="outline" className="font-mono text-xs">{item.category}</Badge>
+                                            </div>
+                                            {item.custom_category_name && (
+                                                <span className="text-xs text-muted-foreground">{item.custom_category_name}</span>
+                                            )}
+                                            <div className="grid grid-cols-2 gap-2 text-xs py-1.5 px-2 bg-muted/30 rounded border border-border/50">
+                                                <div>
+                                                    <span className="text-muted-foreground block text-[10px]">Pemasukan</span>
+                                                    <span className="font-mono num font-semibold text-emerald-600 dark:text-emerald-400">
+                                                        {formatMoney(item.inflow_total_cents)}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground block text-[10px]">Pengeluaran</span>
+                                                    <span className="font-mono num font-semibold text-amber-600 dark:text-amber-400">
+                                                        {formatMoney(item.outflow_total_cents)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                                                <div>
+                                                    <span className="text-[10px] text-muted-foreground block">Saldo Berjalan</span>
+                                                    <span className="font-mono num font-bold text-sm text-foreground">
+                                                        {formatMoney(item.running_balance_cents)}
+                                                    </span>
+                                                </div>
+                                                <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
+                                                    <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+                                                        Rincian
+                                                        <ChevronRight className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </DataTableMobileCard>
+                                    ))}
+                                </DataTableMobileList>
+                            )}
                         </div>
                     </div>
                 </div>

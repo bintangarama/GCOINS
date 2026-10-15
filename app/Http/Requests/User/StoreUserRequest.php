@@ -24,17 +24,21 @@ class StoreUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $allowedRoles = ['SOA', 'SS', 'SAC', 'SM'];
-        if ($this->user()?->role === 'SYSTEM_ADMIN') {
-            $allowedRoles[] = 'SYSTEM_ADMIN';
-        }
+        $actor = $this->user();
+
+        $allowedRoles = match ($actor?->role) {
+            'SYSTEM_ADMIN' => ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'],
+            'SM' => ['SOA', 'SS', 'SAC', 'SM'],
+            'SAC' => ['SOA', 'SAC'],
+            default => [],
+        };
 
         return [
             'nik' => ['required', 'string', 'max:20', 'unique:users,nik'],
             'name' => ['required', 'string', 'max:100'],
             'role' => ['required', 'string', Rule::in($allowedRoles)],
             'phone_number' => ['nullable', 'string', 'max:20'],
-            'pin' => ['nullable', 'string', 'min:4', 'max:10'],
+            'pin' => ['nullable', 'string', 'min:6', 'max:10'],
         ];
     }
 }

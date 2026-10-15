@@ -51,14 +51,18 @@ SOA (Per-store, basic)
 
 ## 3. Permission Matrix
 
-### Authentication & Account
+### Authentication & Account Management
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Login via NIK + PIN | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Change own PIN | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Reset other user's PIN (same store) | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Create/deactivate user (same store) | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Reset other user's PIN (role SOA / SAC) | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Reset PIN for user with role ≥ SS | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Create user (role SOA / SAC) | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Create user (role ≥ SS: SS, SM, SYSADMIN) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Change user role (role ≥ SS) | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Self-role modification | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create new store | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Configure opname types/items | ❌ | ❌ | ❌ | ❌ | ✅ |
 
@@ -76,26 +80,30 @@ SOA (Per-store, basic)
 | Cancel post-disbursement | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Confirm refund (REFUNDED) | ❌ | ❌ | ✅ | ❌ | ❌ |
 
-### Cash Opname Session
+### Cash Opname Session & Resolution Ledger
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Open new session | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Input/edit denomination counts | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Open new opname session (5 Types) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Input/edit counts & POS Z-Report | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Input BRI mutation & sub-ledger | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Submit to supervisor | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Verify as witness (VERIFIED_SS) | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Verify physical safe (VERIFIED_SS) | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Reject back to draft (SS) | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Final sign-off (APPROVED) | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Reject session (SM) | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Create Variance Resolution | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Approve Resolution (≤ Rp 1.000.000) | ❌ | ✅ | ❌ | ✅ | ❌ |
+| Approve Write-Off (> Rp 1.000.000) | ❌ | ❌ | ❌ | ✅ | ❌ |
 
-### BRI Fund Postings
+### BRI Fund Postings & Tiered Outflow Approval
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Record INFLOW + proof | ❌ | ✅ | ✅ | ❌ | ❌ |
 | Record OUTFLOW + proof | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Approve OUTFLOW (Dual Control) | ❌ | ✅ | ❌** | ✅ | ❌ |
+| Approve OUTFLOW ≤ Rp 500.000 | ❌ | ✅ | ❌** | ✅ | ❌ |
+| Approve OUTFLOW > Rp 500.000 | ❌ | ❌ | ❌** | ✅ | ❌ |
 | Reject OUTFLOW | ❌ | ✅ | ❌ | ✅ | ❌ |
 | View posting history & balances | ❌ | ✅ | ✅ | ✅ | ❌ |
 
@@ -109,26 +117,29 @@ SOA (Per-store, basic)
 | View audit logs | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Import/Export data | ❌ | ❌ | ✅ | ✅ | ✅ |
 
-## 4. Integrity Rules
+## 4. Integrity & Security Rules (SoD)
 
 ### Rule 1: Anti Self-Approval (*)
 SAC can approve vouchers submitted by **other** users (SOA/SS). However, if SAC submits a voucher for themselves (`requester_id == current_user.id && current_user.role == SAC`), the system **strictly prohibits self-approval**. That voucher must be approved by SS or SM.
 
-**Implementation**: Check at Action/Service layer, not just UI. Return error code `FORBIDDEN_SELF_APPROVAL`.
+### Rule 2: Tiered Dual Control BRI Outflow (**)
+All OUTFLOW postings recorded by SAC **cannot be approved by SAC**. Must be approved through tiered segregation:
+- **Nominal $\le \text{Rp } 500.000$**: Dapat disetujui oleh Store Supervisor (SS) atau Store Manager (SM).
+- **Nominal $> \text{Rp } 500.000$**: **Wajib disetujui oleh Store Manager (SM)**.
 
-### Rule 2: Dual Control BRI Outflow (**)
-All OUTFLOW postings recorded by SAC **cannot be approved by SAC**. Must be approved by SS or SM before the running balance is deducted.
+### Rule 3: Segregation of Duties (SoD) pada User Management
+1. **Pencegahan Privilege Escalation**:
+   - SAC DILARANG membuat atau mengedit user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
+   - Hanya Store Manager (SM) dan `SYSTEM_ADMIN` yang berwenang menugaskan role $\ge \text{SS}$.
+2. **Anti Self-Role Escalation**:
+   - User DILARANG mengubah role-nya sendiri pada permintaan update profile/user.
+3. **Pembatasan Reset PIN**:
+   - SAC DILARANG me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
+   - User tidak diperbolehkan me-reset PIN akunnya sendiri melalui endpoint reset (wajib menggunakan alur ubah PIN dengan verifikasi PIN lama).
+   - Panjang PIN minimal 6 digit numerik.
 
-**Implementation**: Check at Action/Service layer. Only SS and SM roles can approve outflow postings.
-
-### Rule 3: Store Isolation
-- Users belong to exactly **one** store
-- All queries automatically scoped by `store_id` via Eloquent Global Scope
-- SYSTEM_ADMIN can view cross-store data but cannot perform business operations
-- No user can access data from a store they don't belong to (except SYSTEM_ADMIN)
-
-### Rule 4: Multi-Tenancy Binding
-- `users.store_id` → `stores.id`
-- Every major table has `store_id` column
-- Laravel middleware sets the current store context from the authenticated user
-- Global Scope on all relevant models: `WHERE store_id = {current_store_id}`
+### Rule 4: Store Isolation & Multi-Tenancy Binding
+- Users belong to exactly **one** store (`users.store_id` → `stores.id`).
+- All queries automatically scoped by `store_id` via Eloquent Global Scope (`HasStoreScope`).
+- SYSTEM_ADMIN can view cross-store data but cannot perform financial business operations.
+- Cross-tenant data leakage dicegah di level database dan authorization policy.

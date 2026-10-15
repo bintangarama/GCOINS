@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DisburseVoucherAction
@@ -16,6 +17,10 @@ class DisburseVoucherAction
      */
     public function execute(PettyCashVoucher $voucher, User $actor, ?string $ipAddress = null): PettyCashVoucher
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         if ($actor->role !== 'SAC') {
             throw new AuthorizationException('FORBIDDEN_ROLE: Hanya SAC yang berwenang mencairkan kas kecil.');
         }

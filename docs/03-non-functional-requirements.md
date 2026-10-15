@@ -21,12 +21,18 @@
 - CSRF protection on all state-changing requests (Laravel default)
 - Rate limiting on login endpoint: 5 attempts per minute per IP
 
-### Authorization
+### Authorization & Segregation of Duties (SoD)
 - Role-Based Access Control via Spatie Laravel-Permission
-- Every controller action checks permissions before execution
+- Every controller action checks permissions and policies before execution
 - Anti Self-Approval enforced at service/action layer (not just UI)
-- Dual Control enforced at service/action layer
-- Global scope ensures users can only access their store's data
+- **Segregation of Duties (SoD) & Anti-Escalation**:
+  - SAC dilarang membuat, mengedit, atau menugaskan role $\ge$ `SS`.
+  - User dilarang memodifikasi rolenya sendiri.
+  - SAC dilarang me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
+- **Tiered Dual Control**:
+  - BRI Outflow: $\le$ Rp 500.000 (SS atau SM), > Rp 500.000 (**SM only**).
+  - Variance Write-Off: $\le$ Rp 1.000.000 (SS atau SM), > Rp 1.000.000 (**SM only**).
+- Global scope ensures users can only access their store's data (tenant isolation)
 
 ### Data Protection
 - All financial amounts stored as INTEGER cents (no floating-point)
@@ -46,29 +52,31 @@
 | Recovery Time Objective (RTO) | < 1 hour |
 | Recovery Point Objective (RPO) | < 24 hours |
 
-## 4. Data Integrity
+## 4. Data Integrity & Concurrency
 
 - **Immutable snapshots**: Approved opname sessions cannot be modified by any role
-- **Carry-forward chain**: V_current → V_prev link must never break
+- **Outstanding Variance + Resolution Ledger**: Menggantikan formula osilasi lama dengan model buku besar akuntansi ($Outstanding = Raw + Resolved$) yang matematis terbukti stabil dan dapat diaudit penuh
+- **SQLite Concurrency & WAL Mode**: SQLite berjalan dengan `journal_mode = WAL`, `busy_timeout = 5000ms`, dan partial unique index (`unique_active_session_per_store_type_date`) untuk mencegah race condition sesi ganda aktif
 - **Soft delete**: Deleted drafts retain `deleted_at` for audit purposes
 - **Foreign key constraints**: Enforced at database level (`PRAGMA foreign_keys = ON`)
-- **Audit trail**: Every financial state change logged with old/new values
+- **Audit trail**: Every financial state change logged with old/new values via Spatie Activitylog
 - **Optimistic locking**: Use `updated_at` check to prevent race conditions on approvals
 
 ## 5. Scalability
 
 - **Multi-store ready**: `store_id` column scoping from day one
-- **Configurable opname types**: New types addable without schema changes
+- **Polymorphic Opname Engine**: Mendukung 5 tipe kas opname tanpa skema tabel bercabang
 - **Configurable item definitions**: Per-store, per-opname-type
 - **Migration path**: SQLite → PostgreSQL if scaling beyond single VPS
 
-## 6. Usability
+## 6. Usability & Human Factors
 
 - **Desktop-first** layout optimized for cashier PC with numpad
-- **Fully responsive** for mobile (voucher submission via phone)
+- **Numpad Traversal**: Tombol Enter dan Panah Bawah otomatis berpindah dan menyeleksi (`select()`) input berikutnya
+- **Debounced Autosave**: Autosave 800ms menjaga kestabilan input kasir tanpa freeze atau form blocking
+- **Fully responsive** for mobile (voucher submission & mobile approval SS/SM via phone)
 - **Corporate clean** design language
 - **Bilingual labels**: Indonesian + English where appropriate
-- **Keyboard navigation**: Enter/Tab on denomination input form
 - **Print-ready**: `@media print` CSS for A4 output
 
 ## 7. Browser Support

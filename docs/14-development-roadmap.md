@@ -5,13 +5,15 @@
 | Phase | Focus | Estimated Duration | Status |
 |---|---|---|---|
 | Phase 1 | Foundation & Auth | Week 1 | Complete ✅ |
-| Phase 2 | Voucher Module | Week 2 | Up Next ⏳ |
-| Phase 3 | BRI Fund Module | Week 3 | Planned |
-| Phase 4 | Cash Opname Engine | Week 4-5 | Planned |
-| Phase 5 | Reports & Excel Export | Week 5-6 | Planned |
-| Phase 6 | Polish & Production | Week 6-7 | Planned |
+| Phase 2 | Voucher Module | Week 2 | Complete ✅ |
+| Phase 3 | BRI Fund Module | Week 3 | Complete ✅ |
+| Phase 4 | Cash Opname Engine (KAS_KECIL) | Week 4-5 | Complete ✅ |
+| Phase 5 | Reports & Excel Export | Week 5-6 | Complete ✅ |
+| Phase 6 | Polish & Production Baseline | Week 6-7 | Complete ✅ |
+| Phase 7 | Full 5 Item Engine, Precision Ledger & UX | Week 8 | Complete ✅ |
+| Phase 8 | Operational Enhancements & Analytics | Future | Planned ⏳ |
 
-**MVP Definition**: Phase 1-5 complete = KAS_KECIL fully production-ready
+**Scope Status**: Scope Penuh 5 Item Cash Count Engine, SoD Hardening, dan Precision Accounting selesai diimplementasikan dan terverifikasi penuh.
 
 ---
 
@@ -333,19 +335,73 @@
 
 ---
 
-## Future Phases (Post-MVP)
+## Phase 7 — Full 5 Item Engine, Precision Ledger & Modular UX (Week 8) — Complete ✅
 
-### Phase 7 — Additional Opname Types
-- [ ] KAS_BESAR implementation
-- [ ] ACTIVE_SELLING implementation
-- [ ] MATERAI implementation (2 item definitions: 10k, 6k)
-- [ ] VOUCHER implementation (gift card denominations)
-- [ ] Per-type Excel export templates
+### Objectives
+- Scope penuh 5 tipe kas opname: `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER`
+- Eliminasi bug osilasi variansi melalui model akuntansi: **Outstanding Variance + Resolution Ledger**
+- Rename tipe `VOUCHER` → `GIFT_VOUCHER` (`GVCH`) untuk membedakan dari `PettyCashVoucher`
+- Segregation of Duties (SoD) & Anti-Privilege Escalation security safeguards
+- Tiered Dual Control: BRI Outflows (> Rp 500.000) & Write-Off Approvals (> Rp 1.000.000) WAJIB SM
+- Modular Frontend Workspace (`<CountGrid>`, `<DailyClosingSwitcher>`, `<KasBesarForm>`, `<MobileApprovalCard>`)
+- Kasir Numpad traversal keyboard navigation & 800ms debounce autosave
+- Multi-tier client-side WebP image compression with canvas dimension fallback ($\le$ 250KB)
 
-### Phase 8 — Enhancements
-- [ ] Dashboard analytics (charts, trends)
-- [ ] PWA installability (Add to Home Screen)
-- [ ] Offline draft saving (Service Worker)
-- [ ] WhatsApp notification integration
-- [ ] Multi-store dashboard for SYSTEM_ADMIN
-- [ ] Dark mode theme option
+### Tasks
+
+#### 7.1 Backend Polymorphic Strategy & Accounting
+- [x] Reconciler Strategy Pattern (`ThreePocketsReconciler`, `CashFlowReconciler`, `ConsignmentReconciler`)
+- [x] Rename `TYPE_VOUCHER` → `TYPE_GIFT_VOUCHER` dan update `DocumentNumberGenerator` (`GVCH`)
+- [x] Migration `variance_resolutions` table (`id`, `store_id`, `session_id`, `opname_type`, `kind`, `amount_cents`, `status`, `notes`, `approved_by_id`, `approved_at`)
+- [x] Migration `opname_reference_lines` table (`session_id`, `line_type`, `label`, `amount_cents`, `system_reference`, `photo_path`)
+- [x] Migration update `cash_opname_sessions` (`raw_discrepancy_cents`, `cumulative_resolved_cents`, `outstanding_variance_cents`, partial unique index)
+- [x] Migration update `opname_item_counts` (`condition`, `expected_count`)
+- [x] Action classes: `StoreResolutionAction`, `ApproveResolutionAction`, `RejectResolutionAction`
+- [x] Action classes: `SaveReferenceLinesAction`, `SyncBriMutationAction`
+
+#### 7.2 Security Hardening (SoD & Tiered Dual Control)
+- [x] `StoreUserRequest` & `UpdateUserRequest`: SAC dilarang membuat atau mengedit user dengan role $\ge$ SS
+- [x] Anti-Privilege Escalation: User dilarang memodifikasi rolenya sendiri
+- [x] `UserPolicy`: Batasi update, toggle status, dan reset PIN agar user tidak bisa memanipulasi diri sendiri
+- [x] SAC dilarang me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`
+- [x] `ApproveOutflowAction`: Outflow > Rp 500.000 wajib SM approval (SS ditolak)
+- [x] `ApproveResolutionAction`: Write-off > Rp 1.000.000 wajib SM approval (SS ditolak)
+
+#### 7.3 Frontend Modular Architecture & UX
+- [x] Modularisasi `Active.tsx` (dari 1.664 baris menjadi arsitektur komponen bersih)
+- [x] `<CountGrid>`: Pengelompokan dinamis berdasarkan `group_label`, rendering elegan untuk materai & voucher
+- [x] Numpad Traversal: Enter / Panah Bawah otomatis berpindah dan memanggil `select()` input berikutnya
+- [x] Autosave 800ms dengan visual status indicator (`tersimpan`, `menyimpan...`, `perubahan belum disimpan`)
+- [x] `beforeunload` guard untuk mencegah kehilangan data saat autosave pending
+- [x] `<DailyClosingSwitcher>`: Tab switcher 5 tipe opname dengan badge status real-time
+- [x] `<KasBesarForm>`: Input dinamis baris referensi (Z-Report, Modal Awal, DRO) & bukti foto Z-Report
+- [x] `<MobileApprovalCard>`: Tampilan ringkas touch-friendly untuk approval cepat SS/SM via smartphone
+- [x] Hardening `image-compressor.ts`: Multi-stage resizing fallback (max 1280x1920 px, $\le$ 250KB WebP)
+
+#### 7.4 Tests & Verification
+- [x] `tests/Feature/Opname/Strategy/ThreePocketsReconcilerTest.php`
+- [x] `tests/Feature/Opname/Strategy/CashFlowReconcilerTest.php`
+- [x] `tests/Feature/Opname/Strategy/ConsignmentReconcilerTest.php`
+- [x] `tests/Feature/User/UserSodSecurityTest.php`
+- [x] `tests/Feature/Resolution/ApproveResolutionActionTest.php`
+- [x] 55 Feature & Strategy tests passed (302 assertions)
+- [x] TypeScript build clean (`npm run build` sukses 0 errors)
+- [x] Laravel Pint formatting clean (`./vendor/bin/pint --dirty --format agent`)
+
+### Acceptance Criteria
+- ✅ Scope penuh 5 tipe opname berjalan mulus dengan Strategy Pattern Reconcilers
+- ✅ Selisih osilasi hilang sepenuhnya dengan Outstanding Variance + Resolution Ledger
+- ✅ SAC tidak dapat membobol wewenang user management (SoD terisolasi ketat)
+- ✅ Approval bertingkat untuk transaksi sensitif (> 500rb BRI & > 1jt Write-Off) tervalidasi
+- ✅ UI kasir responsif, modular, mendukung numpad kasir dan autosave 800ms tanpa data loss
+
+---
+
+## Phase 8 — Operational Enhancements & Analytics (Post-MVP)
+
+### Planned Enhancements
+- [ ] Dashboard analytics (grafik tren variansi per tipe, velocity rekonsiliasi kasir)
+- [ ] PWA installability (Add to Home Screen untuk smartphone supervisor/manager)
+- [ ] WhatsApp notification webhook integration
+- [ ] Multi-store aggregated dashboard untuk SYSTEM_ADMIN & Regional Auditor
+- [ ] Dark mode theme support

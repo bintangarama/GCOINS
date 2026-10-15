@@ -504,34 +504,37 @@ export default function OpnameReportPage({
                                 <tr className="border-b border-slate-200">
                                     <td className="py-1 px-2 border-r border-slate-300 text-center">4.3</td>
                                     <td className="py-1 px-2 border-r border-slate-300 pl-6 text-slate-700">
-                                        Selisih Periode Sebelumnya (V_prev carry-forward)
+                                        Selisih Mentah Kas (Raw Discrepancy = Riil - Plafon)
                                     </td>
                                     <td className="py-1 px-2 text-right font-mono text-slate-700 w-36">
-                                        {session.previous_variance_cents > 0 ? '+' : ''}{formatMoney(session.previous_variance_cents)}
+                                        {((session.raw_discrepancy_cents ?? (session.total_actual_cents - session.imprest_fund_cents)) > 0 ? '+' : '')}
+                                        {formatMoney(session.raw_discrepancy_cents ?? (session.total_actual_cents - session.imprest_fund_cents))}
                                     </td>
                                 </tr>
-                                <tr className="border-b border-slate-300 bg-slate-100 font-semibold">
-                                    <td colSpan={2} className="py-1 px-2 text-right border-r border-slate-300">
-                                        TARGET REKONSILIASI (Plafon + V_prev):
+                                <tr className="border-b border-slate-200">
+                                    <td className="py-1 px-2 border-r border-slate-300 text-center">4.4</td>
+                                    <td className="py-1 px-2 border-r border-slate-300 pl-6 text-slate-700">
+                                        Total Resolusi Disahkan (Approved Resolution Ledger)
                                     </td>
-                                    <td className="py-1 px-2 text-right font-mono font-bold w-36">
-                                        {formatMoney(session.target_reconciled_cents)}
+                                    <td className="py-1 px-2 text-right font-mono text-slate-700 w-36 text-emerald-700 font-semibold">
+                                        {(session.cumulative_resolved_cents ?? 0) > 0 ? '+' : ''}
+                                        {formatMoney(session.cumulative_resolved_cents ?? 0)}
                                     </td>
                                 </tr>
                             </tbody>
                             <tfoot>
                                 <tr className="bg-amber-100/80 font-bold text-slate-900 border-t-2 border-slate-400">
                                     <td colSpan={2} className="py-2 px-2 text-right border-r border-slate-300 uppercase text-xs">
-                                        SELISIH KAS OPNAME (V_current = Aktual - Target):
+                                        OUTSTANDING VARIANCE (Selisih Riil Akhir = Mentah + Resolusi):
                                     </td>
                                     <td className="py-2 px-2 text-right font-mono text-base font-extrabold w-36">
-                                        {session.current_variance_cents > 0 ? '+' : ''}
-                                        {formatMoney(session.current_variance_cents)}
+                                        {(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}
+                                        {formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}
                                     </td>
                                 </tr>
                                 <tr className="bg-white border-t border-slate-300">
                                     <td colSpan={2} className="py-1.5 px-2 text-right border-r border-slate-300 font-semibold text-xs">
-                                        STATUS HASIL CASH OPNAME:
+                                        STATUS HASIL CASH OPNAME (Berdasarkan Outstanding):
                                     </td>
                                     <td className="py-1.5 px-2 text-center font-bold text-xs uppercase tracking-wider">
                                         <span className={`px-2 py-0.5 rounded border ${
@@ -555,7 +558,7 @@ export default function OpnameReportPage({
                     </section>
 
                     {/* Section 5: Sign-Off (Formal 3-Column Signature Table) */}
-                    <section className="mt-6 border border-slate-300">
+                    <section className="mt-6 border border-slate-300 print-keep">
                         <div className="bg-slate-200 text-slate-900 font-bold px-2 py-1 text-xs uppercase tracking-wide border-b border-slate-300 text-center">
                             5. Pengesahan & Tanda Tangan Berita Acara
                         </div>
@@ -612,7 +615,7 @@ export default function OpnameReportPage({
 
                     {/* Attached Signed Physical BA Scan Banner (if uploaded) */}
                     {session.signed_ba_scan_url && (
-                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-300 rounded text-xs flex items-center justify-between">
+                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-300 rounded text-xs flex items-center justify-between print:hidden">
                             <div className="flex items-center gap-2 text-emerald-800">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                                 <span>

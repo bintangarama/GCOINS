@@ -4,6 +4,8 @@ use App\Actions\Opname\OpenSessionAction;
 use App\Actions\Opname\SignOffSessionAction;
 use App\Actions\Opname\SubmitSessionAction;
 use App\Actions\Opname\VerifySessionAction;
+use App\Actions\Resolution\ApproveResolutionAction;
+use App\Actions\Resolution\CreateResolutionAction;
 use App\Models\CashOpnameSession;
 use App\Models\OpnameItemDefinition;
 use App\Models\Store;
@@ -73,21 +75,28 @@ beforeEach(function () {
     $this->smUser->syncRoles(['SM']);
 });
 
-test('Rule 3: Multi-cycle carry-forward chain preserves variance across consecutive sessions', function () {
+test('Outstanding Variance + Resolution Ledger eliminates oscillation across 4 real consecutive cycles', function () {
     $openAction = app(OpenSessionAction::class);
     $submitAction = app(SubmitSessionAction::class);
     $verifyAction = app(VerifySessionAction::class);
     $signOffAction = app(SignOffSessionAction::class);
+    $createResolutionAction = app(CreateResolutionAction::class);
+    $approveResolutionAction = app(ApproveResolutionAction::class);
 
-    // --- CYCLE 1: First session, V_prev = 0, ends with SHORTAGE of -Rp 100.000 ---
+    // =========================================================================
+    // SIKLUS 1: Tekor Rp100.000 -> Status Wajib SHORTAGE Rp100.000
+    // =========================================================================
     $session1 = $openAction->execute($this->sacUser);
-    expect($session1->previous_variance_cents)->toBe(0)
-        ->and($session1->target_reconciled_cents)->toBe(500000000);
+    expect($session1->imprest_fund_cents)->toBe(500000000)
+        ->and($session1->previous_variance_cents)->toBe(0);
 
-    // Simulate final counts on session 1: total actual 4.900.000 -> shortage -100.000
+    // Hitung fisik kas di brankas tekor Rp 100.000: Total actual 4.900.000
     $session1->physical_total_cents = 490000000;
     $session1->total_actual_cents = 490000000;
-    $session1->current_variance_cents = -10000000; // -Rp 100.000
+    $session1->raw_discrepancy_cents = -10000000;
+    $session1->cumulative_resolved_cents = 0;
+    $session1->outstanding_variance_cents = -10000000;
+    $session1->current_variance_cents = -10000000;
     $session1->variance_status = CashOpnameSession::VARIANCE_SHORTAGE;
     $session1->save();
 
@@ -96,51 +105,106 @@ test('Rule 3: Multi-cycle carry-forward chain preserves variance across consecut
     $approved1 = $signOffAction->execute($verified1, ['confirm_understanding' => true], $this->smUser);
 
     expect($approved1->status)->toBe(CashOpnameSession::STATUS_APPROVED)
-        ->and($approved1->current_variance_cents)->toBe(-10000000);
+        ->and($approved1->raw_discrepancy_cents)->toBe(-10000000)
+        ->and($approved1->cumulative_resolved_cents)->toBe(0)
+        ->and($approved1->outstanding_variance_cents)->toBe(-10000000)
+        ->and($approved1->variance_status)->toBe(CashOpnameSession::VARIANCE_SHORTAGE);
 
-    // --- CYCLE 2: Reads V_prev from Cycle 1 (-Rp 100.000), ends with SURPLUS of +Rp 50.000 ---
+    // =========================================================================
+    // SIKLUS 2: Kasir BELUM mengganti uang
+    // Wajib TETAP SHORTAGE Rp100.000 (Anti-Osilasi: TIDAK BOLEH menjadi 0 / BALANCED!)
+    // =========================================================================
     $session2 = $openAction->execute($this->sacUser);
     expect($session2->id)->not->toBe($session1->id)
-        ->and($session2->previous_variance_cents)->toBe(-10000000)
-        ->and($session2->target_reconciled_cents)->toBe(490000000); // 500.000.000 + (-10.000.000)
+        ->and($session2->imprest_fund_cents)->toBe(500000000)
+        ->and($session2->previous_variance_cents)->toBe(-10000000);
 
-    // Simulate final counts on session 2: total actual 4.950.000 -> surplus +50.000 vs target 4.900.000
-    $session2->physical_total_cents = 495000000;
-    $session2->total_actual_cents = 495000000;
-    $session2->current_variance_cents = 5000000; // +Rp 50.000
-    $session2->variance_status = CashOpnameSession::VARIANCE_SURPLUS;
+    // Fisik uang di brankas masih 4.900.000 karena belum diganti oleh kasir
+    $session2->physical_total_cents = 490000000;
+    $session2->total_actual_cents = 490000000;
+    $session2->raw_discrepancy_cents = -10000000;
+    $session2->cumulative_resolved_cents = 0;
+    $session2->outstanding_variance_cents = -10000000;
+    $session2->current_variance_cents = -10000000;
+    $session2->variance_status = CashOpnameSession::VARIANCE_SHORTAGE;
     $session2->save();
 
     $submitted2 = $submitAction->execute($session2, $this->sacUser);
     $verified2 = $verifyAction->execute($submitted2, $this->ssUser);
     $approved2 = $signOffAction->execute($verified2, ['confirm_understanding' => true], $this->smUser);
 
+    // Verifikasi kritis: Selisih TIDAK HILANG! Wajib tetap SHORTAGE Rp 100.000!
     expect($approved2->status)->toBe(CashOpnameSession::STATUS_APPROVED)
-        ->and($approved2->current_variance_cents)->toBe(5000000);
+        ->and($approved2->raw_discrepancy_cents)->toBe(-10000000)
+        ->and($approved2->cumulative_resolved_cents)->toBe(0)
+        ->and($approved2->outstanding_variance_cents)->toBe(-10000000)
+        ->and($approved2->variance_status)->toBe(CashOpnameSession::VARIANCE_SHORTAGE);
 
-    // --- CYCLE 3: Reads V_prev from Cycle 2 (+Rp 50.000), ends BALANCED (0) ---
+    // =========================================================================
+    // SIKLUS 3: Resolusi kasir setor pengganti Rp100.000 disetujui -> Menjadi BALANCED (0)
+    // =========================================================================
     $session3 = $openAction->execute($this->sacUser);
     expect($session3->id)->not->toBe($session2->id)
-        ->and($session3->previous_variance_cents)->toBe(5000000)
-        ->and($session3->target_reconciled_cents)->toBe(505000000); // 500.000.000 + 5.000.000
+        ->and($session3->imprest_fund_cents)->toBe(500000000)
+        ->and($session3->previous_variance_cents)->toBe(-10000000);
 
-    // Simulate final counts on session 3: total actual 5.050.000 -> balanced
-    $session3->physical_total_cents = 505000000;
-    $session3->total_actual_cents = 505000000;
-    $session3->current_variance_cents = 0;
-    $session3->variance_status = CashOpnameSession::VARIANCE_BALANCED;
+    // Kas fisik masih 4.900.000 di brankas
+    $session3->physical_total_cents = 490000000;
+    $session3->total_actual_cents = 490000000;
+    $session3->raw_discrepancy_cents = -10000000;
     $session3->save();
+
+    // Kasir mengajukan resolusi penggantian kas tekor Rp 100.000
+    $resolution = $createResolutionAction->execute($session3, [
+        'kind' => 'REPLACED',
+        'amount_cents' => 10000000, // Rp 100.000
+        'reason' => 'Kasir setor pengganti kekurangan kas Rp 100.000',
+    ], $this->sacUser);
+
+    expect($resolution->status)->toBe('PENDING');
+
+    // SS menyetujui resolusi kasir
+    $approveResolutionAction->execute($resolution, $this->ssUser);
+
+    $session3->refresh();
+    expect($session3->raw_discrepancy_cents)->toBe(-10000000)
+        ->and($session3->cumulative_resolved_cents)->toBe(10000000)
+        ->and($session3->outstanding_variance_cents)->toBe(0)
+        ->and($session3->variance_status)->toBe(CashOpnameSession::VARIANCE_BALANCED);
 
     $submitted3 = $submitAction->execute($session3, $this->sacUser);
     $verified3 = $verifyAction->execute($submitted3, $this->ssUser);
     $approved3 = $signOffAction->execute($verified3, ['confirm_understanding' => true], $this->smUser);
 
     expect($approved3->status)->toBe(CashOpnameSession::STATUS_APPROVED)
-        ->and($approved3->current_variance_cents)->toBe(0);
+        ->and($approved3->outstanding_variance_cents)->toBe(0)
+        ->and($approved3->variance_status)->toBe(CashOpnameSession::VARIANCE_BALANCED);
 
-    // --- CYCLE 4: Reads V_prev from Cycle 3 (0) ---
+    // =========================================================================
+    // SIKLUS 4: Kas normal (Fisik Rp 5.000.000 utuh) -> BALANCED (0)
+    // =========================================================================
     $session4 = $openAction->execute($this->sacUser);
     expect($session4->id)->not->toBe($session3->id)
-        ->and($session4->previous_variance_cents)->toBe(0)
-        ->and($session4->target_reconciled_cents)->toBe(500000000);
+        ->and($session4->imprest_fund_cents)->toBe(500000000)
+        ->and($session4->previous_variance_cents)->toBe(0);
+
+    // Kas fisik utuh Rp 5.000.000
+    $session4->physical_total_cents = 500000000;
+    $session4->total_actual_cents = 500000000;
+    $session4->raw_discrepancy_cents = 0;
+    $session4->cumulative_resolved_cents = 0;
+    $session4->outstanding_variance_cents = 0;
+    $session4->current_variance_cents = 0;
+    $session4->variance_status = CashOpnameSession::VARIANCE_BALANCED;
+    $session4->save();
+
+    $submitted4 = $submitAction->execute($session4, $this->sacUser);
+    $verified4 = $verifyAction->execute($submitted4, $this->ssUser);
+    $approved4 = $signOffAction->execute($verified4, ['confirm_understanding' => true], $this->smUser);
+
+    expect($approved4->status)->toBe(CashOpnameSession::STATUS_APPROVED)
+        ->and($approved4->raw_discrepancy_cents)->toBe(0)
+        ->and($approved4->cumulative_resolved_cents)->toBe(0)
+        ->and($approved4->outstanding_variance_cents)->toBe(0)
+        ->and($approved4->variance_status)->toBe(CashOpnameSession::VARIANCE_BALANCED);
 });

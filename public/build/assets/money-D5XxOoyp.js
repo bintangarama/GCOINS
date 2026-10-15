@@ -1,0 +1,1 @@
+var e=e=>{let t=Math.trunc(e/100);return t<0?`-Rp ${Math.abs(t).toLocaleString(`id-ID`)}`:`Rp ${t.toLocaleString(`id-ID`)}`},t=e,n=e=>Math.round(e*100),r=e=>Math.trunc(e/100);export{n as i,e as n,t as r,r as t};

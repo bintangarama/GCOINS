@@ -107,6 +107,16 @@ test('T-STM-02: Voucher SUBMITTED -> APPROVED_SS valid', function () {
         'entity_id' => $voucher->id,
         'action' => 'APPROVE_VOUCHER',
     ]);
+
+    $this->assertDatabaseHas('notifications', [
+        'user_id' => $this->sacUser->id,
+        'type' => 'VOUCHER_APPROVED',
+    ]);
+
+    $this->assertDatabaseHas('notifications', [
+        'user_id' => $this->soaUser->id,
+        'type' => 'VOUCHER_APPROVED',
+    ]);
 });
 
 test('T-STM-03: Voucher APPROVED_SS -> DISBURSED valid', function () {

@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { login } from '@/routes';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 
 export default function Login() {
+    useFlashToast();
     const { data, setData, post, processing, errors, reset } = useForm({
         nik: '',
         pin: '',

@@ -7,6 +7,7 @@ use App\Exceptions\InvalidVoucherStateException;
 use App\Models\AuditLog;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -21,6 +22,10 @@ class SubmitVoucherAction
      */
     public function execute(PettyCashVoucher $voucher, User $actor, ?string $ipAddress = null): PettyCashVoucher
     {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         if ($voucher->status !== PettyCashVoucher::STATUS_DRAFT) {
             throw new InvalidVoucherStateException("Voucher dengan status {$voucher->status} tidak dapat diajukan.");
         }

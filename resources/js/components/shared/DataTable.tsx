@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 interface DataTableProps extends React.TableHTMLAttributes<HTMLTableElement> {
     children: React.ReactNode;
     className?: string;
+    containerClassName?: string;
 }
 
 interface DataTableHeadProps extends React.HTMLAttributes<HTMLTableSectionElement> {
@@ -47,10 +48,10 @@ interface DataTableEmptyProps {
  * Standardized DataTable components for consistent styling across all pages.
  * Follows the design system from 10-ui-ux-specification.md.
  */
-export function DataTable({ children, className, ...props }: DataTableProps) {
+export function DataTable({ children, className, containerClassName, ...props }: DataTableProps) {
     return (
-        <div className="overflow-x-auto">
-            <table className={cn('w-full text-xs text-left', className)} {...props}>
+        <div className={cn('overflow-x-auto [scrollbar-width:thin]', containerClassName)}>
+            <table className={cn('w-full text-sm text-left border-collapse', className)} {...props}>
                 {children}
             </table>
         </div>
@@ -61,8 +62,8 @@ export function DataTableHead({ children, className, ...props }: DataTableHeadPr
     return (
         <thead
             className={cn(
-                'bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800',
-                className,
+                'bg-muted/50 text-muted-foreground uppercase text-xs tracking-wider font-semibold border-b border-border select-none',
+                className
             )}
             {...props}
         >
@@ -73,7 +74,7 @@ export function DataTableHead({ children, className, ...props }: DataTableHeadPr
 
 export function DataTableBody({ children, className, ...props }: DataTableBodyProps) {
     return (
-        <tbody className={cn('divide-y divide-slate-100 dark:divide-slate-800', className)} {...props}>
+        <tbody className={cn('divide-y divide-border bg-card', className)} {...props}>
             {children}
         </tbody>
     );
@@ -84,9 +85,9 @@ export function DataTableRow({ children, className, onClick, ...props }: DataTab
         <tr
             onClick={onClick}
             className={cn(
-                'hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors',
-                onClick && 'cursor-pointer',
-                className,
+                'hover:bg-muted/40 transition-colors',
+                onClick && 'cursor-pointer focus:bg-muted/60',
+                className
             )}
             {...props}
         >
@@ -99,11 +100,11 @@ export function DataTableCell({ children, className, align = 'left', mono, ...pr
     return (
         <td
             className={cn(
-                'py-3 px-4',
+                'py-3.5 px-4 text-sm text-foreground',
                 align === 'center' && 'text-center',
                 align === 'right' && 'text-right',
-                mono && 'font-mono',
-                className,
+                mono && 'font-mono num',
+                className
             )}
             {...props}
         >
@@ -116,10 +117,10 @@ export function DataTableHeaderCell({ children, className, align = 'left', ...pr
     return (
         <th
             className={cn(
-                'py-3 px-4 font-semibold',
+                'py-3 px-4 font-semibold text-xs',
                 align === 'center' && 'text-center',
                 align === 'right' && 'text-right',
-                className,
+                className
             )}
             {...props}
         >
@@ -131,16 +132,50 @@ export function DataTableHeaderCell({ children, className, align = 'left', ...pr
 export function DataTableEmpty({ icon, message, description, action, colSpan }: DataTableEmptyProps) {
     return (
         <tr>
-            <td colSpan={colSpan} className="py-12 text-center">
-                <div className="flex flex-col items-center justify-center gap-2">
-                    {icon && <div className="text-slate-300 dark:text-slate-600">{icon}</div>}
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{message}</p>
+            <td colSpan={colSpan} className="py-12 sm:py-16 text-center">
+                <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto px-4">
+                    {icon && <div className="text-muted-foreground/60 mb-1">{icon}</div>}
+                    <p className="text-sm font-semibold text-foreground">{message}</p>
                     {description && (
-                        <p className="text-xs text-slate-400 dark:text-slate-500">{description}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
                     )}
-                    {action && <div className="mt-2">{action}</div>}
+                    {action && <div className="mt-3">{action}</div>}
                 </div>
             </td>
         </tr>
+    );
+}
+
+/**
+ * Mobile card list container: used to present tables as stacked touch cards on small screens.
+ */
+export function DataTableMobileList({ children, className }: { children: React.ReactNode; className?: string }) {
+    return (
+        <div className={cn('divide-y divide-border sm:hidden', className)}>
+            {children}
+        </div>
+    );
+}
+
+export function DataTableMobileCard({
+    children,
+    onClick,
+    className,
+}: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    className?: string;
+}) {
+    return (
+        <div
+            onClick={onClick}
+            className={cn(
+                'p-4 bg-card hover:bg-muted/30 transition-colors flex flex-col gap-2.5',
+                onClick && 'cursor-pointer active:bg-muted/50',
+                className
+            )}
+        >
+            {children}
+        </div>
     );
 }

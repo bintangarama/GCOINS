@@ -13,7 +13,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return Auth::check() ? redirect()->route('dashboard') : redirect()->route('login');
@@ -93,6 +92,11 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::post('{session}/reject-ss', [OpnameController::class, 'rejectSs'])->name('reject-ss');
         Route::post('{session}/sign-off', [OpnameController::class, 'signOff'])->name('sign-off');
         Route::post('{session}/reject-sm', [OpnameController::class, 'rejectSm'])->name('reject-sm');
+        Route::post('{session}/resolutions', [OpnameController::class, 'storeResolution'])->name('resolutions.store');
+        Route::post('resolutions/{resolution}/approve', [OpnameController::class, 'approveResolution'])->name('resolutions.approve');
+        Route::post('resolutions/{resolution}/reject', [OpnameController::class, 'rejectResolution'])->name('resolutions.reject');
+        Route::post('{session}/reference-lines', [OpnameController::class, 'storeReferenceLine'])->name('reference-lines.store');
+        Route::delete('{session}/reference-lines/{referenceLine}', [OpnameController::class, 'destroyReferenceLine'])->name('reference-lines.destroy');
     });
 
     // Admin & Settings

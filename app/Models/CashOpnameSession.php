@@ -38,14 +38,19 @@ class CashOpnameSession extends Model
 
     public const TYPE_MATERAI = 'MATERAI';
 
-    public const TYPE_VOUCHER = 'VOUCHER';
+    public const TYPE_GIFT_VOUCHER = 'GIFT_VOUCHER';
+
+    /**
+     * Backward-compatibility alias for TYPE_GIFT_VOUCHER.
+     */
+    public const TYPE_VOUCHER = self::TYPE_GIFT_VOUCHER;
 
     public const TYPES = [
         self::TYPE_KAS_KECIL,
         self::TYPE_KAS_BESAR,
         self::TYPE_ACTIVE_SELLING,
         self::TYPE_MATERAI,
-        self::TYPE_VOUCHER,
+        self::TYPE_GIFT_VOUCHER,
     ];
 
     public function isDraft(): bool
@@ -76,6 +81,9 @@ class CashOpnameSession extends Model
         'bri_clean_balance_cents',
         'total_actual_cents',
         'target_reconciled_cents',
+        'raw_discrepancy_cents',
+        'cumulative_resolved_cents',
+        'outstanding_variance_cents',
         'current_variance_cents',
         'variance_status',
         'created_by_id',
@@ -100,6 +108,9 @@ class CashOpnameSession extends Model
             'bri_clean_balance_cents' => 'integer',
             'total_actual_cents' => 'integer',
             'target_reconciled_cents' => 'integer',
+            'raw_discrepancy_cents' => 'integer',
+            'cumulative_resolved_cents' => 'integer',
+            'outstanding_variance_cents' => 'integer',
             'current_variance_cents' => 'integer',
             'verified_ss_at' => 'datetime',
             'approved_sm_at' => 'datetime',
@@ -126,6 +137,11 @@ class CashOpnameSession extends Model
         return $this->belongsTo(User::class, 'approved_by_sm_id');
     }
 
+    public function varianceResolutions(): HasMany
+    {
+        return $this->hasMany(VarianceResolution::class, 'session_id');
+    }
+
     public function itemCounts(): HasMany
     {
         return $this->hasMany(OpnameItemCount::class, 'session_id');
@@ -134,5 +150,10 @@ class CashOpnameSession extends Model
     public function subLedger(): HasOne
     {
         return $this->hasOne(BriSubLedger::class, 'session_id');
+    }
+
+    public function referenceLines(): HasMany
+    {
+        return $this->hasMany(OpnameReferenceLine::class, 'session_id');
     }
 }

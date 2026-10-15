@@ -180,8 +180,12 @@ sudo chmod 664 /var/www/gcoins/database/database.sqlite
 ## BAGIAN 4: Konfigurasi Service Hemat Memori (Low-RAM)
 
 ### 1. Konfigurasi PHP-FPM Hemat Memori
-Salin file konfigurasi pool `ondemand` yang sudah disediakan:
+Nonaktifkan pool bawaan `www.conf` (karena boros RAM dan menggunakan socket yang sama), lalu pasang konfigurasi pool `ondemand` yang sudah disediakan:
 ```bash
+# Matikan pool www bawaan agar tidak bentrok listen socket
+sudo mv /etc/php/8.4/fpm/pool.d/www.conf /etc/php/8.4/fpm/pool.d/www.conf.bak
+
+# Salin konfigurasi gcoins low-ram
 sudo cp deploy/php-fpm-lowram.conf /etc/php/8.4/fpm/pool.d/gcoins.conf
 
 # Tes konfigurasi dan restart PHP-FPM
@@ -213,14 +217,16 @@ sudo supervisorctl status
    sudo nano /etc/nginx/sites-available/gcoins.conf
    ```
    *Ganti `gcoins.gramedia.com` dengan domain/subdomain milik Anda.*
-3. Buat sertifikat SSL gratis via Certbot:
+3. Buat sertifikat SSL gratis via Certbot (pastikan DNS domain sudah mengarah ke IP VPS):
    ```bash
-   sudo certbot --nginx -d domainanda.com
+   # Gunakan mode standalone karena Nginx belum berjalan
+   sudo certbot certonly --standalone -d domainanda.com
    ```
-4. Uji dan restart Nginx:
+4. Uji konfigurasi dan jalankan Nginx:
    ```bash
    sudo nginx -t
-   sudo systemctl restart nginx
+   sudo systemctl start nginx
+   sudo systemctl enable nginx
    ```
 
 ### 4. Cache & Optimize Laravel

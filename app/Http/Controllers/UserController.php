@@ -86,13 +86,13 @@ class UserController extends Controller
         Gate::authorize('resetPin', $user);
 
         $request->validate([
-            'pin' => ['nullable', 'string', 'min:4', 'max:10'],
+            'pin' => ['nullable', 'string', 'min:6', 'max:10'],
         ]);
 
         $newPin = $request->input('pin', '123456') ?: '123456';
         $resetPinAction->execute($user, $newPin, $request->ip());
 
-        return redirect()->route('admin.users.index')->with('success', "PIN pengguna {$user->name} berhasil di-reset ke: {$newPin}");
+        return redirect()->route('admin.users.index')->with('success', "PIN pengguna {$user->name} berhasil di-reset.");
     }
 
     /**

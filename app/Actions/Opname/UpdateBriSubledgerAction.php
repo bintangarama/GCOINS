@@ -2,6 +2,7 @@
 
 namespace App\Actions\Opname;
 
+use App\Actions\Concerns\CalculatesVariance;
 use App\Models\Attachment;
 use App\Models\AuditLog;
 use App\Models\BriCustomAllocation;
@@ -14,11 +15,14 @@ use App\Services\BriBalanceService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UpdateBriSubledgerAction
 {
+    use CalculatesVariance;
+
     public function __construct(
         protected BriBalanceService $briBalanceService
     ) {}
@@ -41,6 +45,10 @@ class UpdateBriSubledgerAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 4: Immutable snapshot on approval (T-LCK-03)
         if ($session->status === CashOpnameSession::STATUS_APPROVED) {
             throw new DomainException('SESSION_LOCKED: Sesi opname yang sudah disetujui tidak dapat diubah.');
@@ -134,14 +142,13 @@ class UpdateBriSubledgerAction
 
             $briCleanBalanceCents = $netKasKecilBri;
             $totalActualCents = $physicalTotalCents + $vouchersTotalCents + $briCleanBalanceCents;
-            $targetReconciledCents = $session->imprest_fund_cents + $session->previous_variance_cents;
-            $currentVarianceCents = $totalActualCents - $targetReconciledCents;
+            $targetReconciledCents = $session->imprest_fund_cents;
 
-            $varianceStatus = match (true) {
-                $currentVarianceCents === 0 => CashOpnameSession::VARIANCE_BALANCED,
-                $currentVarianceCents > 0 => CashOpnameSession::VARIANCE_SURPLUS,
-                default => CashOpnameSession::VARIANCE_SHORTAGE,
-            };
+            $varianceData = $this->computeVariance(
+                $totalActualCents,
+                $session->imprest_fund_cents,
+                $session->id
+            );
 
             $session->update([
                 'physical_total_cents' => $physicalTotalCents,
@@ -149,8 +156,11 @@ class UpdateBriSubledgerAction
                 'bri_clean_balance_cents' => $briCleanBalanceCents,
                 'total_actual_cents' => $totalActualCents,
                 'target_reconciled_cents' => $targetReconciledCents,
-                'current_variance_cents' => $currentVarianceCents,
-                'variance_status' => $varianceStatus,
+                'raw_discrepancy_cents' => $varianceData['raw_discrepancy_cents'],
+                'cumulative_resolved_cents' => $varianceData['cumulative_resolved_cents'],
+                'outstanding_variance_cents' => $varianceData['outstanding_variance_cents'],
+                'current_variance_cents' => $varianceData['outstanding_variance_cents'],
+                'variance_status' => $varianceData['variance_status'],
             ]);
 
             // Audit log

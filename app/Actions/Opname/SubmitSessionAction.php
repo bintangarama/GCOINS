@@ -6,14 +6,17 @@ use App\Actions\Notification\SendNotificationAction;
 use App\Models\AuditLog;
 use App\Models\CashOpnameSession;
 use App\Models\User;
+use App\Services\Opname\OpnameReconcilerFactory;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SubmitSessionAction
 {
     public function __construct(
-        protected SendNotificationAction $notificationAction
+        protected SendNotificationAction $notificationAction,
+        protected OpnameReconcilerFactory $reconcilerFactory
     ) {}
 
     /**
@@ -27,6 +30,10 @@ class SubmitSessionAction
         User $actor,
         ?string $ipAddress = null
     ): CashOpnameSession {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         // Rule 9: Valid state transition DRAFT -> SUBMITTED
         if ($session->status !== CashOpnameSession::STATUS_DRAFT) {
             throw new DomainException('Hanya sesi berstatus DRAFT yang dapat diajukan untuk verifikasi.');
@@ -38,6 +45,9 @@ class SubmitSessionAction
         }
 
         return DB::transaction(function () use ($session, $actor, $ipAddress) {
+            $reconciler = $this->reconcilerFactory->make($session->opname_type);
+            $reconciler->assertReadyForSubmission($session);
+
             $oldValues = $session->toArray();
 
             $session->update([

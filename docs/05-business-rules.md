@@ -19,24 +19,31 @@ NEVER use FLOAT, DOUBLE, or REAL for money.
 - Display: divide by 100 only at presentation layer
 - Input: user enters Rupiah, system converts to cents before storage
 
-## Rule 2: Three Pockets Formula
+## Rule 2: Outstanding Variance & Resolution Ledger Formula
 
 ```
-Total_Actual = K_fisik + K_bon + K_bri
-Target_Reconciled = Imprest_Fund + V_prev
-V_current = Total_Actual - Target_Reconciled
+Raw_Discrepancy      = Total_Actual - Target_Baseline
+Cumulative_Resolved  = Σ (resolution.amount_cents WHERE status = 'APPROVED')
+Outstanding_Variance = Raw_Discrepancy + Cumulative_Resolved
 ```
 
-These three formulas are the **core** of the reconciliation engine. They must not be altered for KAS_KECIL type.
+Dimana:
+- `Total_Actual`: Nilai aktual terhitung (pada KAS_KECIL: $K_{\text{fisik}} + K_{\text{bon}} + K_{\text{bri}}$).
+- `Target_Baseline`: Plafon dana tetap / expected cash target.
+- `Raw_Discrepancy`: Selisih mentah sebelum resolusi disahkan.
+- `Cumulative_Resolved`: Total resolusi selisih yang disetujui (REPLACED / WRITE_OFF / FOUND).
+- `Outstanding_Variance`: Selisih riil yang belum diselesaikan dan menentukan status `BALANCED` (0), `SURPLUS` (> 0), atau `SHORTAGE` (< 0).
+
+**Menghilangkan bug osilasi**: Model ini mencegah selisih hilang semu pada sesi genap jika kasir belum mengganti uang tunai.
 
 ## Rule 3: Carry-Forward Chain
 
 - New opname session MUST read V_prev from the most recent `APPROVED` session of the **same opname type** in the **same store**
 - If no previous approved session exists: V_prev = 0
-- Once a session is `APPROVED`, V_current is **permanently locked** and becomes the V_prev for the next session
+- Once a session is `APPROVED`, Outstanding_Variance is **permanently locked** and recorded in the audit snapshot
 - The chain must NEVER break — there must be no orphaned or skipped sessions
 
-**Atomicity**: V_prev retrieval and session creation must be atomic (database transaction) to prevent race conditions.
+**Atomicity**: Session creation must be atomic (database transaction) with SQLite partial unique index to prevent double active sessions per store per date.
 
 ## Rule 4: Immutable Snapshot on Approval
 
@@ -44,10 +51,10 @@ When SM executes sign-off (status → `APPROVED`):
 
 1. All numerical values are **permanently frozen**:
    - K_fisik, K_bon, K_bri
-   - V_current, V_prev
+   - Raw_Discrepancy, Cumulative_Resolved, Outstanding_Variance
    - All denomination counts and subtotals
    - BRI sub-ledger snapshot values
-   - imprest fund amount at time of approval
+   - Imprest fund / expected target amount at time of approval
 
 2. **No role** (including SYSTEM_ADMIN) can modify these values after approval
 
@@ -63,15 +70,18 @@ THEN REJECT with error code FORBIDDEN_SELF_APPROVAL
 
 SAC can approve vouchers from others. SAC cannot approve their own vouchers. This rule prevents embezzlement.
 
-## Rule 6: Dual Control — BRI Outflow Approval
+## Rule 6: Tiered Dual Control — BRI Outflow Approval
 
 ```
-IF bri_posting.type == 'OUTFLOW'
-THEN bri_posting CANNOT be approved by the user who created it
-     MUST be approved by SS or SM
+IF bri_posting.type == 'OUTFLOW':
+   CANNOT be approved by the user who created it (Anti-Maker-Checker)
+   IF amount <= Rp 500.000:
+      CAN be approved by SS or SM
+   ELSE (amount > Rp 500.000):
+      MUST be approved by SM
 ```
 
-This ensures no single person can both create and approve a bank fund withdrawal.
+This ensures high-value bank withdrawals undergo top-level store manager scrutiny.
 
 ## Rule 7: Zero-Deficit Guard (Anti-Minus)
 
@@ -146,3 +156,26 @@ No financial state change may occur without an audit log entry.
 - Sequential counter resets per month per store per type
 - UNIQUE constraint in database prevents duplicates
 - Generation must be atomic (transaction + lock) to prevent collisions under concurrent access
+
+## Rule 13: Segregation of Duties (SoD) & Anti-Escalation Safeguard
+
+1. **Role Assignment Hierarchy**:
+   - Petugas kasir (SAC) DILARANG membuat atau mengubah user dengan role $\ge \text{SS}$ (`SS`, `SM`, `SYSTEM_ADMIN`).
+   - Penugasan role supervisor ke atas hanya dapat dilakukan oleh Store Manager (SM) atau `SYSTEM_ADMIN`.
+2. **Anti Self-Role Escalation**:
+   - Pengguna DILARANG mengubah level rolenya sendiri.
+3. **PIN Reset Isolation**:
+   - SAC DILARANG me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
+   - Panjang PIN minimal 6 digit numerik dan tidak boleh di-echo dalam plain text.
+
+## Rule 14: Polymorphic Cash Opname & Physical Audit Evidence
+
+1. **5 Polymorphic Cash Types**:
+   Sistem mendukung 5 tipe cash count harian: `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, dan `GIFT_VOUCHER`.
+2. **Z-Report Physical Proof Guard (KAS_BESAR)**:
+   - Sesi opname bertipe `KAS_BESAR` wajib memiliki minimal 1 baris referensi Register POS (Z-Report).
+   - Seluruh baris referensi Z-Report wajib melampirkan foto fisik struk Z-Report asli (`proof_attachment_url != null`).
+   - Tombol pengajuan verifikasi (`SUBMITTED`) **wajib dinonaktifkan di sisi klien dan ditolak di sisi server** jika bukti fisik Z-Report belum terlampir lengkap.
+3. **Strict Client Image Compression**:
+   - Berkas foto bukti fisik wajib dikompresi di sisi browser maksimal $1280 \times 1920\text{ px}$ dan ukuran akhir $\le 250\text{ KB}$ sebelum diunggah ke server.
+

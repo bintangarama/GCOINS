@@ -8,6 +8,7 @@ use App\Exceptions\InvalidVoucherStateException;
 use App\Models\AuditLog;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,6 +28,10 @@ class RejectVoucherAction
         User $actor,
         ?string $ipAddress = null
     ): PettyCashVoucher {
+        if (! Auth::check()) {
+            Auth::setUser($actor);
+        }
+
         $reason = trim($reason);
         if (empty($reason)) {
             throw new InvalidArgumentException('Alasan penolakan wajib diisi.');

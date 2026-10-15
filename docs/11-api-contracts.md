@@ -82,22 +82,33 @@ These are used in flash messages and policy rejections:
 | GET | `/vouchers/settlement` | `VoucherController@settlement` | Settlement page |
 | POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Batch settle |
 
-### Cash Opname
+### Cash Opname & Reference Lines
 | Method | URI | Controller | Action |
 |---|---|---|---|
 | GET | `/opname` | `OpnameController@index` | Session history |
-| POST | `/opname/start` | `OpnameController@start` | Open/resume session |
+| POST | `/opname/start` | `OpnameController@start` | Open/resume session (supports `opname_type`) |
 | GET | `/opname/{session}` | `OpnameController@show` | Session detail |
-| GET | `/opname/active` | `OpnameController@active` | Active session workspace |
-| PUT | `/opname/{session}/denominations` | `OpnameController@updateDenominations` | Save item counts |
+| GET | `/opname/active` | `OpnameController@active` | Active session workspace (supports `?type=`) |
+| PUT | `/opname/{session}/denominations` | `OpnameController@updateDenominations` | Save item counts & conditions |
 | PUT | `/opname/{session}/bri-subledger` | `OpnameController@updateBriSubledger` | Save BRI data |
-| POST | `/opname/{session}/submit` | `OpnameController@submit` | Submit to SS |
-| POST | `/opname/{session}/verify` | `OpnameController@verify` | SS verification |
-| POST | `/opname/{session}/reject-ss` | `OpnameController@rejectSs` | SS reject |
-| POST | `/opname/{session}/sign-off` | `OpnameController@signOff` | SM sign-off |
-| POST | `/opname/{session}/reject-sm` | `OpnameController@rejectSm` | SM reject |
-| GET | `/opname/{session}/report` | `OpnameController@report` | Print view |
-| GET | `/opname/{session}/export-excel` | `OpnameController@exportExcel` | Download .xlsx |
+| POST | `/opname/{session}/bri-sync` | `OpnameController@syncBriAllocations` | Sync BRI allocations |
+| POST | `/opname/{session}/reference-lines` | `OpnameController@storeReferenceLine` | Add Z-Report / bank deposit line |
+| DELETE | `/opname/{session}/reference-lines/{referenceLine}` | `OpnameController@destroyReferenceLine` | Delete reference line |
+| POST | `/opname/{session}/signed-ba` | `OpnameController@uploadSignedBaScan` | Upload signed physical BACO |
+| POST | `/opname/{session}/submit` | `OpnameController@submit` | Submit to SS (Z-report guard for KAS_BESAR) |
+| POST | `/opname/{session}/verify` | `OpnameController@verify` | SS witness verification |
+| POST | `/opname/{session}/reject-ss` | `OpnameController@rejectSs` | SS reject to draft |
+| POST | `/opname/{session}/sign-off` | `OpnameController@signOff` | SM sign-off (immutable snapshot lock) |
+| POST | `/opname/{session}/reject-sm` | `OpnameController@rejectSm` | SM reject to draft |
+| GET | `/opname/{session}/report` | `OpnameController@report` | Print-friendly A4 BACO view |
+| GET | `/opname/{session}/export-excel` | `OpnameController@exportExcel` | Download BACO Excel .xlsx |
+
+### Variance Resolutions
+| Method | URI | Controller | Action |
+|---|---|---|---|
+| POST | `/opname/{session}/resolutions` | `ResolutionController@store` | Create resolution (REPLACED/WRITE_OFF/FOUND) |
+| POST | `/opname/{session}/resolutions/{resolution}/approve` | `ResolutionController@approve` | Approve resolution (tier limit enforced) |
+| POST | `/opname/{session}/resolutions/{resolution}/reject` | `ResolutionController@reject` | Reject resolution (reason mandatory) |
 
 ### BRI Fund Postings
 | Method | URI | Controller | Action |

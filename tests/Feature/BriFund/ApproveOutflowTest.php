@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Store;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Hash;
 use InvalidArgumentException;
 
@@ -180,4 +181,47 @@ test('Reject outflow via HTTP route enforces validation', function () {
     $validResponse->assertRedirect();
     expect($outflow->fresh()->status)->toBe('REJECTED');
     expect($outflow->fresh()->rejection_reason)->toBe('Lampiran rekening tidak sesuai SPK');
+});
+
+test('outflow >= Rp 100.000.000 cannot be approved by SS and must be approved directly by SM', function () {
+    $smUser = User::create([
+        'store_id' => $this->store->id,
+        'nik' => 'SM001',
+        'name' => 'Store Manager',
+        'role' => 'SM',
+        'pin_hash' => Hash::make('123456'),
+        'is_active' => true,
+    ]);
+    $smUser->syncRoles(['SM']);
+
+    // Inflow initial: Rp 200.000.000 (20.000.000.000 cents)
+    $this->createAction->execute([
+        'category' => 'B2B',
+        'entity_name' => 'SMA Negeri 1 Karawang',
+        'type' => 'INFLOW',
+        'amount_cents' => 20000000000,
+        'purpose' => 'Deposit besar',
+    ], $this->sacUser);
+
+    // Outflow Rp 150.000.000 (15.000.000.000 cents)
+    $outflow = $this->createAction->execute([
+        'category' => 'B2B',
+        'entity_name' => 'SMA Negeri 1 Karawang',
+        'type' => 'OUTFLOW',
+        'amount_cents' => 15000000000,
+        'purpose' => 'Pengeluaran pengadaan besar',
+    ], $this->sacUser);
+
+    // SS attempts to approve -> throws AuthorizationException
+    expect(function () use ($outflow) {
+        $this->approveAction->execute($outflow, $this->ssUser);
+    })->toThrow(
+        AuthorizationException::class,
+        'Penarikan dana >= Rp 100.000.000 wajib mendapatkan persetujuan langsung dari Store Manager.'
+    );
+
+    // SM attempts to approve -> succeeds
+    $approved = $this->approveAction->execute($outflow, $smUser);
+    expect($approved->status)->toBe('APPROVED');
+    expect($approved->approved_by_id)->toBe($smUser->id);
 });

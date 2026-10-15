@@ -33,7 +33,10 @@ import {
     DataTableRow,
     DataTableCell,
     DataTableEmpty,
+    DataTableMobileList,
+    DataTableMobileCard,
 } from '@/components/shared/DataTable';
+import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
 import { PaginatedVouchers, VoucherCategory, VoucherStatus } from '@/types/voucher';
 import { User } from '@/types/auth';
@@ -238,141 +241,159 @@ export default function VoucherIndexPage({
 
                 {/* Voucher Data Table */}
                 <Card className="border shadow-sm overflow-hidden">
-                    <DataTable>
-                        <DataTableHead>
-                            <tr>
-                                <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
-                                <DataTableHeaderCell>Tanggal</DataTableHeaderCell>
-                                <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
-                                <DataTableHeaderCell>Kategori</DataTableHeaderCell>
-                                <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Aksi</DataTableHeaderCell>
-                            </tr>
-                        </DataTableHead>
-                        <DataTableBody>
-                            {vouchers.data.length === 0 ? (
-                                <DataTableEmpty
-                                    colSpan={8}
-                                    icon={<Receipt className="w-10 h-10 stroke-1" />}
-                                    message="Tidak ada voucher yang ditemukan"
-                                    description="Coba sesuaikan filter pencarian atau buat pengajuan bon kas kecil baru."
-                                    action={
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {(filters.search || filters.status || filters.category || filters.requester_id || filters.date_from || filters.date_to) && (
-                                                <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs h-8">
-                                                    Reset Filter
-                                                </Button>
-                                            )}
-                                            <Link href="/vouchers/create">
-                                                <Button size="sm" className="text-xs h-8 gap-1.5">
-                                                    <Plus className="w-3.5 h-3.5" />
-                                                    Buat Pengajuan
-                                                </Button>
-                                            </Link>
-                                        </div>
-                                    }
-                                />
-                            ) : (
-                                vouchers.data.map((v) => (
-                                    <DataTableRow key={v.id}>
-                                        <DataTableCell className="font-mono font-semibold text-primary">
-                                            {v.voucher_number}
-                                        </DataTableCell>
-                                        <DataTableCell className="text-muted-foreground whitespace-nowrap">
-                                            {new Date(v.created_at).toLocaleDateString('id-ID', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}
-                                        </DataTableCell>
-                                        <DataTableCell>
-                                            <div className="font-medium text-foreground">{v.requester?.name || '-'}</div>
-                                            <div className="text-[10px] text-muted-foreground font-mono">
-                                                {v.requester?.nik} ({v.requester?.role})
+                    {/* Desktop Table View */}
+                    <div className="hidden sm:block">
+                        <DataTable>
+                            <DataTableHead>
+                                <tr>
+                                    <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Tanggal</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Kategori</DataTableHeaderCell>
+                                    <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="center">Aksi</DataTableHeaderCell>
+                                </tr>
+                            </DataTableHead>
+                            <DataTableBody>
+                                {vouchers.data.length === 0 ? (
+                                    <DataTableEmpty
+                                        colSpan={8}
+                                        icon={<Receipt className="w-10 h-10 stroke-1" />}
+                                        message="Tidak ada voucher yang ditemukan"
+                                        description="Coba sesuaikan filter pencarian atau buat pengajuan bon kas kecil baru."
+                                        action={
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {(filters.search || filters.status || filters.category || filters.requester_id || filters.date_from || filters.date_to) && (
+                                                    <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs h-8">
+                                                        Reset Filter
+                                                    </Button>
+                                                )}
+                                                <Link href="/vouchers/create">
+                                                    <Button size="sm" className="text-xs h-8 gap-1.5">
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        Buat Pengajuan
+                                                    </Button>
+                                                </Link>
                                             </div>
-                                        </DataTableCell>
-                                        <DataTableCell>
-                                            <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
-                                                {v.category}
+                                        }
+                                    />
+                                ) : (
+                                    vouchers.data.map((v) => (
+                                        <DataTableRow key={v.id}>
+                                            <DataTableCell className="font-mono font-semibold text-primary">
+                                                {v.voucher_number}
+                                            </DataTableCell>
+                                            <DataTableCell className="text-muted-foreground whitespace-nowrap">
+                                                {new Date(v.created_at).toLocaleDateString('id-ID', {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                })}
+                                            </DataTableCell>
+                                            <DataTableCell>
+                                                <div className="font-medium text-foreground">{v.requester?.name || '-'}</div>
+                                                <div className="text-[10px] text-muted-foreground font-mono">
+                                                    {v.requester?.nik} ({v.requester?.role})
+                                                </div>
+                                            </DataTableCell>
+                                            <DataTableCell>
+                                                <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
+                                                    {v.category}
+                                                </span>
+                                            </DataTableCell>
+                                            <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
+                                                {v.purpose}
+                                            </DataTableCell>
+                                            <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
+                                                {formatMoney(v.amount_cents)}
+                                            </DataTableCell>
+                                            <DataTableCell align="center" className="whitespace-nowrap">
+                                                <StatusBadge status={v.status} />
+                                            </DataTableCell>
+                                            <DataTableCell align="center" className="whitespace-nowrap">
+                                                <Link href={`/vouchers/${v.id}`}>
+                                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                        <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                                        Detail
+                                                    </Button>
+                                                </Link>
+                                            </DataTableCell>
+                                        </DataTableRow>
+                                    ))
+                                )}
+                            </DataTableBody>
+                        </DataTable>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="sm:hidden">
+                        {vouchers.data.length === 0 ? (
+                            <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                                <Receipt className="w-10 h-10 stroke-1 text-muted-foreground/60 mb-1" />
+                                <p className="text-sm font-semibold text-foreground">Tidak ada voucher yang ditemukan</p>
+                                <p className="text-xs text-muted-foreground">Coba sesuaikan filter pencarian atau buat pengajuan baru.</p>
+                                <div className="flex items-center gap-2 mt-3">
+                                    {(filters.search || filters.status || filters.category || filters.requester_id || filters.date_from || filters.date_to) && (
+                                        <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs h-9">
+                                            Reset
+                                        </Button>
+                                    )}
+                                    <Link href="/vouchers/create">
+                                        <Button size="sm" className="text-xs h-9 gap-1.5">
+                                            <Plus className="w-3.5 h-3.5" />
+                                            Buat Baru
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : (
+                            <DataTableMobileList>
+                                {vouchers.data.map((v) => (
+                                    <DataTableMobileCard key={v.id}>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-mono font-semibold text-xs text-primary">
+                                                {v.voucher_number}
                                             </span>
-                                        </DataTableCell>
-                                        <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
-                                            {v.purpose}
-                                        </DataTableCell>
-                                        <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
-                                            {formatMoney(v.amount_cents)}
-                                        </DataTableCell>
-                                        <DataTableCell align="center" className="whitespace-nowrap">
                                             <StatusBadge status={v.status} />
-                                        </DataTableCell>
-                                        <DataTableCell align="center" className="whitespace-nowrap">
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span className="font-medium text-foreground">{v.requester?.name || '-'}</span>
+                                            <span>
+                                                {new Date(v.created_at).toLocaleDateString('id-ID', {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                })}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{v.purpose}</p>
+                                        <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                                            <span className="font-mono num font-bold text-sm text-foreground">
+                                                {formatMoney(v.amount_cents)}
+                                            </span>
                                             <Link href={`/vouchers/${v.id}`}>
-                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                                                    <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                                                    <Eye className="w-3.5 h-3.5" />
                                                     Detail
                                                 </Button>
                                             </Link>
-                                        </DataTableCell>
-                                    </DataTableRow>
-                                ))
-                            )}
-                        </DataTableBody>
-                    </DataTable>
+                                        </div>
+                                    </DataTableMobileCard>
+                                ))}
+                            </DataTableMobileList>
+                        )}
+                    </div>
 
-                    {/* Pagination */}
-                    {vouchers.last_page > 1 && (
-                        <div className="p-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-                            <div>
-                                Halaman <b>{vouchers.current_page}</b> dari <b>{vouchers.last_page}</b>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {vouchers.links.map((link, idx) => {
-                                    if (link.label.includes('Previous')) {
-                                        return (
-                                            <Button
-                                                key={idx}
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={!link.url}
-                                                onClick={() => link.url && router.visit(link.url)}
-                                                className="h-7 w-7 p-0"
-                                            >
-                                                <ChevronLeft className="w-3.5 h-3.5" />
-                                            </Button>
-                                        );
-                                    }
-                                    if (link.label.includes('Next')) {
-                                        return (
-                                            <Button
-                                                key={idx}
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={!link.url}
-                                                onClick={() => link.url && router.visit(link.url)}
-                                                className="h-7 w-7 p-0"
-                                            >
-                                                <ChevronRight className="w-3.5 h-3.5" />
-                                            </Button>
-                                        );
-                                    }
-                                    return (
-                                        <Button
-                                            key={idx}
-                                            variant={link.active ? 'default' : 'outline'}
-                                            size="sm"
-                                            disabled={!link.url}
-                                            onClick={() => link.url && router.visit(link.url)}
-                                            className="h-7 w-7 p-0 text-xs"
-                                        >
-                                            <span dangerouslySetInnerHTML={{ __html: link.label }} />
-                                        </Button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
+                    {/* Standardized Responsive Pagination */}
+                    <Pagination
+                        links={vouchers.links}
+                        currentPage={vouchers.current_page}
+                        lastPage={vouchers.last_page}
+                        from={vouchers.from}
+                        to={vouchers.to}
+                        total={vouchers.total}
+                    />
                 </Card>
             </div>
         </AppLayout>

@@ -2,14 +2,15 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'light') == 'dark'])>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-        {{-- Set theme appearance (defaults to clean light theme) --}}
+        {{-- Set theme appearance (supports light, dark, and system) --}}
         <script>
             (function() {
-                const appearance = '{{ $appearance ?? "light" }}';
+                const appearance = localStorage.getItem('appearance') || '{{ $appearance ?? "system" }}';
+                const isDark = appearance === 'dark' || (appearance === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-                if (appearance === 'dark') {
+                if (isDark) {
                     document.documentElement.classList.add('dark');
                 } else {
                     document.documentElement.classList.remove('dark');

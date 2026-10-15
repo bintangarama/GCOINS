@@ -6,6 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import {
+    DataTable,
+    DataTableHead,
+    DataTableHeaderCell,
+    DataTableBody,
+    DataTableRow,
+    DataTableCell,
+    DataTableEmpty,
+    DataTableMobileList,
+    DataTableMobileCard,
+} from '@/components/shared/DataTable';
+import { Pagination } from '@/components/shared/Pagination';
 import { PaginatedBriPostings } from '@/types/bri';
 import { formatMoney } from '@/lib/money';
 import {
@@ -144,30 +156,32 @@ export default function BriFundEntityDetail({
                     </div>
 
                     <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead className="bg-muted/50 border-b border-border">
+                        {/* Desktop View */}
+                        <div className="hidden md:block">
+                            <DataTable>
+                                <DataTableHead>
                                     <tr>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Tanggal & Waktu</th>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Tipe Transaksi</th>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Keterangan / Tujuan</th>
-                                        <th className="text-right font-medium text-muted-foreground py-3 px-4">Nominal</th>
-                                        <th className="text-center font-medium text-muted-foreground py-3 px-4">Bukti</th>
-                                        <th className="text-center font-medium text-muted-foreground py-3 px-4">Status</th>
-                                        <th className="text-left font-medium text-muted-foreground py-3 px-4">Petugas & Approval</th>
+                                        <DataTableHeaderCell>Tanggal & Waktu</DataTableHeaderCell>
+                                        <DataTableHeaderCell>Tipe Transaksi</DataTableHeaderCell>
+                                        <DataTableHeaderCell>Keterangan / Tujuan</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="center">Bukti</DataTableHeaderCell>
+                                        <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                        <DataTableHeaderCell>Petugas & Approval</DataTableHeaderCell>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/60">
+                                </DataTableHead>
+                                <DataTableBody>
                                     {postings.data.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                                                Belum ada mutasi untuk entitas ini.
-                                            </td>
-                                        </tr>
+                                        <DataTableEmpty
+                                            colSpan={7}
+                                            icon={<Coins className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
+                                            message="Belum ada mutasi untuk entitas ini"
+                                            description="Mutasi yang dicatat untuk entitas ini akan muncul di sini."
+                                        />
                                     ) : (
                                         postings.data.map((item) => (
-                                            <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="py-3 px-4 font-mono text-muted-foreground whitespace-nowrap">
+                                            <DataTableRow key={item.id}>
+                                                <DataTableCell className="font-mono text-muted-foreground whitespace-nowrap">
                                                     {new Date(item.created_at).toLocaleDateString('id-ID', {
                                                         day: '2-digit',
                                                         month: 'short',
@@ -179,8 +193,8 @@ export default function BriFundEntityDetail({
                                                             minute: '2-digit',
                                                         })}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                </DataTableCell>
+                                                <DataTableCell className="whitespace-nowrap">
                                                     {item.type === 'INFLOW' ? (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                                                             <ArrowDownLeft className="h-3 w-3" />
@@ -192,21 +206,21 @@ export default function BriFundEntityDetail({
                                                             OUTFLOW
                                                         </span>
                                                     )}
-                                                </td>
-                                                <td className="py-3 px-4 max-w-sm text-foreground">
+                                                </DataTableCell>
+                                                <DataTableCell className="max-w-sm text-foreground">
                                                     <div className="font-medium">{item.purpose}</div>
                                                     {item.rejection_reason && (
                                                         <span className="text-[10px] text-destructive block mt-0.5">
                                                             Ditolak: {item.rejection_reason}
                                                         </span>
                                                     )}
-                                                </td>
-                                                <td className="py-3 px-4 text-right font-mono font-bold whitespace-nowrap">
+                                                </DataTableCell>
+                                                <DataTableCell align="right" mono className="font-bold whitespace-nowrap">
                                                     <span className={item.type === 'INFLOW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
                                                         {item.type === 'INFLOW' ? '+' : '-'} {formatMoney(item.amount_cents)}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-4 text-center">
+                                                </DataTableCell>
+                                                <DataTableCell align="center">
                                                     {item.proof_attachment_url ? (
                                                         <Button
                                                             variant="ghost"
@@ -219,11 +233,11 @@ export default function BriFundEntityDetail({
                                                     ) : (
                                                         <span className="text-[11px] text-muted-foreground">-</span>
                                                     )}
-                                                </td>
-                                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                                </DataTableCell>
+                                                <DataTableCell align="center" className="whitespace-nowrap">
                                                     <StatusBadge status={item.status} />
-                                                </td>
-                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                </DataTableCell>
+                                                <DataTableCell className="whitespace-nowrap">
                                                     <div className="text-[11px]">
                                                         <span className="font-medium text-foreground">{item.created_by?.name || '-'}</span>
                                                         {item.approved_by && (
@@ -232,39 +246,79 @@ export default function BriFundEntityDetail({
                                                             </span>
                                                         )}
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </DataTableCell>
+                                            </DataTableRow>
                                         ))
                                     )}
-                                </tbody>
-                            </table>
+                                </DataTableBody>
+                            </DataTable>
                         </div>
 
-                        {/* Pagination */}
-                        {postings.last_page > 1 && (
-                            <div className="flex items-center justify-between p-4 border-t border-border bg-muted/20">
-                                <span className="text-xs text-muted-foreground font-mono">
-                                    Menampilkan {postings.data.length} dari {postings.total} mutasi
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    {postings.links.map((link, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => link.url && router.get(link.url)}
-                                            disabled={!link.url}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                            className={`px-2.5 py-1 text-xs rounded border transition-colors ${
-                                                link.active
-                                                    ? 'bg-primary text-primary-foreground border-primary font-bold'
-                                                    : link.url
-                                                    ? 'hover:bg-muted text-foreground border-border'
-                                                    : 'opacity-40 cursor-not-allowed border-transparent text-muted-foreground'
-                                            }`}
-                                        />
-                                    ))}
+                        {/* Mobile View */}
+                        <div className="md:hidden">
+                            {postings.data.length === 0 ? (
+                                <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                                    <Coins className="w-10 h-10 text-muted-foreground/40 stroke-1 mb-1" />
+                                    <p className="text-sm font-semibold text-foreground">Belum ada mutasi untuk entitas ini</p>
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <DataTableMobileList>
+                                    {postings.data.map((item) => (
+                                        <DataTableMobileCard key={item.id}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                {item.type === 'INFLOW' ? (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                        <ArrowDownLeft className="h-3 w-3" />
+                                                        INFLOW
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                        <ArrowUpRight className="h-3 w-3" />
+                                                        OUTFLOW
+                                                    </span>
+                                                )}
+                                                <StatusBadge status={item.status} />
+                                            </div>
+                                            <p className="text-xs text-foreground font-medium">{item.purpose}</p>
+                                            <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                                                <div>
+                                                    <span className="text-[10px] text-muted-foreground block">
+                                                        {new Date(item.created_at).toLocaleDateString('id-ID', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                        })}
+                                                    </span>
+                                                    <span className={`font-mono num font-bold text-sm ${item.type === 'INFLOW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                        {item.type === 'INFLOW' ? '+' : '-'} {formatMoney(item.amount_cents)}
+                                                    </span>
+                                                </div>
+                                                {item.proof_attachment_url && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 px-2 text-xs gap-1 text-muted-foreground"
+                                                        onClick={() => setSelectedProofUrl(item.proof_attachment_url)}
+                                                    >
+                                                        <Image className="h-3.5 w-3.5" />
+                                                        Bukti
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </DataTableMobileCard>
+                                    ))}
+                                </DataTableMobileList>
+                            )}
+                        </div>
+
+                        {/* Standardized Responsive Pagination */}
+                        <Pagination
+                            links={postings.links}
+                            currentPage={postings.current_page}
+                            lastPage={postings.last_page}
+                            from={postings.from}
+                            to={postings.to}
+                            total={postings.total}
+                        />
                     </div>
                 </div>
             </div>
