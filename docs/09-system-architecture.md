@@ -213,6 +213,14 @@ storage/
 - Files organized by store code, year, and month
 - Symlink: `php artisan storage:link` → `public/storage` → `storage/app/public`
 - Nginx serves static files directly from `/storage/` path
+- **Storage URL Strategy**: Disks `public` menggunakan URL relatif `env('STORAGE_URL', '/storage')`. Ini memastikan bahwa file gambar/lampiran dapat diakses oleh browser dari origin/domain/IP mana pun tanpa dependensi pada nilai `APP_URL=http://localhost` di file `.env`.
+- **Legacy URL Sanitizer**: Model `PettyCashVoucher` memiliki accessor `receiptImageUrl` dan `itemPhotoUrl` yang otomatis menormalisasi URL lawas berawalan `http://localhost...` atau `http://127.0.0.1...` menjadi path relatif `/storage/...`.
+- **VPS Deployment Checklist**:
+  1. Buat symbolic link storage: `php artisan storage:link`
+  2. Kepemilikan folder web server: `sudo chown -R www-data:www-data storage bootstrap/cache`
+  3. Izin tulis/baca folder: `sudo chmod -R 775 storage bootstrap/cache`
+  4. Build aset frontend: `npm run build`
+  5. Cache & migrasi: `php artisan migrate --force && php artisan optimize:clear && php artisan optimize`
 
 ## 5. Frontend Architecture (React + Inertia)
 

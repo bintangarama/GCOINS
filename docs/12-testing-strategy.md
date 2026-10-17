@@ -47,6 +47,8 @@
 | T-STM-03 | Voucher: APPROVED_SS → DISBURSED valid | Feature |
 | T-STM-04 | Voucher: DISBURSED → SETTLED valid (KKCL settlement recap) | Feature |
 | T-STM-05 | Voucher: invalid transition rejected | Feature |
+| T-VCH-01 | Voucher stores explicit receipt_date or defaults to today | Feature |
+| T-VCH-02 | Legacy localhost storage URLs normalized to relative paths | Feature |
 | T-SET-02 | Sequential numbering `{SEQ}/KKCL/{STORE}/{ROMAN_MONTH}/{YEAR}` | Feature |
 | T-SET-03 | Columnar accounting matrix pivot calculation | Feature |
 | T-CAT-02 | Toggle active status for store and global categories | Feature |

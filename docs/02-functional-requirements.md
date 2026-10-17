@@ -44,7 +44,7 @@
 
 ### FR-VCH-01: Create Draft
 - Roles: SOA, SS, SAC
-- Fields: amount (> 0, ≤ imprest fund), purpose, category, receipt photo, item photo
+- Fields: amount (> 0, ≤ imprest fund), receipt_date (optional, default: today), purpose, category, receipt photo, item photo
 - Auto-generate voucher number: `{SEQ}/{TYPE_CODE}/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`
 - Status: `DRAFT`
 - Photos compressed client-side to WebP (≤ 250KB)
@@ -125,6 +125,13 @@
 - Pembuatan draft (`is_submit: false` atau tombol "Simpan Sebagai Draft") mengizinkan penyimpanan tanpa foto bukti
 - Validasi FormRequest mengembalikan error HTTP 422 (*Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.*) dan ditampilkan langsung di bawah input uploader tanpa menyebabkan crash 500
 - Action layer dilindungi dengan `ValidationException` jika dipanggil di luar FormRequest
+
+### FR-VCH-15: Tanggal Bon Fisik (Receipt Date)
+- Field `receipt_date` (DATE nullable, default otomatis: tanggal hari ini `YYYY-MM-DD`)
+- Staf pengaju (SOA/SS/SAC) dapat menentukan tanggal aktual belanja fisik saat pengajuan (mendukung pencatatan tanggal mundur/back-dated)
+- Filter daftar voucher (`date_from`, `date_to`) memprioritaskan tanggal bon fisik (`receipt_date`), dengan fallback ke `created_at` untuk data historis
+- Ditampilkan secara konsisten pada antarmuka tabel daftar voucher, detail voucher, ekspor Excel rekapitulasi voucher (`VoucherRecapExport`), serta rekap matriks KKCL (`PettyCashMatrixRecapExport`)
+- Impor data voucher historis dari Excel otomatis memetakan tanggal dokumen ke kolom `receipt_date`
 
 ---
 

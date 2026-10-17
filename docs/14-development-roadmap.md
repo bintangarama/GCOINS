@@ -138,12 +138,15 @@
 #### 2.4 Supporting Features
 - [x] Soft delete for DRAFT vouchers
 - [x] Attachments system (polymorphic upload)
+- [x] Receipt date tracking (`receipt_date` on vouchers & reports)
+- [x] Storage URL normalization (relative `/storage` paths & localhost sanitization)
 - [x] Audit logging for all status changes
 - [x] Notification dispatch on status changes
 
 #### 2.5 Tests
 - [x] T-SAP-01, T-SAP-02, T-SAP-03 (self-approval prevention)
 - [x] T-STM-01 through T-STM-05 (state transitions)
+- [x] T-VCH-01, T-VCH-02 (receipt date & localhost URL normalization)
 - [x] T-NUM-01 through T-NUM-03 (document numbering)
 - [x] T-DEL-01, T-DEL-02 (soft delete)
 
