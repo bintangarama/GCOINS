@@ -3,6 +3,7 @@
 namespace App\Actions\Import;
 
 use App\Models\AuditLog;
+use App\Models\PettyCashCategory;
 use App\Models\PettyCashVoucher;
 use App\Models\Store;
 use App\Models\User;
@@ -25,7 +26,7 @@ class ImportVouchersAction
     public function preview(string $filePath, Store $store): array
     {
         $spreadsheet = IOFactory::load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
+        $sheet = $spreadsheet->getSheet(0);
         $rows = $sheet->toArray();
 
         array_shift($rows); // Remove header
@@ -33,14 +34,21 @@ class ImportVouchersAction
         $validRows = [];
         $errorRows = [];
 
-        $allowedCategories = [
-            'OPERASIONAL',
-            'STRUK_KASIR',
-            'LOGISTIK',
-            'KONSUMSI',
-            'MAINTENANCE',
-            'LAINNYA',
-        ];
+        // Build category lookup map (code and normalized names)
+        $categories = PettyCashCategory::forStore($store->id)->active()->get();
+        $categoryLookup = [];
+        foreach ($categories as $cat) {
+            $catCode = strtoupper(trim($cat->code));
+            $categoryLookup[$catCode] = $cat->code;
+            $categoryLookup[strtoupper(preg_replace('/[\s\-]+/', '_', trim($cat->code)))] = $cat->code;
+            $categoryLookup[strtoupper(trim($cat->name))] = $cat->code;
+            $categoryLookup[strtoupper(preg_replace('/[\s\-]+/', '_', trim($cat->name)))] = $cat->code;
+        }
+
+        // Support legacy categories as fallback
+        foreach (PettyCashVoucher::CATEGORIES as $legacyCode) {
+            $categoryLookup[strtoupper($legacyCode)] = $legacyCode;
+        }
 
         $allowedStatuses = ['SETTLED', 'DISBURSED'];
 
@@ -83,8 +91,17 @@ class ImportVouchersAction
             }
 
             // Check Category
-            if (! in_array($category, $allowedCategories, true)) {
-                $errors[] = 'Kategori tidak valid. Pilihan: '.implode(', ', $allowedCategories);
+            $resolvedCategory = null;
+            $normalizedCategoryKey = strtoupper(preg_replace('/[\s\-]+/', '_', $category));
+
+            if (isset($categoryLookup[$category])) {
+                $resolvedCategory = $categoryLookup[$category];
+            } elseif (isset($categoryLookup[$normalizedCategoryKey])) {
+                $resolvedCategory = $categoryLookup[$normalizedCategoryKey];
+            } else {
+                $validOptions = array_values(array_unique($categoryLookup));
+                sort($validOptions);
+                $errors[] = 'Kategori tidak valid: "'.($category ?: '-').'". Pilihan: '.implode(', ', $validOptions);
             }
 
             // Check Date
@@ -108,7 +125,7 @@ class ImportVouchersAction
                 'amount_cents' => $amountNum * 100,
                 'amount_rupiah' => $amountNum,
                 'purpose' => $purpose,
-                'category' => $category,
+                'category' => $resolvedCategory ?? $category,
                 'date' => $parsedDate ? $parsedDate->toDateString() : now()->toDateString(),
                 'status' => $status,
             ];

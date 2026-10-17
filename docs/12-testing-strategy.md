@@ -20,8 +20,10 @@
 | T-VAR-05 | BALANCED when OutstandingVariance = 0 | Unit |
 | T-VAR-06 | SURPLUS when OutstandingVariance > 0, SHORTAGE when < 0 | Unit |
 | T-STR-01 | ThreePocketsReconciler (KAS_KECIL): Safe fisik + Bon gantung + Net BRI | Feature |
-| T-STR-02 | CashFlowReconciler (KAS_BESAR, ACTIVE_SELLING): Safe fisik vs (Opening + Z-Report - DRO) | Feature |
-| T-STR-03 | ConsignmentReconciler (MATERAI, GIFT_VOUCHER): Stok fisik vs target sistem | Feature |
+| T-STR-02 | CashFlowReconciler (KAS_BESAR): Safe fisik vs (Opening + Z-Report - Deposits - Payouts) | Feature |
+| T-STR-03 | ConsignmentReconciler (ACTIVE_SELLING): Kas fisik bazar vs (Modal Awal + Jual - Biaya - Setor) | Feature |
+| T-STR-04 | StockCountReconciler (MATERAI): Keping fisik baik vs Saldo buku (Opening + In - Out - Damaged) | Feature |
+| T-STR-05 | SerialStockReconciler (GIFT_VOUCHER): Fisik voucher vs Kartu stok / Rentang seri | Feature |
 | T-SOD-01 | SAC cannot create user with role >= SS (403 Forbidden) | Feature |
 | T-SOD-02 | SAC cannot edit user to role >= SS (403 Forbidden) | Feature |
 | T-SOD-03 | User cannot change their own role (anti-privilege escalation) | Feature |
@@ -93,7 +95,7 @@ tests/
 │   ├── VarianceCalculationTest.php
 │   ├── DenominationCalculationTest.php
 │   ├── BriBalanceCalculationTest.php
-│   ├── MoneyFormattingTest.php
+│   ├── MoneyTest.php
 │   └── DocumentNumberGeneratorTest.php
 ├── Feature/
 │   ├── Auth/

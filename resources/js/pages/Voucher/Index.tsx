@@ -38,7 +38,7 @@ import {
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
-import { PaginatedVouchers, VoucherCategory, VoucherStatus } from '@/types/voucher';
+import { PaginatedVouchers, PettyCashCategoryItem, VoucherStatus } from '@/types/voucher';
 import { User } from '@/types/auth';
 
 interface VoucherIndexProps {
@@ -51,7 +51,7 @@ interface VoucherIndexProps {
         date_to?: string;
         search?: string;
     };
-    categories: VoucherCategory[];
+    categories: (string | PettyCashCategoryItem)[];
     requesters: Pick<User, 'id' | 'name' | 'nik' | 'role'>[];
 }
 
@@ -180,11 +180,15 @@ export default function VoucherIndexPage({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL" className="text-xs font-medium">Semua Kategori</SelectItem>
-                                        {categories.map((c) => (
-                                            <SelectItem key={c} value={c} className="text-xs font-mono">
-                                                {c}
-                                            </SelectItem>
-                                        ))}
+                                        {categories.map((c) => {
+                                            const code = typeof c === 'string' ? c : c.code;
+                                            const name = typeof c === 'string' ? c : c.name;
+                                            return (
+                                                <SelectItem key={code} value={code} className="text-xs">
+                                                    {name} ({code})
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             StoreSeeder::class,
             UserSeeder::class,
+            PettyCashCategorySeeder::class,
         ]);
     }
 }

@@ -172,8 +172,10 @@
 ### FR-OPN-03: Strategy Reconcilers & Reference Lines
 - **Strategy Pattern Reconciler** mengeksekusi rekonsiliasi sesuai tipe:
   1. `ThreePocketsReconciler` (`KAS_KECIL`): Fisik safe + Bon gantung (DISBURSED) + Net BRI pooling vs Plafon Imprest
-  2. `CashFlowReconciler` (`KAS_BESAR`, `ACTIVE_SELLING`): Fisik safe vs (Opening Float + Sales Z-Report - Bank Drops/DRO)
-  3. `ConsignmentReconciler` (`MATERAI`, `GIFT_VOUCHER`): Fisik stok vs Target konsinyasi / Saldo stok sistem
+  2. `CashFlowReconciler` (`KAS_BESAR`): Fisik safe vs (Opening Float + Sales Z-Report - Bank Drops - Payouts)
+  3. `ConsignmentReconciler` (`ACTIVE_SELLING`): Fisik safe vs (Modal Awal + Hasil Jual Konsinyasi - Biaya Event - Setor Toko)
+  4. `StockCountReconciler` (`MATERAI`): Fisik materai kondisi baik vs Saldo buku (Opening + Received - Used - Damaged)
+  5. `SerialStockReconciler` (`GIFT_VOUCHER`): Fisik lembar voucher vs Kartu stok / Rentang nomor seri
 - **Reference Lines**: Input dinamis baris referensi (Z-Report, Modal Awal, Setoran Bank/DRO)
 - **Bukti Fisik Z-Report**: Pada `KAS_BESAR`, wajib menginput minimal 1 Z-Report dan mengunggah foto struk Z-Report fisik sebelum submit
 

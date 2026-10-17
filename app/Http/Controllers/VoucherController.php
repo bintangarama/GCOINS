@@ -15,6 +15,7 @@ use App\Exports\VoucherRecapExport;
 use App\Http\Requests\Voucher\BatchSettleVoucherRequest;
 use App\Http\Requests\Voucher\RejectVoucherRequest;
 use App\Http\Requests\Voucher\StoreVoucherRequest;
+use App\Models\PettyCashCategory;
 use App\Models\PettyCashVoucher;
 use App\Models\StoreOpnameConfig;
 use App\Models\User;
@@ -89,10 +90,24 @@ class VoucherController extends Controller
             ->select('id', 'name', 'nik', 'role')
             ->get();
 
+        $categories = PettyCashCategory::forStore($currentUser->store_id)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        if ($categories->isEmpty()) {
+            $categories = collect(PettyCashVoucher::CATEGORIES)->map(fn ($c) => [
+                'id' => $c,
+                'code' => $c,
+                'name' => $c,
+            ]);
+        }
+
         return Inertia::render('Voucher/Index', [
             'vouchers' => $vouchers,
             'filters' => $request->only(['status', 'category', 'requester_id', 'date_from', 'date_to', 'search']),
-            'categories' => PettyCashVoucher::CATEGORIES,
+            'categories' => $categories,
             'requesters' => $requesters,
         ]);
     }
@@ -116,8 +131,22 @@ class VoucherController extends Controller
             }
         }
 
+        $categories = PettyCashCategory::forStore($currentUser->store_id)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        if ($categories->isEmpty()) {
+            $categories = collect(PettyCashVoucher::CATEGORIES)->map(fn ($c) => [
+                'id' => $c,
+                'code' => $c,
+                'name' => $c,
+            ]);
+        }
+
         return Inertia::render('Voucher/Create', [
-            'categories' => PettyCashVoucher::CATEGORIES,
+            'categories' => $categories,
             'imprestFundCents' => $imprestFundCents,
         ]);
     }
@@ -307,11 +336,24 @@ class VoucherController extends Controller
      */
     public function batchSettle(BatchSettleVoucherRequest $request, BatchSettleVouchersAction $action): RedirectResponse
     {
-        $settled = $action->execute($request->validated('voucher_ids'), $request->user(), $request->ip());
-
-        return redirect()->route('vouchers.settlement')->with(
-            'success',
-            "{$settled->count()} voucher berhasil diselesaikan (settled)."
+        $settled = $action->execute(
+            $request->validated('voucher_ids'),
+            $request->user(),
+            $request->ip(),
+            $request->input('notes')
         );
+
+        $settlement = $settled->first()?->settlement;
+        $settlementNumber = $settlement?->settlement_number;
+
+        $message = $settlementNumber
+            ? "{$settled->count()} voucher berhasil diselesaikan dalam Rekap {$settlementNumber}."
+            : "{$settled->count()} voucher berhasil diselesaikan (settled).";
+
+        return redirect()->route('vouchers.settlement')->with([
+            'success' => $message,
+            'settlement_id' => $settlement?->id,
+            'settlement_number' => $settlementNumber,
+        ]);
     }
 }

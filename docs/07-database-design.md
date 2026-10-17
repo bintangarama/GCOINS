@@ -33,7 +33,7 @@
 |---|---|:---:|:---:|---|
 | `id` | VARCHAR(32) | NO | CUID | PK |
 | `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
-| `opname_type` | VARCHAR(20) | NO | — | `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `VOUCHER` |
+| `opname_type` | VARCHAR(20) | NO | — | `KAS_KECIL`, `KAS_BESAR`, `ACTIVE_SELLING`, `MATERAI`, `GIFT_VOUCHER` |
 | `imprest_fund_cents` | INTEGER | NO | 500000000 | Plafon for this type (in cents) |
 | `reconciliation_mode` | VARCHAR(20) | NO | `THREE_POCKETS` | `THREE_POCKETS`, `TWO_POCKETS`, `PHYSICAL_ONLY`, `CUSTOM` |
 | `has_voucher_integration` | BOOLEAN | NO | TRUE | Whether this type tracks outstanding vouchers |
@@ -124,7 +124,7 @@
 - UNIQUE(`opname_number`)
 - INDEX(`store_id`, `opname_type`, `status`)
 - INDEX(`store_id`, `opname_type`, `status`, `approved_sm_at`)
-- Partial UNIQUE Index (SQLite/DB): `unique_active_session_per_store_type_date` ON `cash_opname_sessions (store_id, opname_type, date)` WHERE `status IN ('DRAFT', 'SUBMITTED', 'VERIFIED_SS')`
+- Partial UNIQUE Index (SQLite/DB): `uq_active_opname_session` ON `cash_opname_sessions (store_id, opname_type)` WHERE `status IN ('DRAFT', 'SUBMITTED', 'VERIFIED_SS')`
 
 ---
 
@@ -145,31 +145,34 @@ Resolution ledger documenting accounting actions taken to resolve cash count var
 | `status` | VARCHAR(20) | NO | `PENDING` | `PENDING`, `APPROVED`, `REJECTED` |
 | `created_by_id` | VARCHAR(32) | NO | — | FK → `users.id` (SAC / Pembuat) |
 | `approved_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (SS / SM penyetuju) |
+| `approved_at` | DATETIME | YES | NULL | Timestamp of approval |
+| `rejection_reason` | TEXT | YES | NULL | Mandatory reason if rejected |
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
-**Indexes**: INDEX(`store_id`, `session_id`, `status`), INDEX(`store_id`, `kind`)
+**Indexes**: INDEX(`store_id`, `opname_type`, `status`) (`idx_resolutions_store_type_status`), INDEX(`session_id`) (`idx_resolutions_session_id`)
 
 ---
 
 ## Table: `opname_reference_lines`
 
-Polymorphic supporting documents for non-imprest opname sessions (e.g. POS register Z-Reports and bank cash deposits for KAS_BESAR, or float tracking).
+Polymorphic supporting documents for non-imprest opname sessions (e.g. POS register Z-Reports and bank cash deposits for KAS_BESAR, consignment tracking for ACTIVE_SELLING, serial ranges for GIFT_VOUCHER).
 
 | Column | Type | Nullable | Default | Description |
 |---|---|:---:|:---:|---|
 | `id` | VARCHAR(32) | NO | CUID | PK |
 | `session_id` | VARCHAR(32) | NO | — | FK → `cash_opname_sessions.id` (CASCADE) |
-| `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
-| `line_type` | VARCHAR(30) | NO | — | `Z_REPORT`, `BANK_DEPOSIT`, `FLOAT_INITIAL`, `FLOAT_RETURN` |
-| `reference_number` | VARCHAR(100) | NO | — | Z-Report Number, Register No, Slip No |
+| `line_type` | VARCHAR(50) | NO | — | `Z_REPORT`, `BANK_DEPOSIT`, `PAYOUT`, `STOCK_OPENING`, `STOCK_RECEIVED`, `STOCK_USED`, `STOCK_DAMAGED`, `CONSIGNMENT_SALES`, `EVENT_EXPENSE`, `STORE_REMITTANCE`, `SERIAL_RANGE` |
+| `reference_number` | VARCHAR(100) | YES | NULL | Z-Report Number, Register No, Slip No |
+| `quantity` | INTEGER | NO | 0 | Unit quantity (items/vouchers/stamps) |
 | `amount_cents` | INTEGER | NO | 0 | Amount in cents |
 | `proof_attachment_url` | VARCHAR(255) | YES | NULL | Photo of physical receipt/slip |
 | `notes` | TEXT | YES | NULL | Extra details (e.g., POS terminal name) |
+| `meta_json` | TEXT/JSON | YES | NULL | Optional structured JSON payload |
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
-**Indexes**: INDEX(`session_id`, `line_type`), INDEX(`store_id`, `line_type`)
+**Indexes**: INDEX(`session_id`), INDEX(`line_type`)
 
 ---
 

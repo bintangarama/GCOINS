@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class CreateVoucherAction
@@ -102,7 +103,9 @@ class CreateVoucherAction
 
             // If submitting, receipt image is mandatory
             if ($isSubmit && empty($voucher->receipt_image_url)) {
-                throw new InvalidArgumentException('Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.');
+                throw ValidationException::withMessages([
+                    'receipt_image' => 'Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.',
+                ]);
             }
 
             // Audit log

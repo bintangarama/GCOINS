@@ -108,17 +108,20 @@ erDiagram
         varchar status
         varchar created_by_id FK
         varchar approved_by_id FK
+        datetime approved_at
+        text rejection_reason
     }
 
     opname_reference_lines {
         varchar id PK
         varchar session_id FK
-        varchar store_id FK
         varchar line_type
         varchar reference_number
+        integer quantity
         integer amount_cents
         varchar proof_attachment_url
         text notes
+        json meta_json
     }
 
     opname_item_counts {
@@ -227,11 +230,15 @@ erDiagram
 | stores | cash_opname_sessions | 1:N | RESTRICT |
 | stores | petty_cash_vouchers | 1:N | RESTRICT |
 | stores | bri_fund_postings | 1:N | RESTRICT |
+| stores | variance_resolutions | 1:N | CASCADE |
 | cash_opname_sessions | opname_item_counts | 1:N | CASCADE |
 | cash_opname_sessions | bri_sub_ledgers | 1:1 | CASCADE |
+| cash_opname_sessions | variance_resolutions | 1:N | CASCADE |
+| cash_opname_sessions | opname_reference_lines | 1:N | CASCADE |
 | opname_item_definitions | opname_item_counts | 1:N | RESTRICT |
 | bri_sub_ledgers | bri_custom_allocations | 1:N | CASCADE |
 | users | petty_cash_vouchers | 1:N (requester) | RESTRICT |
 | users | cash_opname_sessions | 1:N (creator) | RESTRICT |
 | users | bri_fund_postings | 1:N (creator) | RESTRICT |
+| users | variance_resolutions | 1:N (creator) | RESTRICT |
 | users | notifications | 1:N | CASCADE |

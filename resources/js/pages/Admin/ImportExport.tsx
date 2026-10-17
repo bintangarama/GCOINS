@@ -15,6 +15,8 @@ import {
     FileUp,
     RefreshCw,
     Info,
+    Tags,
+    BookOpenCheck,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -27,7 +29,7 @@ interface ImportExportProps {
     store?: { id: string; code: string; name: string } | null;
 }
 
-type ImportType = 'users' | 'vouchers' | 'bri-postings';
+type ImportType = 'users' | 'vouchers' | 'bri-postings' | 'categories';
 
 interface PreviewRow {
     row_num: number;
@@ -249,6 +251,50 @@ export default function ImportExportIndex({ store }: ImportExportProps) {
                                 </a>
                             </CardContent>
                         </Card>
+
+                        {/* Petty Cash Categories Export */}
+                        <Card className="hover:border-border/80 transition-colors">
+                            <CardHeader className="pb-3">
+                                <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1">
+                                    <Tags className="w-5 h-5" />
+                                </div>
+                                <CardTitle className="text-base text-foreground">Master Kategori Kas Kecil</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Unduh daftar pos beban kas kecil (Kode beban, nama kategori, lingkup Global/Toko, dan status aktif).
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-0 flex items-center gap-2">
+                                <a
+                                    href="/admin/import-export/export/categories"
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition-colors"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                    <span>Unduh Excel (.xlsx)</span>
+                                </a>
+                            </CardContent>
+                        </Card>
+
+                        {/* Petty Cash Settlement Recaps Export */}
+                        <Card className="hover:border-border/80 transition-colors">
+                            <CardHeader className="pb-3">
+                                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1">
+                                    <BookOpenCheck className="w-5 h-5" />
+                                </div>
+                                <CardTitle className="text-base text-foreground">Daftar Rekap Kas Kecil (KKCL)</CardTitle>
+                                <CardDescription className="text-xs">
+                                    Unduh riwayat arsip seluruh dokumen rekapitulasi settlement pengeluaran kas kecil beserta nomor invoice KKCL.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-0 flex items-center gap-2">
+                                <a
+                                    href="/admin/import-export/export/settlements"
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" />
+                                    <span>Unduh Excel (.xlsx)</span>
+                                </a>
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 
@@ -283,6 +329,7 @@ export default function ImportExportIndex({ store }: ImportExportProps) {
                                         >
                                             <option value="users">Data Pegawai / Pengguna (Users)</option>
                                             <option value="vouchers">Data Historis Voucher Bon Kas Kecil</option>
+                                            <option value="categories">Data Master Kategori Kas Kecil</option>
                                             <option value="bri-postings">Data Historis Mutasi Bank BRI</option>
                                         </select>
                                     </div>

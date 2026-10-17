@@ -6,6 +6,7 @@ use App\Models\PettyCashVoucher;
 use App\Models\Store;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\Export;
+use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -18,6 +19,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class VoucherRecapExport implements Export, WithEvents, WithTitle
 {
+    use Exportable;
+
     public const ACCOUNTING_FORMAT = '"Rp "#,##0;("Rp "#,##0);"Rp "-';
 
     /**
@@ -65,12 +68,13 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
         $sheet->getColumnDimension('D')->setWidth(22);
         $sheet->getColumnDimension('E')->setWidth(14);
         $sheet->getColumnDimension('F')->setWidth(30);
-        $sheet->getColumnDimension('G')->setWidth(16);
+        $sheet->getColumnDimension('G')->setWidth(18);
         $sheet->getColumnDimension('H')->setWidth(18);
         $sheet->getColumnDimension('I')->setWidth(16);
         $sheet->getColumnDimension('J')->setWidth(18);
         $sheet->getColumnDimension('K')->setWidth(18);
         $sheet->getColumnDimension('L')->setWidth(20);
+        $sheet->getColumnDimension('M')->setWidth(26);
 
         $store = Store::find($this->storeId);
         $storeName = $store?->name ?? 'Gramedia Store';
@@ -78,12 +82,12 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
 
         // Title Block
         $sheet->setCellValue('A1', 'REKAPITULASI VOUCHER BON KAS KECIL');
-        $sheet->mergeCells('A1:L1');
+        $sheet->mergeCells('A1:M1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         $sheet->setCellValue('A2', "UNIT TOKO: {$storeName} ({$storeCode})");
-        $sheet->mergeCells('A2:L2');
+        $sheet->mergeCells('A2:M2');
         $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(10)->setColor(new Color('475569'));
         $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
@@ -94,7 +98,7 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
         $category = $this->filters['category'] ?? 'SEMUA';
 
         $sheet->setCellValue('A4', "Periode: {$dateFrom} s/d {$dateTo} | Status: {$status} | Kategori: {$category}");
-        $sheet->mergeCells('A4:L4');
+        $sheet->mergeCells('A4:M4');
         $sheet->getStyle('A4')->getFont()->setItalic(true)->setSize(9);
 
         // Header Table
@@ -106,28 +110,28 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
             'D' => 'Nama Pemohon',
             'E' => 'NIK Pemohon',
             'F' => 'Keperluan',
-            'G' => 'Kategori',
+            'G' => 'Kategori Beban',
             'H' => 'Nominal (Rp)',
             'I' => 'Status',
             'J' => 'Tgl Pencairan',
-            'J' => 'Tgl Pencairan',
             'K' => 'Tgl Selesai',
             'L' => 'Disetujui Oleh',
+            'M' => 'No. Rekap (KKCL)',
         ];
 
         foreach ($headers as $col => $text) {
             $sheet->setCellValue("{$col}{$row}", $text);
         }
 
-        $sheet->getStyle("A{$row}:L{$row}")->getFont()->setBold(true)->setSize(9);
-        $sheet->getStyle("A{$row}:L{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('E2E8F0');
-        $sheet->getStyle("A{$row}:L{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("A{$row}:L{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("A{$row}:M{$row}")->getFont()->setBold(true)->setSize(9);
+        $sheet->getStyle("A{$row}:M{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('E2E8F0');
+        $sheet->getStyle("A{$row}:M{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("A{$row}:M{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $row++;
 
         // Query Vouchers
         $query = PettyCashVoucher::where('store_id', $this->storeId)
-            ->with(['requester', 'approvedBy', 'disbursedBy'])
+            ->with(['requester', 'approvedBy', 'disbursedBy', 'settlement'])
             ->latest('created_at');
 
         if (! empty($this->filters['status']) && $this->filters['status'] !== 'ALL') {
@@ -171,6 +175,7 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
                 $sheet->setCellValue("J{$row}", $v->disbursed_at ? $v->disbursed_at->format('d/m/Y H:i') : '-');
                 $sheet->setCellValue("K{$row}", $v->settled_at ? $v->settled_at->format('d/m/Y H:i') : '-');
                 $sheet->setCellValue("L{$row}", $v->approvedBy?->name ?? '-');
+                $sheet->setCellValue("M{$row}", $v->settlement?->settlement_number ?? '-');
 
                 $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("C{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -180,9 +185,10 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
                 $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("J{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("K{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("M{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                $sheet->getStyle("A{$row}:L{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-                $sheet->getStyle("A{$row}:L{$row}")->getFont()->setSize(9);
+                $sheet->getStyle("A{$row}:M{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                $sheet->getStyle("A{$row}:M{$row}")->getFont()->setSize(9);
                 $row++;
             }
             $endDataRow = $row - 1;
@@ -192,10 +198,10 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
             $sheet->setCellValue("H{$row}", "=SUM(H{$startDataRow}:H{$endDataRow})");
         } else {
             $sheet->setCellValue("A{$row}", 'Tidak ada data voucher sesuai kriteria filter.');
-            $sheet->mergeCells("A{$row}:L{$row}");
+            $sheet->mergeCells("A{$row}:M{$row}");
             $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("A{$row}:L{$row}")->getFont()->setItalic(true)->setSize(9);
-            $sheet->getStyle("A{$row}:L{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle("A{$row}:M{$row}")->getFont()->setItalic(true)->setSize(9);
+            $sheet->getStyle("A{$row}:M{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             $row++;
 
             $sheet->setCellValue("G{$row}", 'TOTAL NOMINAL:');
@@ -206,8 +212,8 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
         $sheet->getStyle("G{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode(self::ACCOUNTING_FORMAT);
         $sheet->getStyle("H{$row}")->getFont()->setBold(true)->setSize(10);
-        $sheet->getStyle("A{$row}:L{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('E2E8F0');
-        $sheet->getStyle("A{$row}:L{$row}")->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN);
-        $sheet->getStyle("A{$row}:L{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_DOUBLE);
+        $sheet->getStyle("A{$row}:M{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('E2E8F0');
+        $sheet->getStyle("A{$row}:M{$row}")->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("A{$row}:M{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_DOUBLE);
     }
 }

@@ -15,6 +15,7 @@ class PettyCashVoucher extends Model
 
     protected $fillable = [
         'store_id',
+        'settlement_id',
         'voucher_number',
         'requester_id',
         'amount_cents',
@@ -70,6 +71,11 @@ class PettyCashVoucher extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function settlement(): BelongsTo
+    {
+        return $this->belongsTo(PettyCashSettlement::class, 'settlement_id');
     }
 
     public function requester(): BelongsTo

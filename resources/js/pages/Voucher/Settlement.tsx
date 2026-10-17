@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     CheckCircle2,
     DollarSign,
     Layers,
     Receipt,
     Eye,
+    FileSpreadsheet,
+    History,
+    ArrowRight,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -31,6 +34,7 @@ interface SettlementProps {
 }
 
 export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
+    const { flash } = usePage<{ flash: { settlement_id?: string; settlement_number?: string } }>().props;
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,16 +88,49 @@ export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
                     icon={Layers}
                     description="Pilih voucher tercairkan (DISBURSED) yang dananya telah diganti untuk dikeluarkan dari K_bon"
                 >
-                    <Button
-                        size="sm"
-                        disabled={selectedIds.length === 0 || isSubmitting}
-                        onClick={handleBatchSettle}
-                        className="gap-2 shadow-xs"
-                    >
-                        <CheckCircle2 className="size-4" />
-                        Selesaikan Terpilih ({selectedIds.length})
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Link href="/vouchers/settlements">
+                            <Button variant="outline" size="sm" className="gap-2 shadow-xs">
+                                <History className="size-4" />
+                                Riwayat Rekap
+                            </Button>
+                        </Link>
+                        <Button
+                            size="sm"
+                            disabled={selectedIds.length === 0 || isSubmitting}
+                            onClick={handleBatchSettle}
+                            className="gap-2 shadow-xs"
+                        >
+                            <CheckCircle2 className="size-4" />
+                            Selesaikan Terpilih ({selectedIds.length})
+                        </Button>
+                    </div>
                 </PageHeader>
+
+                {/* Banner when a new settlement was just created */}
+                {flash?.settlement_id && (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="size-5" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                                    Rekap Pengeluaran Kas Kecil Berhasil Dibuat
+                                </h4>
+                                <p className="text-xs text-emerald-700 dark:text-emerald-300 font-mono">
+                                    No. Rekap: {flash.settlement_number || 'Dokumen Baru'}
+                                </p>
+                            </div>
+                        </div>
+                        <Link href={`/vouchers/settlements/${flash.settlement_id}`}>
+                            <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                Buka & Cetak Rekap Matriks
+                                <ArrowRight className="size-4" />
+                            </Button>
+                        </Link>
+                    </div>
+                )}
 
                 {/* Info Card & Selected Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

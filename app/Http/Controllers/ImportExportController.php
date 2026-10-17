@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Import\ImportBriPostingsAction;
+use App\Actions\Import\ImportCategoriesAction;
 use App\Actions\Import\ImportUsersAction;
 use App\Actions\Import\ImportVouchersAction;
 use App\Exports\AuditLogsExport;
 use App\Exports\BriPostingSummaryExport;
+use App\Exports\PettyCashCategoriesExport;
+use App\Exports\PettyCashSettlementsExport;
 use App\Exports\Templates\BriPostingsImportTemplate;
+use App\Exports\Templates\CategoriesImportTemplate;
 use App\Exports\Templates\UsersImportTemplate;
 use App\Exports\Templates\VouchersImportTemplate;
 use App\Exports\UsersExport;
@@ -67,16 +71,60 @@ class ImportExportController extends Controller
             abort(403);
         }
 
-        $storeId = $user->store_id ?? Store::first()->id;
+        $storeId = $user->role !== 'SYSTEM_ADMIN' ? $user->store_id : ($request->query('store_id') ?? $user->store_id ?? Store::first()->id);
         $fileName = 'Rekap-Voucher-'.now()->format('Ymd-His').'.xlsx';
 
-        return (new VoucherRecapExport(
+        $filters = array_filter([
+            'status' => $request->query('status'),
+            'category' => $request->query('category'),
+            'date_from' => $request->query('start_date') ?? $request->query('date_from'),
+            'date_to' => $request->query('end_date') ?? $request->query('date_to'),
+            'search' => $request->query('search'),
+        ]);
+
+        return (new VoucherRecapExport($storeId, $filters))->download($fileName);
+    }
+
+    /**
+     * Export master petty cash categories as Excel.
+     */
+    public function exportCategories(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'])) {
+            abort(403);
+        }
+
+        $storeId = $user->role !== 'SYSTEM_ADMIN' ? $user->store_id : $request->query('store_id');
+        $fileName = 'Data-Kategori-Kas-Kecil-'.now()->format('Ymd-His').'.xlsx';
+
+        return (new PettyCashCategoriesExport(
             storeId: $storeId,
-            status: $request->query('status'),
-            category: $request->query('category'),
-            startDate: $request->query('start_date'),
-            endDate: $request->query('end_date')
+            scope: $request->query('scope'),
+            isActive: $request->has('is_active') ? $request->boolean('is_active') : null
         ))->download($fileName);
+    }
+
+    /**
+     * Export settlement recaps (KKCL list) as Excel.
+     */
+    public function exportSettlements(Request $request): BinaryFileResponse
+    {
+        $user = $request->user();
+        if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'])) {
+            abort(403);
+        }
+
+        $storeId = $user->role !== 'SYSTEM_ADMIN' ? $user->store_id : $request->query('store_id');
+        $fileName = 'Daftar-Rekap-Kas-Kecil-'.now()->format('Ymd-His').'.xlsx';
+
+        $filters = array_filter([
+            'date_from' => $request->query('start_date') ?? $request->query('date_from'),
+            'date_to' => $request->query('end_date') ?? $request->query('date_to'),
+            'search' => $request->query('search'),
+        ]);
+
+        return (new PettyCashSettlementsExport($storeId, $filters))->download($fileName);
     }
 
     /**
@@ -119,12 +167,16 @@ class ImportExportController extends Controller
     /**
      * Download Excel import template.
      */
-    public function downloadTemplate(string $type): BinaryFileResponse
+    public function downloadTemplate(string $type, Request $request): BinaryFileResponse
     {
+        $user = $request->user();
+        $storeId = $user?->store_id;
+
         return match ($type) {
             'users' => (new UsersImportTemplate)->download('Template-Import-Users.xlsx'),
-            'vouchers' => (new VouchersImportTemplate)->download('Template-Import-Vouchers.xlsx'),
+            'vouchers' => (new VouchersImportTemplate($storeId))->download('Template-Import-Vouchers.xlsx'),
             'bri-postings' => (new BriPostingsImportTemplate)->download('Template-Import-Mutasi-BRI.xlsx'),
+            'categories' => (new CategoriesImportTemplate)->download('Template-Import-Kategori.xlsx'),
             default => abort(404, __('Template tidak ditemukan.')),
         };
     }
@@ -136,7 +188,8 @@ class ImportExportController extends Controller
         Request $request,
         ImportUsersAction $usersAction,
         ImportVouchersAction $vouchersAction,
-        ImportBriPostingsAction $briAction
+        ImportBriPostingsAction $briAction,
+        ImportCategoriesAction $categoriesAction
     ): JsonResponse {
         $user = $request->user();
         if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'])) {
@@ -144,7 +197,7 @@ class ImportExportController extends Controller
         }
 
         $request->validate([
-            'type' => ['required', 'string', 'in:users,vouchers,bri-postings'],
+            'type' => ['required', 'string', 'in:users,vouchers,bri-postings,categories'],
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'], // Max 5MB
         ], [
             'file.required' => __('File spreadsheet wajib diunggah.'),
@@ -162,6 +215,7 @@ class ImportExportController extends Controller
             'users' => $usersAction->preview($filePath, $store),
             'vouchers' => $vouchersAction->preview($filePath, $store),
             'bri-postings' => $briAction->preview($filePath, $store),
+            'categories' => $categoriesAction->preview($filePath, $store, $user),
         };
 
         return response()->json($result);
@@ -174,7 +228,8 @@ class ImportExportController extends Controller
         Request $request,
         ImportUsersAction $usersAction,
         ImportVouchersAction $vouchersAction,
-        ImportBriPostingsAction $briAction
+        ImportBriPostingsAction $briAction,
+        ImportCategoriesAction $categoriesAction
     ): RedirectResponse {
         $user = $request->user();
         if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'])) {
@@ -182,7 +237,7 @@ class ImportExportController extends Controller
         }
 
         $request->validate([
-            'type' => ['required', 'string', 'in:users,vouchers,bri-postings'],
+            'type' => ['required', 'string', 'in:users,vouchers,bri-postings,categories'],
             'valid_rows' => ['required', 'array', 'min:1'],
         ], [
             'valid_rows.required' => __('Tidak ada data valid yang dapat diimpor.'),
@@ -197,6 +252,7 @@ class ImportExportController extends Controller
             'users' => $usersAction->commit($validRows, $store, $user, $request->ip()),
             'vouchers' => $vouchersAction->commit($validRows, $store, $user, $request->ip()),
             'bri-postings' => $briAction->commit($validRows, $store, $user, $request->ip()),
+            'categories' => $categoriesAction->commit($validRows, $store, $user, $request->ip()),
         };
 
         return back()->with('success', __(':count data berhasil diimpor ke sistem.', ['count' => $count]));

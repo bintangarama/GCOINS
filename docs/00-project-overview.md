@@ -59,9 +59,9 @@ Includes:
 - Polymorphic Cash Opname Engine:
   - `KAS_KECIL` (Three Pockets Strategy: Safe Fisik + Bon Gantung + Net BRI Pooling)
   - `KAS_BESAR` (Cash Flow Turnover Strategy: Safe Fisik POS vs Z-Report + Opening Float - Setoran/DRO)
-  - `ACTIVE_SELLING` (Event / Mobile Bazar Cash Flow Turnover)
-  - `MATERAI` (Consignment Stock Strategy: Keping fisik vs Target Konsinyasi Pos/Vendor)
-  - `GIFT_VOUCHER` (Consignment Stock Strategy: Lembar fisik voucher vs Saldo Stok Toko)
+  - `ACTIVE_SELLING` (Consignment Strategy: Kas fisik bazar vs Modal Awal + Hasil Jual Konsinyasi - Biaya Event - Setor Toko)
+  - `MATERAI` (Stock Count Strategy: Keping fisik materai kondisi baik vs Saldo Buku Opening + Received - Used - Damaged)
+  - `GIFT_VOUCHER` (Serial Stock Strategy: Lembar fisik voucher vs Kartu Stok / Rentang Nomor Seri)
 - Dynamic Reference Lines (Z-Report, Modal Awal, Setoran Bank/DRO, Mutasi) & physical Z-Report photo proof
 - Precision Accounting: Outstanding Variance + Resolution Ledger (`REPLACED`, `WRITE_OFF`, `FOUND`) with tiered write-off approval (SS ≤ 1jt, SM > 1jt)
 - Modular Workspace UX (`<CountGrid>`, `<DailyClosingSwitcher>`, `<KasBesarForm>`, `<MobileApprovalCard>`) with numpad traversal, 800ms debounce autosave, and multi-tier image compression

@@ -9,7 +9,7 @@ use App\Models\PettyCashVoucher;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
+use Illuminate\Validation\ValidationException;
 
 class SubmitVoucherAction
 {
@@ -31,7 +31,9 @@ class SubmitVoucherAction
         }
 
         if (empty($voucher->receipt_image_url)) {
-            throw new InvalidArgumentException('Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.');
+            throw ValidationException::withMessages([
+                'receipt_image' => 'Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.',
+            ]);
         }
 
         return DB::transaction(function () use ($voucher, $actor, $ipAddress) {

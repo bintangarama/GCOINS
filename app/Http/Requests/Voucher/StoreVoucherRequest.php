@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Voucher;
 
+use App\Models\PettyCashCategory;
 use App\Models\PettyCashVoucher;
 use App\Models\StoreOpnameConfig;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,11 +27,20 @@ class StoreVoucherRequest extends FormRequest
             }
         }
 
+        $validCategories = PettyCashCategory::forStore($this->user()?->store_id)
+            ->active()
+            ->pluck('code')
+            ->merge(PettyCashVoucher::CATEGORIES)
+            ->unique()
+            ->all();
+
+        $isSubmit = (bool) $this->boolean('is_submit');
+
         return [
             'amount_cents' => ['required', 'integer', 'min:1', "max:{$imprestFundCents}"],
             'purpose' => ['required', 'string', 'max:255'],
-            'category' => ['required', Rule::in(PettyCashVoucher::CATEGORIES)],
-            'receipt_image' => ['nullable'],
+            'category' => ['required', 'string', Rule::in($validCategories)],
+            'receipt_image' => [$isSubmit ? 'required' : 'nullable'],
             'item_photo' => ['nullable'],
             'is_submit' => ['nullable', 'boolean'],
         ];
@@ -46,6 +56,7 @@ class StoreVoucherRequest extends FormRequest
             'purpose.max' => 'Keperluan maksimal 255 karakter.',
             'category.required' => 'Kategori pengeluaran wajib dipilih.',
             'category.in' => 'Kategori pengeluaran tidak valid.',
+            'receipt_image.required' => 'Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.',
         ];
     }
 }

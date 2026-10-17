@@ -178,3 +178,35 @@ test('Cannot create voucher with amount exceeding imprest fund', function () {
 
     $response->assertSessionHasErrors('amount_cents');
 });
+
+test('Submitting voucher directly without receipt photo fails with validation error', function () {
+    $this->actingAs($this->soaUser);
+
+    $response = $this->post('/vouchers', [
+        'amount_cents' => 12000000,
+        'purpose' => 'Konsumsi lembur tim audit',
+        'category' => 'OPERASIONAL',
+        'is_submit' => true,
+    ]);
+
+    $response->assertSessionHasErrors([
+        'receipt_image' => 'Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.',
+    ]);
+});
+
+test('Draft voucher can be created without receipt photo', function () {
+    $this->actingAs($this->soaUser);
+
+    $response = $this->post('/vouchers', [
+        'amount_cents' => 5000000,
+        'purpose' => 'Draft tanpa foto',
+        'category' => 'OPERASIONAL',
+        'is_submit' => false,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('petty_cash_vouchers', [
+        'purpose' => 'Draft tanpa foto',
+        'status' => PettyCashVoucher::STATUS_DRAFT,
+    ]);
+});

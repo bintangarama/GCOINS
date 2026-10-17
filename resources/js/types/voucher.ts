@@ -10,13 +10,20 @@ export type VoucherStatus =
     | 'REJECTED_REFUND_PENDING'
     | 'REFUNDED';
 
-export type VoucherCategory =
-    | 'OPERASIONAL'
-    | 'STRUK_KASIR'
-    | 'LOGISTIK'
-    | 'KONSUMSI'
-    | 'MAINTENANCE'
-    | 'LAINNYA';
+export type VoucherCategory = string;
+
+export interface PettyCashCategoryItem {
+    id?: string;
+    store_id?: string | null;
+    code: string;
+    name: string;
+    description?: string | null;
+    sort_order?: number;
+    is_active?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    store?: { id: string; name: string; code: string } | null;
+}
 
 export interface Attachment {
     id: string;
@@ -46,14 +53,36 @@ export interface AuditLog {
     created_at?: string;
 }
 
+export interface PettyCashSettlement {
+    id: string;
+    store_id: string;
+    settlement_number: string;
+    total_amount_cents: number;
+    status: string;
+    settled_by_id: string;
+    notes?: string | null;
+    created_at: string;
+    updated_at: string;
+    settled_by?: User | null;
+    store?: {
+        id: string;
+        name: string;
+        code: string;
+        address?: string | null;
+    } | null;
+    vouchers?: PettyCashVoucher[];
+    vouchers_count?: number;
+}
+
 export interface PettyCashVoucher {
     id: string;
     store_id: string;
+    settlement_id?: string | null;
     voucher_number: string;
     requester_id: string;
     amount_cents: number;
     purpose: string;
-    category: VoucherCategory;
+    category: string;
     status: VoucherStatus;
     receipt_image_url: string | null;
     item_photo_url: string | null;
@@ -69,12 +98,24 @@ export interface PettyCashVoucher {
     requester?: User;
     approved_by?: User;
     disbursed_by?: User;
+    settlement?: PettyCashSettlement | null;
     attachments?: Attachment[];
     audit_logs?: AuditLog[];
 }
 
 export interface PaginatedVouchers {
     data: PettyCashVoucher[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from?: number | null;
+    to?: number | null;
+    links: { url: string | null; label: string; active: boolean }[];
+}
+
+export interface PaginatedSettlements {
+    data: PettyCashSettlement[];
     current_page: number;
     last_page: number;
     per_page: number;

@@ -139,8 +139,8 @@ Sistem G-COINS mendukung 5 tipe cash count harian secara polimorfik tanpa skema 
 | Kas Kecil (Imprest) | `KAS_KECIL` | KKCL | `ThreePocketsReconciler` | Kantong 1 (Kas Fisik) + Kantong 2 (Bon Gantung) + Kantong 3 (Net BRI) |
 | Kas Besar (Turnover) | `KAS_BESAR` | KBSR | `CashFlowReconciler` | Fisik Brankas vs. (Saldo Awal + Register POS Z-Report - Setoran Bank) |
 | Kas Bazar / Event | `ACTIVE_SELLING` | AKSL | `ConsignmentReconciler` | Kas Fisik Bazar vs. (Modal Awal + Penjualan Tunai - Setoran Kasir) |
-| Bea Materai Toko | `MATERAI` | MTR | `StockCountReconciler` | Stok Fisik Materai (keping/lembar) vs. Saldo Buku Materai Toko |
-| Gift Voucher Gramedia | `GIFT_VOUCHER` | GVCH | `StockCountReconciler` | Stok Fisik Lembar Voucher Gramedia vs. Saldo Buku Voucher Toko |
+| Bea Materai Toko | `MATERAI` | MTR | `StockCountReconciler` | Stok Fisik Materai (keping/lembar kondisi baik) vs. Saldo Buku Materai Toko |
+| Gift Voucher Gramedia | `GIFT_VOUCHER` | GVCH | `SerialStockReconciler` | Stok Fisik Lembar Voucher Gramedia vs. Kartu Stok / Rentang Nomor Seri |
 
 ### Karakteristik Bersama Semua Tipe:
 - Menggunakan siklus workflow yang sama: `DRAFT` → `SUBMITTED` → `VERIFIED_SS` → `APPROVED`.

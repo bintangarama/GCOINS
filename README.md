@@ -8,8 +8,8 @@ Multi-store cash reconciliation web application for Gramedia retail stores. Auto
 
 | Layer | Technology |
 |---|---|
-| Backend | Laravel 13 (PHP 8.3+) |
-| Frontend | React 19 + TypeScript + Inertia.js v2 |
+| Backend | Laravel 13 (PHP 8.4) |
+| Frontend | React 19 + TypeScript + Inertia.js v3 |
 | UI | shadcn/ui + Tailwind CSS v4 |
 | Database | SQLite (WAL mode) |
 | Auth | Cookie-based session (24h TTL) |

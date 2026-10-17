@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Import\ImportBriPostingsAction;
+use App\Actions\Import\ImportCategoriesAction;
 use App\Actions\Import\ImportUsersAction;
 use App\Actions\Import\ImportVouchersAction;
 use App\Models\Store;
 use App\Models\User;
+use Database\Seeders\PettyCashCategorySeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Hash;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -12,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
+    $this->seed(PettyCashCategorySeeder::class);
 
     $this->store = Store::create([
         'code' => '10435',
@@ -147,9 +150,12 @@ test('import vouchers action preview validates data correctly', function () {
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->fromArray([
         ['NIK Pemohon', 'Nominal', 'Keperluan', 'Kategori', 'Tanggal', 'Status'],
-        ['SAC001', '50000', 'Beli Materai', 'OPERASIONAL', '2026-09-01', 'SETTLED'], // Valid
+        ['SAC001', '50000', 'Beli Materai', 'OPERASIONAL', '2026-09-01', 'SETTLED'], // Valid legacy
+        ['SAC001', '75000', 'Bensin Motor Toko', 'BBM_MOTOR', '2026-09-01', 'DISBURSED'], // Valid standard Karawang
+        ['SAC001', '120000', 'Beli Struk Kasir', 'KERTAS_FORMULIR', '2026-09-01', 'SETTLED'], // Valid standard
         ['NONEXIST', '50000', 'Beli Kertas', 'OPERASIONAL', '2026-09-01', 'SETTLED'], // Error: user not found
-        ['SAC001', '0', 'Beli Kopi', 'KONSUMSI', '2026-09-01', 'SETTLED'], // Error: amount 0
+        ['SAC001', '0', 'Beli Kopi', 'KEP_RT', '2026-09-01', 'SETTLED'], // Error: amount 0
+        ['SAC001', '25000', 'Beli Snack', 'KATEGORI_TIDAK_ADA', '2026-09-01', 'SETTLED'], // Error: invalid category
     ]);
 
     $tempFile = tempnam(sys_get_temp_dir(), 'test_vch_').'.xlsx';
@@ -158,8 +164,62 @@ test('import vouchers action preview validates data correctly', function () {
     $action = app(ImportVouchersAction::class);
     $result = $action->preview($tempFile, $this->store);
 
-    expect(count($result['valid_rows']))->toBe(1);
+    expect(count($result['valid_rows']))->toBe(3);
+    expect(count($result['error_rows']))->toBe(3);
+
+    if (file_exists($tempFile)) {
+        unlink($tempFile);
+    }
+});
+
+test('can download categories template and export categories and settlements', function () {
+    $responseCatTemplate = $this->actingAs($this->sac)->get('/admin/import-export/template/categories');
+    $responseCatTemplate->assertStatus(200);
+
+    $responseCatExport = $this->actingAs($this->sac)->get('/admin/import-export/export/categories');
+    $responseCatExport->assertStatus(200);
+
+    $responseSettlementExport = $this->actingAs($this->sac)->get('/admin/import-export/export/settlements');
+    $responseSettlementExport->assertStatus(200);
+
+    $responseVouchersExport = $this->actingAs($this->sac)->get('/admin/import-export/export/vouchers');
+    $responseVouchersExport->assertStatus(200);
+});
+
+test('import categories action preview and commit creates store categories and audit log', function () {
+    $spreadsheet = new Spreadsheet;
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->fromArray([
+        ['Kode', 'Nama', 'Deskripsi', 'Urutan', 'Lingkup'],
+        ['RETRIBUSI_MALL', 'Retribusi Kebersihan Mall', 'Iuran kebersihan lingkungan', '15', 'TOKO'],
+        ['', 'Tanpa Kode', 'Deskripsi', '16', 'TOKO'], // Error: kode empty
+        ['DUPLIKAT', 'Duplikat 1', 'Deskripsi', '17', 'TOKO'],
+        ['DUPLIKAT', 'Duplikat 2', 'Deskripsi', '18', 'TOKO'], // Error: duplicate
+    ]);
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'test_cat_').'.xlsx';
+    (new Xlsx($spreadsheet))->save($tempFile);
+
+    $action = app(ImportCategoriesAction::class);
+    $result = $action->preview($tempFile, $this->store, $this->sac);
+
+    expect(count($result['valid_rows']))->toBe(2);
     expect(count($result['error_rows']))->toBe(2);
+
+    $count = $action->commit($result['valid_rows'], $this->store, $this->sac);
+    expect($count)->toBe(2);
+
+    $this->assertDatabaseHas('petty_cash_categories', [
+        'store_id' => $this->store->id,
+        'code' => 'RETRIBUSI_MALL',
+        'name' => 'Retribusi Kebersihan Mall',
+    ]);
+
+    $this->assertDatabaseHas('audit_logs', [
+        'store_id' => $this->store->id,
+        'entity_name' => 'PettyCashCategory',
+        'action' => 'IMPORT_CATEGORIES',
+    ]);
 
     if (file_exists($tempFile)) {
         unlink($tempFile);

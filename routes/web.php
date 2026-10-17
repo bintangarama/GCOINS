@@ -7,6 +7,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ImportExportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OpnameController;
+use App\Http\Controllers\PettyCashCategoryController;
+use App\Http\Controllers\PettyCashSettlementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoreSettingsController;
 use App\Http\Controllers\UserController;
@@ -50,6 +52,9 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::get('pending', [VoucherController::class, 'pending'])->name('pending');
         Route::get('settlement', [VoucherController::class, 'settlement'])->name('settlement');
         Route::post('batch-settle', [VoucherController::class, 'batchSettle'])->name('batch-settle');
+        Route::get('settlements', [PettyCashSettlementController::class, 'index'])->name('settlements.index');
+        Route::get('settlements/{settlement}', [PettyCashSettlementController::class, 'show'])->name('settlements.show');
+        Route::get('settlements/{settlement}/export-excel', [PettyCashSettlementController::class, 'exportExcel'])->name('settlements.export-excel');
         Route::get('export', [VoucherController::class, 'export'])->name('export');
         Route::get('{voucher}', [VoucherController::class, 'show'])->name('show');
         Route::delete('{voucher}', [VoucherController::class, 'destroy'])->name('destroy');
@@ -112,6 +117,12 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::get('store-settings', [StoreSettingsController::class, 'show'])->name('store-settings.show');
         Route::put('store-settings', [StoreSettingsController::class, 'update'])->name('store-settings.update');
 
+        // Petty Cash Categories
+        Route::get('categories', [PettyCashCategoryController::class, 'index'])->name('categories.index');
+        Route::post('categories', [PettyCashCategoryController::class, 'store'])->name('categories.store');
+        Route::put('categories/{category}', [PettyCashCategoryController::class, 'update'])->name('categories.update');
+        Route::post('categories/{category}/toggle-status', [PettyCashCategoryController::class, 'toggleStatus'])->name('categories.toggle-status');
+
         // Audit Logs
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
@@ -121,6 +132,8 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
             Route::get('/', [ImportExportController::class, 'index'])->name('index');
             Route::get('export/users', [ImportExportController::class, 'exportUsers'])->name('export.users');
             Route::get('export/vouchers', [ImportExportController::class, 'exportVouchers'])->name('export.vouchers');
+            Route::get('export/categories', [ImportExportController::class, 'exportCategories'])->name('export.categories');
+            Route::get('export/settlements', [ImportExportController::class, 'exportSettlements'])->name('export.settlements');
             Route::get('export/bri-postings', [ImportExportController::class, 'exportBriPostings'])->name('export.bri-postings');
             Route::get('export/audit-logs', [ImportExportController::class, 'exportAuditLogs'])->name('export.audit-logs');
             Route::get('template/{type}', [ImportExportController::class, 'downloadTemplate'])->name('template');

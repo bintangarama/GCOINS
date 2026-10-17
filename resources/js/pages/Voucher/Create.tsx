@@ -17,18 +17,23 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { MoneyInput } from '@/components/shared/MoneyInput';
 import { ImageUploader } from '@/components/shared/ImageUploader';
 import { formatMoney } from '@/lib/money';
-import { VoucherCategory } from '@/types/voucher';
+import { PettyCashCategoryItem } from '@/types/voucher';
 
 interface CreateVoucherProps {
-    categories: VoucherCategory[];
+    categories: (string | PettyCashCategoryItem)[];
     imprestFundCents: number;
 }
 
 export default function CreateVoucherPage({ categories, imprestFundCents }: CreateVoucherProps) {
+    const normalizedCategories = categories.map((c) =>
+        typeof c === 'string' ? { code: c, name: c } : c
+    );
+    const initialCategory = normalizedCategories[0]?.code || 'BDL';
+
     const { data, setData, post, processing, errors, transform } = useForm({
         amount_cents: 0,
         purpose: '',
-        category: 'OPERASIONAL' as VoucherCategory,
+        category: initialCategory,
         receipt_image: null as File | null,
         item_photo: null as File | null,
         is_submit: false,
@@ -100,15 +105,16 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                     </Label>
                                     <Select
                                         value={data.category}
-                                        onValueChange={(val) => setData('category', val as VoucherCategory)}
+                                        onValueChange={(val) => setData('category', val)}
                                     >
                                         <SelectTrigger id="category" className="h-9 text-xs">
                                             <SelectValue placeholder="Pilih Kategori" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {categories.map((cat) => (
-                                                <SelectItem key={cat} value={cat} className="text-xs font-mono">
-                                                    {cat}
+                                            {normalizedCategories.map((cat) => (
+                                                <SelectItem key={cat.code} value={cat.code} className="text-xs">
+                                                    <span className="font-medium">{cat.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-mono ml-1.5">({cat.code})</span>
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -151,8 +157,8 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                             <CardContent className="space-y-6">
                                 <ImageUploader
                                     label="Foto Kuitansi / Struk Resmi"
-                                    description="Wajib untuk pengajuan langsung ke verifikator"
-                                    required={data.is_submit}
+                                    description="Wajib untuk pengajuan langsung ke verifikator (opsional untuk draft)"
+                                    required={true}
                                     error={errors.receipt_image}
                                     onChange={(file) => setData('receipt_image', file)}
                                 />
@@ -179,7 +185,9 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                 <div className="space-y-2 border-b pb-3">
                                     <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Kategori</span>
-                                        <span className="font-mono font-medium">{data.category}</span>
+                                        <span className="font-medium text-right max-w-[160px] truncate" title={data.category}>
+                                            {normalizedCategories.find((c) => c.code === data.category)?.name || data.category}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Bukti Struk</span>

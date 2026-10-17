@@ -22,6 +22,7 @@ import {
     Sun,
     Moon,
     Monitor,
+    Tags,
 } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
@@ -92,7 +93,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     label: 'Daftar Bon',
                     href: '/vouchers',
                     icon: Receipt,
-                    active: url === '/vouchers' || (url.startsWith('/vouchers') && !['/vouchers/create', '/vouchers/pending', '/vouchers/settlement'].includes(url)),
+                    active: url === '/vouchers' || (url.startsWith('/vouchers') && !['/vouchers/create', '/vouchers/pending', '/vouchers/settlement'].includes(url) && !url.startsWith('/vouchers/settlements')),
                     show: hasRole('SOA', 'SS', 'SAC', 'SM'),
                 },
                 {
@@ -115,6 +116,13 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     icon: Layers,
                     active: url === '/vouchers/settlement',
                     show: hasRole('SAC'),
+                },
+                {
+                    label: 'Riwayat Rekap',
+                    href: '/vouchers/settlements',
+                    icon: FileText,
+                    active: url.startsWith('/vouchers/settlements'),
+                    show: hasRole('SAC', 'SM', 'SS', 'SYSTEM_ADMIN'),
                 },
             ],
         },
@@ -186,6 +194,13 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     icon: Settings,
                     active: url.startsWith('/admin/store-settings'),
                     show: hasRole('SM', 'SYSTEM_ADMIN'),
+                },
+                {
+                    label: 'Kategori Kas Kecil',
+                    href: '/admin/categories',
+                    icon: Tags,
+                    active: url.startsWith('/admin/categories'),
+                    show: hasRole('SAC', 'SM', 'SYSTEM_ADMIN'),
                 },
                 {
                     label: 'Audit Log',

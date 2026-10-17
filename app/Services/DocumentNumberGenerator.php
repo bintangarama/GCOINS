@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CashOpnameSession;
+use App\Models\PettyCashSettlement;
 use App\Models\PettyCashVoucher;
 use App\Models\Store;
 use Carbon\CarbonInterface;
@@ -105,6 +106,41 @@ class DocumentNumberGenerator
             $nextSeq = 1;
             if ($latestSession) {
                 $parts = explode('/', $latestSession->opname_number);
+                $currentSeq = (int) ($parts[0] ?? 0);
+                $nextSeq = $currentSeq + 1;
+            }
+
+            $seqPadded = str_pad((string) $nextSeq, 3, '0', STR_PAD_LEFT);
+
+            return "{$seqPadded}{$prefixPattern}";
+        });
+    }
+
+    /**
+     * Generate next settlement recap number for a store.
+     * Format: {SEQ}/{TYPE_CODE}/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}
+     * Example: 026/KKCL/GAM435/X/2026
+     */
+    public function generateSettlementNumber(Store $store, ?CarbonInterface $date = null, string $typeCode = 'KKCL'): string
+    {
+        $date = $date ?? now();
+        $month = $date->month;
+        $year = $date->year;
+        $romanMonth = self::toRomanMonth($month);
+        $storeCode = $store->code;
+
+        $prefixPattern = "/{$typeCode}/{$storeCode}/{$romanMonth}/{$year}";
+
+        return DB::transaction(function () use ($store, $prefixPattern) {
+            $latestSettlement = PettyCashSettlement::withoutGlobalScopes()
+                ->where('store_id', $store->id)
+                ->where('settlement_number', 'like', "%{$prefixPattern}")
+                ->orderByRaw('CAST(SUBSTR(settlement_number, 1, INSTR(settlement_number, "/") - 1) AS INTEGER) DESC')
+                ->first();
+
+            $nextSeq = 1;
+            if ($latestSettlement) {
+                $parts = explode('/', $latestSettlement->settlement_number);
                 $currentSeq = (int) ($parts[0] ?? 0);
                 $nextSeq = $currentSeq + 1;
             }
