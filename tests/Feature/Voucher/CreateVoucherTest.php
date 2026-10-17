@@ -243,3 +243,13 @@ test('Voucher defaults receipt_date to today when not provided', function () {
     expect($voucher)->not->toBeNull()
         ->and($voucher->receipt_date?->format('Y-m-d'))->toBe(now()->toDateString());
 });
+
+test('Voucher normalizes legacy localhost receipt_image_url to relative path', function () {
+    $voucher = new PettyCashVoucher([
+        'receipt_image_url' => 'http://localhost:8000/storage/vouchers/receipt_123.webp',
+        'item_photo_url' => 'http://127.0.0.1/storage/vouchers/item_456.webp',
+    ]);
+
+    expect($voucher->receipt_image_url)->toBe('/storage/vouchers/receipt_123.webp')
+        ->and($voucher->item_photo_url)->toBe('/storage/vouchers/item_456.webp');
+});

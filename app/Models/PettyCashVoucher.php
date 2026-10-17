@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\HasCuid2;
 use App\Models\Concerns\HasStoreScope;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,40 @@ class PettyCashVoucher extends Model
             'settled_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    protected function receiptImageUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string {
+                if (! $value) {
+                    return null;
+                }
+
+                if (preg_match('#^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(/storage/.*)$#', $value, $matches)) {
+                    return $matches[1];
+                }
+
+                return $value;
+            }
+        );
+    }
+
+    protected function itemPhotoUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string {
+                if (! $value) {
+                    return null;
+                }
+
+                if (preg_match('#^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(/storage/.*)$#', $value, $matches)) {
+                    return $matches[1];
+                }
+
+                return $value;
+            }
+        );
     }
 
     public const STATUS_DRAFT = 'DRAFT';
