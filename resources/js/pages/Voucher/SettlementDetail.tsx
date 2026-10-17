@@ -209,7 +209,7 @@ export default function SettlementDetailPage({
                                                     className="divide-x divide-slate-200 hover:bg-slate-50/60 print:hover:bg-transparent"
                                                 >
                                                     <td className="py-1 px-2 text-center text-slate-600 font-mono whitespace-nowrap">
-                                                        {formatDateShort(voucher.disbursed_at || voucher.created_at)}
+                                                        {formatDateShort(voucher.receipt_date || voucher.disbursed_at || voucher.created_at)}
                                                     </td>
                                                     <td className="py-1 px-2 text-slate-800 whitespace-nowrap max-w-[150px] truncate" title={employeeIdStr}>
                                                         {employeeIdStr}

@@ -290,7 +290,7 @@ export default function VoucherIndexPage({
                                                 {v.voucher_number}
                                             </DataTableCell>
                                             <DataTableCell className="text-muted-foreground whitespace-nowrap">
-                                                {new Date(v.created_at).toLocaleDateString('id-ID', {
+                                                {new Date(v.receipt_date || v.created_at).toLocaleDateString('id-ID', {
                                                     day: '2-digit',
                                                     month: 'short',
                                                     year: 'numeric',

@@ -19,6 +19,7 @@ class PettyCashVoucher extends Model
         'voucher_number',
         'requester_id',
         'amount_cents',
+        'receipt_date',
         'purpose',
         'category',
         'status',
@@ -36,6 +37,7 @@ class PettyCashVoucher extends Model
     {
         return [
             'amount_cents' => 'integer',
+            'receipt_date' => 'date',
             'approved_at' => 'datetime',
             'disbursed_at' => 'datetime',
             'settled_at' => 'datetime',

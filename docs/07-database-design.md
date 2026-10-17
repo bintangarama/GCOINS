@@ -306,6 +306,7 @@ Document header for petty cash reimbursement recaps (KKCL) aggregating disbursed
 | `voucher_number` | VARCHAR(50) | NO | — | `024/KKCL/10435/IX/2026`. UNIQUE. |
 | `requester_id` | VARCHAR(32) | NO | — | FK → `users.id` |
 | `amount_cents` | INTEGER | NO | — | > 0, ≤ imprest fund |
+| `receipt_date` | DATE | YES | NULL | Actual purchase date on physical receipt/bon (defaults to today) |
 | `purpose` | VARCHAR(255) | NO | — | Expenditure description |
 | `category` | VARCHAR(50) | NO | `OPERASIONAL` | Category code referencing active `petty_cash_categories` |
 | `status` | VARCHAR(30) | NO | `DRAFT` | `DRAFT`, `SUBMITTED`, `APPROVED_SS`, `DISBURSED`, `SETTLED`, `REJECTED`, `REJECTED_REFUND_PENDING`, `REFUNDED` |
@@ -321,7 +322,7 @@ Document header for petty cash reimbursement recaps (KKCL) aggregating disbursed
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
-**Indexes**: UNIQUE(`voucher_number`), INDEX(`store_id`, `status`), INDEX(`store_id`, `requester_id`, `status`), INDEX(`settlement_id`) (`vouchers_settlement_idx`), INDEX(`deleted_at`)
+**Indexes**: UNIQUE(`voucher_number`), INDEX(`store_id`, `status`), INDEX(`store_id`, `requester_id`, `status`), INDEX(`settlement_id`) (`vouchers_settlement_idx`), INDEX(`receipt_date`) (`vouchers_receipt_date_idx`), INDEX(`deleted_at`)
 
 ---
 

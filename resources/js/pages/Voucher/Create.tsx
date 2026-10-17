@@ -30,8 +30,11 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
     );
     const initialCategory = normalizedCategories[0]?.code || 'BDL';
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
     const { data, setData, post, processing, errors, transform } = useForm({
         amount_cents: 0,
+        receipt_date: todayStr,
         purpose: '',
         category: initialCategory,
         receipt_image: null as File | null,
@@ -95,6 +98,28 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                     />
                                     {errors.amount_cents && (
                                         <p className="text-xs text-destructive">{errors.amount_cents}</p>
+                                    )}
+                                </div>
+
+                                {/* Receipt Date */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="receipt_date" className="text-xs font-semibold">
+                                            Tanggal Bon / Struk <span className="text-destructive">*</span>
+                                        </Label>
+                                        <span className="text-[11px] text-muted-foreground">
+                                            Tanggal nota belanja fisik
+                                        </span>
+                                    </div>
+                                    <Input
+                                        id="receipt_date"
+                                        type="date"
+                                        value={data.receipt_date}
+                                        onChange={(e) => setData('receipt_date', e.target.value)}
+                                        className="text-xs h-9"
+                                    />
+                                    {errors.receipt_date && (
+                                        <p className="text-xs text-destructive">{errors.receipt_date}</p>
                                     )}
                                 </div>
 

@@ -169,6 +169,7 @@ class ImportVouchersAction
                     'voucher_number' => $voucherNumber,
                     'requester_id' => $row['user_id'],
                     'amount_cents' => $row['amount_cents'],
+                    'receipt_date' => $date->toDateString(),
                     'purpose' => $row['purpose'],
                     'category' => $row['category'],
                     'status' => $status,

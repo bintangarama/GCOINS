@@ -29,6 +29,7 @@ class CreateVoucherAction
      *
      * @param  array{
      *     amount_cents: int,
+     *     receipt_date?: string|null,
      *     purpose: string,
      *     category: string,
      *     receipt_image?: UploadedFile|string|null,
@@ -58,8 +59,9 @@ class CreateVoucherAction
         }
 
         $isSubmit = (bool) ($data['is_submit'] ?? false);
+        $receiptDate = ! empty($data['receipt_date']) ? $data['receipt_date'] : now()->toDateString();
 
-        return DB::transaction(function () use ($data, $actor, $store, $isSubmit, $ipAddress) {
+        return DB::transaction(function () use ($data, $actor, $store, $isSubmit, $receiptDate, $ipAddress) {
             $voucherNumber = $this->numberGenerator->generateVoucherNumber($store);
 
             $receiptImageUrl = null;
@@ -72,6 +74,7 @@ class CreateVoucherAction
                 'voucher_number' => $voucherNumber,
                 'requester_id' => $actor->id,
                 'amount_cents' => $data['amount_cents'],
+                'receipt_date' => $receiptDate,
                 'purpose' => $data['purpose'],
                 'category' => $data['category'],
                 'status' => $status,
@@ -119,6 +122,7 @@ class CreateVoucherAction
                 'new_values' => [
                     'voucher_number' => $voucher->voucher_number,
                     'amount_cents' => $voucher->amount_cents,
+                    'receipt_date' => $voucher->receipt_date?->toDateString(),
                     'purpose' => $voucher->purpose,
                     'category' => $voucher->category,
                     'status' => $voucher->status,

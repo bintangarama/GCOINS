@@ -68,11 +68,19 @@ class VoucherController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->input('date_from'));
+            $dateFrom = $request->input('date_from');
+            $query->where(function ($q) use ($dateFrom) {
+                $q->whereDate('receipt_date', '>=', $dateFrom)
+                    ->orWhere(fn ($sq) => $sq->whereNull('receipt_date')->whereDate('created_at', '>=', $dateFrom));
+            });
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->input('date_to'));
+            $dateTo = $request->input('date_to');
+            $query->where(function ($q) use ($dateTo) {
+                $q->whereDate('receipt_date', '<=', $dateTo)
+                    ->orWhere(fn ($sq) => $sq->whereNull('receipt_date')->whereDate('created_at', '<=', $dateTo));
+            });
         }
 
         if ($request->filled('search')) {

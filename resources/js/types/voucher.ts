@@ -81,6 +81,7 @@ export interface PettyCashVoucher {
     voucher_number: string;
     requester_id: string;
     amount_cents: number;
+    receipt_date?: string | null;
     purpose: string;
     category: string;
     status: VoucherStatus;

@@ -69,7 +69,7 @@ These are used in flash messages and policy rejections:
 |---|---|---|---|
 | GET | `/vouchers` | `VoucherController@index` | List with filters |
 | GET | `/vouchers/create` | `VoucherController@create` | Create form (loads active categories) |
-| POST | `/vouchers` | `VoucherController@store` | Save draft/submit (receipt guard enforced) |
+| POST | `/vouchers` | `VoucherController@store` | Save draft/submit (receipt_date support, receipt guard enforced) |
 | GET | `/vouchers/{voucher}` | `VoucherController@show` | Detail view |
 | DELETE | `/vouchers/{voucher}` | `VoucherController@destroy` | Soft delete draft |
 | POST | `/vouchers/{voucher}/submit` | `VoucherController@submit` | Submit for review |
@@ -85,7 +85,7 @@ These are used in flash messages and policy rejections:
 | GET | `/vouchers/settlements/{settlement}/export` | `PettyCashSettlementController@export` | Export matrix spreadsheet (.xlsx) |
 | GET | `/vouchers/settlement` | `VoucherController@settlement` | Legacy settlement page |
 | POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Legacy batch settle |
-| GET | `/vouchers/export` | `VoucherController@export` | Export filtered vouchers (.xlsx/.csv, col M KKCL) |
+| GET | `/vouchers/export` | `VoucherController@export` | Export filtered vouchers (.xlsx/.csv, col C Tanggal Bon, col N KKCL) |
 
 ### Cash Opname, Reference Lines & Resolutions
 | Method | URI | Controller | Action |

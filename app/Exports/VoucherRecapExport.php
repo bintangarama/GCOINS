@@ -106,7 +106,7 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
         $headers = [
             'A' => 'No',
             'B' => 'No. Voucher',
-            'C' => 'Tanggal Pengajuan',
+            'C' => 'Tanggal (Bon)',
             'D' => 'Nama Pemohon',
             'E' => 'NIK Pemohon',
             'F' => 'Keperluan',
@@ -144,10 +144,18 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
             $query->where('requester_id', $this->filters['requester_id']);
         }
         if (! empty($this->filters['date_from'])) {
-            $query->whereDate('created_at', '>=', $this->filters['date_from']);
+            $dateFromVal = $this->filters['date_from'];
+            $query->where(function (Builder $q) use ($dateFromVal) {
+                $q->whereDate('receipt_date', '>=', $dateFromVal)
+                    ->orWhere(fn (Builder $sq) => $sq->whereNull('receipt_date')->whereDate('created_at', '>=', $dateFromVal));
+            });
         }
         if (! empty($this->filters['date_to'])) {
-            $query->whereDate('created_at', '<=', $this->filters['date_to']);
+            $dateToVal = $this->filters['date_to'];
+            $query->where(function (Builder $q) use ($dateToVal) {
+                $q->whereDate('receipt_date', '<=', $dateToVal)
+                    ->orWhere(fn (Builder $sq) => $sq->whereNull('receipt_date')->whereDate('created_at', '<=', $dateToVal));
+            });
         }
         if (! empty($this->filters['search'])) {
             $search = $this->filters['search'];
@@ -165,7 +173,7 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
             foreach ($vouchers as $v) {
                 $sheet->setCellValue("A{$row}", $counter++);
                 $sheet->setCellValue("B{$row}", $v->voucher_number);
-                $sheet->setCellValue("C{$row}", $v->created_at ? $v->created_at->format('d/m/Y H:i') : '-');
+                $sheet->setCellValue("C{$row}", $v->receipt_date ? $v->receipt_date->format('d/m/Y') : ($v->created_at ? $v->created_at->format('d/m/Y') : '-'));
                 $sheet->setCellValue("D{$row}", $v->requester?->name ?? '-');
                 $sheet->setCellValue("E{$row}", $v->requester?->nik ?? '-');
                 $sheet->setCellValue("F{$row}", $v->purpose);

@@ -210,3 +210,36 @@ test('Draft voucher can be created without receipt photo', function () {
         'status' => PettyCashVoucher::STATUS_DRAFT,
     ]);
 });
+
+test('Voucher stores explicit receipt_date when provided', function () {
+    $this->actingAs($this->soaUser);
+
+    $response = $this->post('/vouchers', [
+        'amount_cents' => 3500000,
+        'purpose' => 'Beli bensin kirim buku',
+        'category' => 'LOGISTIK',
+        'receipt_date' => '2026-10-10',
+        'is_submit' => false,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $voucher = PettyCashVoucher::where('purpose', 'Beli bensin kirim buku')->first();
+    expect($voucher)->not->toBeNull()
+        ->and($voucher->receipt_date?->format('Y-m-d'))->toBe('2026-10-10');
+});
+
+test('Voucher defaults receipt_date to today when not provided', function () {
+    $this->actingAs($this->soaUser);
+
+    $response = $this->post('/vouchers', [
+        'amount_cents' => 2500000,
+        'purpose' => 'Beli materai',
+        'category' => 'OPERASIONAL',
+        'is_submit' => false,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $voucher = PettyCashVoucher::where('purpose', 'Beli materai')->first();
+    expect($voucher)->not->toBeNull()
+        ->and($voucher->receipt_date?->format('Y-m-d'))->toBe(now()->toDateString());
+});

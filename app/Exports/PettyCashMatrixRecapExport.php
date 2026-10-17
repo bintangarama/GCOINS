@@ -149,9 +149,8 @@ class PettyCashMatrixRecapExport implements Export, WithEvents, WithTitle
         $vouchers = $settlement->vouchers->sortBy('created_at');
 
         foreach ($vouchers as $voucher) {
-            $formattedDate = $voucher->disbursed_at
-                ? $voucher->disbursed_at->format('d-M-y')
-                : ($voucher->created_at ? $voucher->created_at->format('d-M-y') : '-');
+            $voucherDate = $voucher->receipt_date ?? $voucher->disbursed_at ?? $voucher->created_at;
+            $formattedDate = $voucherDate ? $voucherDate->format('d-M-y') : '-';
 
             $requesterName = $voucher->requester?->name ?? '-';
             $requesterNik = $voucher->requester?->nik ? " {$voucher->requester->nik}" : '';

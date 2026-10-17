@@ -143,6 +143,7 @@
 ### 4.4. Create Voucher (`/vouchers/create`)
 - Form fields:
   - Nominal (Rupiah formatted input, auto-convert to cents)
+  - Tanggal Bon / Struk (Date input, defaults to today `YYYY-MM-DD`, allows setting back-dated physical receipt date)
   - Keperluan (text)
   - Kategori (dynamic select dropdown from `PettyCashCategory::forStore()`)
   - Foto Struk (upload with client-side WebP compression, preview)

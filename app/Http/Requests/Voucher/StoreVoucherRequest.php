@@ -38,6 +38,7 @@ class StoreVoucherRequest extends FormRequest
 
         return [
             'amount_cents' => ['required', 'integer', 'min:1', "max:{$imprestFundCents}"],
+            'receipt_date' => ['nullable', 'date'],
             'purpose' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', Rule::in($validCategories)],
             'receipt_image' => [$isSubmit ? 'required' : 'nullable'],
@@ -52,6 +53,7 @@ class StoreVoucherRequest extends FormRequest
             'amount_cents.required' => 'Nominal pengeluaran wajib diisi.',
             'amount_cents.min' => 'Nominal pengeluaran minimal Rp 1.',
             'amount_cents.max' => 'Nominal pengeluaran tidak boleh melebihi plafon kas kecil.',
+            'receipt_date.date' => 'Format tanggal bon tidak valid.',
             'purpose.required' => 'Keperluan pengeluaran wajib diisi.',
             'purpose.max' => 'Keperluan maksimal 255 karakter.',
             'category.required' => 'Kategori pengeluaran wajib dipilih.',

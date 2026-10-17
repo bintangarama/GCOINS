@@ -200,6 +200,7 @@ erDiagram
         varchar voucher_number UK
         varchar requester_id FK
         integer amount_cents
+        date receipt_date
         varchar purpose
         varchar category
         varchar status

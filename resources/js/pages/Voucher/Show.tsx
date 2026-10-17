@@ -221,7 +221,23 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 space-y-3.5 text-xs">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <span className="text-muted-foreground">Tanggal Bon / Struk</span>
+                                        <p className="font-medium mt-0.5 text-foreground">
+                                            {voucher.receipt_date
+                                                ? new Date(voucher.receipt_date).toLocaleDateString('id-ID', {
+                                                      day: 'numeric',
+                                                      month: 'long',
+                                                      year: 'numeric',
+                                                  })
+                                                : new Date(voucher.created_at).toLocaleDateString('id-ID', {
+                                                      day: 'numeric',
+                                                      month: 'long',
+                                                      year: 'numeric',
+                                                  })}
+                                        </p>
+                                    </div>
                                     <div>
                                         <span className="text-muted-foreground">Kategori</span>
                                         <p className="font-mono font-medium mt-0.5">{voucher.category}</p>
