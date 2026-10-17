@@ -148,3 +148,47 @@ Sistem G-COINS mendukung 5 tipe cash count harian secara polimorfik tanpa skema 
 - `CountGrid` generik dengan numpad traversal, autosave 800ms, dan dynamic item grouping.
 - Kunci permanen tidak dapat diubah setelah approval (`Rule 4: Immutable Snapshot`).
 - Ekspor Berita Acara (BACO) Excel & PDF cetak.
+
+---
+
+## 6. Petty Cash Settlement Recap & Expense Categories (BP-04)
+
+Sesuai dokumen operasional fisik toko **Gramedia World Karawang (`GAM435`)**, siklus pengeluaran dan rekapitulasi kas kecil dimodelkan dalam bentuk **Matriks Akuntansi Berkolom (Columnar Accounting Matrix)**:
+
+### 1. Struktur Kategori Pos Beban Kas Kecil
+- **Kategori Global Nasional (`store_id = NULL`)**: Berlaku di seluruh unit toko Gramedia di Indonesia. Dikelola oleh `SYSTEM_ADMIN`. Terdapat 10 kategori standar:
+  1. `BDL`: Beban Dinas Luar
+  2. `BBM_MOBIL`: Bahan Bakar Mobil Operasional
+  3. `BBM_MOTOR`: Bahan Bakar Sepeda Motor Ekspedisi Toko
+  4. `KERTAS_FORMULIR`: Kertas Struk Kasir, Continuous Form, ATK Kantor
+  5. `BIAYA_PEMASARAN`: Promosi & Marketing Toko
+  6. `IKLAN`: Biaya Iklan & Publikasi Lokal
+  7. `ONGKIR`: Ekspedisi & Jasa Pengiriman Barang
+  8. `EMBALLAGE`: Perlengkapan Packing (Lakban, Bubble Wrap, Kardus)
+  9. `KEP_RT`: Keperluan Rumah Tangga Toko (Sanitasi, Konsumsi, Pantry)
+  10. `LAINNYA`: Pengeluaran Kas Kecil Lainnya
+- **Kategori Khusus Toko (`store_id = store_id`)**: Setiap toko dapat menambahkan pos beban spesifik lokal (misal: Retribusi Sampah Mall, Parkir Langganan) yang dikelola oleh SAC/SM toko terkait.
+
+### 2. Alur Pengajuan Bon Kas Kecil & Validasi Foto Bukti
+1. Pemohon (SOA/SAC/SS) mengisi nominal pengeluaran, keperluan, kategori pos beban, dan **wajib melampirkan foto kuitansi/struk fisik** jika langsung diajukan (`is_submit = true`).
+2. Validasi FormRequest menolak pengajuan tanpa foto kuitansi dengan pesan HTTP 422 (*Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan*).
+3. Pembuatan draft (`is_submit = false`) diizinkan tanpa foto struk.
+
+### 3. Alur Rekapitulasi Kas Kecil (Settlement Recap KKCL)
+1. Seluruh voucher berstatus `DISBURSED` dikelompokkan pada menu **Settlement Kas Kecil**.
+2. Kasir (SAC) memilih voucher yang akan direkapitulasi secara massal (*batch settle*).
+3. Sistem secara atomik:
+   - Membuat entitas `PettyCashSettlement` baru.
+   - Menerbitkan nomor dokumen invoice unik format Gramedia: `{SEQ}/KKCL/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}` (contoh: `026/KKCL/GAM435/X/2026`).
+   - Mengaitkan foreign key `settlement_id` pada seluruh voucher terpilih.
+   - Mengubah status voucher menjadi `SETTLED`.
+   - Menghitung total pengeluaran dalam satuan integer sen (`total_amount_cents`).
+   - Merekam rekam jejak audit (*Audit Log*).
+4. Status rekapitulasi **langsung selesai (`SETTLED`)** setelah dibuat oleh SAC tanpa blocking persetujuan berbelit, sehingga dana kas kecil dapat segera diajukan penggantian (*reimbursement / dropping kas*) ke finance pusat.
+
+### 4. Format Output Ganda Dokumen Rekapitulasi (KKCL)
+- **Cetak Langsung Fisik Web (`@media print` A4 Landscape)**:
+  - Tata letak dokumen 1:1 mereplikasi lembar fisik Gramedia Karawang: kop surat toko, nomor invoice, tanggal pengeluaran, nomor bon, keterangan, kolom pivot horizontal pos beban akuntansi, total per baris bon, total per pos beban (vertikal), grand total pengeluaran, serta kotak tanda tangan Penyusun (SAC) dan Mengetahui (Store Manager).
+- **Ekspor Excel (.xlsx)**:
+  - File spreadsheet berkolom matriks akuntansi dengan styling border, format mata uang `#,##0`, formula penjumlahan `=SUM()`, dan layout siap cetak landscape.
+

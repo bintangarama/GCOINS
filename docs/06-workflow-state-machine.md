@@ -15,7 +15,7 @@ stateDiagram-v2
     APPROVED_SS --> DISBURSED: SAC hands physical cash\n(enters K_bon)
     APPROVED_SS --> REJECTED: Cancelled before disbursement
 
-    DISBURSED --> SETTLED: SAC batch settles\n(reimbursement received, exits K_bon)
+    DISBURSED --> SETTLED: SAC groups into Rekap KKCL\n(reimbursement received, exits K_bon)
     DISBURSED --> REJECTED_REFUND_PENDING: Auditor rejects post-disbursement
 
     REJECTED_REFUND_PENDING --> REFUNDED: Staff returns cash to cashier\n(exits K_bon)
@@ -30,15 +30,49 @@ stateDiagram-v2
 | From | To | Actor | Conditions | Side Effects |
 |---|---|---|---|---|
 | - | DRAFT | SOA/SS/SAC | — | Generate voucher number |
-| DRAFT | SUBMITTED | Owner | Receipt photo attached | Notify SS/SAC |
+| DRAFT | SUBMITTED | Owner | Foto struk wajib (`receipt_image` != null) | Notify SS/SAC |
 | DRAFT | (deleted) | Owner | Only own drafts | Soft delete |
 | SUBMITTED | APPROVED_SS | SS/SAC/SM | Anti self-approval check | Notify SAC |
 | SUBMITTED | REJECTED | SS/SAC/SM | Reason text required | Notify requester |
 | APPROVED_SS | DISBURSED | SAC | — | Set disbursed_at, enters K_bon |
 | APPROVED_SS | REJECTED | SAC/SM | — | Notify requester |
-| DISBURSED | SETTLED | SAC | Batch operation | Set settled_at, exits K_bon |
+| DISBURSED | SETTLED | SAC | Grouped into `PettyCashSettlement` | Set `settled_at`, set `settlement_id`, exits K_bon |
 | DISBURSED | REJECTED_REFUND_PENDING | SAC/SM | — | Staff must return cash |
 | REJECTED_REFUND_PENDING | REFUNDED | SAC | Cash returned confirmed | Exits K_bon |
+
+---
+
+### 1.1. Petty Cash Settlement Recap (KKCL) Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT_PREVIEW: SAC selects period & checks DISBURSED vouchers
+    DRAFT_PREVIEW --> SETTLED: SAC executes "Buat & Selesaikan Rekap"
+    state SETTLED {
+        [*] --> GENERATE_DOC: Generate {SEQ}/KKCL/{STORE}/{MONTH}/{YEAR}
+        GENERATE_DOC --> BIND_VOUCHERS: Update vouchers status=SETTLED & set settlement_id
+        BIND_VOUCHERS --> READY_EXPORT: Available for A4 Landscape Print & Excel Export
+    }
+```
+
+- **Instant Settlement**: Rekap diselesaikan langsung oleh kasir (SAC) tanpa approval bertingkat di level toko.
+- **Export & Print**: Siap cetak langsung A4 Landscape (CSS `@media print`) dan ekspor spreadsheet `.xlsx` dengan format matriks kolom kategori.
+
+---
+
+### 1.2. Master Petty Cash Category Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE: Admin/SAC creates category
+    ACTIVE --> INACTIVE: Toggle status (deactivated)
+    INACTIVE --> ACTIVE: Toggle status (reactivated)
+```
+
+- **Scope Rules**:
+  - Global Category: Dibuat dan dikelola secara terpusat oleh `SYSTEM_ADMIN` (`store_id = NULL`).
+  - Store-Specific Category: Dibuat oleh kasir/manager toko (`store_id = current_store_id`).
+- **Active Filter**: Hanya kategori berstatus `is_active = true` yang muncul pada formulir pengajuan bon kas kecil dan pivot rekapitulasi.
 
 ---
 

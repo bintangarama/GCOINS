@@ -34,6 +34,9 @@
 | T-DC-02 | Tiered Outflow: Outflow > Rp 500.000 requires SM approval (SS forbidden) | Feature |
 | T-RES-01 | Tiered Write-Off: Write-off > Rp 1.000.000 requires SM approval (SS forbidden) | Feature |
 | T-LCK-01 | APPROVED session cannot be modified (items, references, snapshots immutable) | Feature |
+| T-VCH-01 | Mandatory receipt image guard on submit (HTTP 422 ValidationException) | Feature |
+| T-CAT-01 | Dual-scope category governance (store user cannot edit global categories) | Feature |
+| T-SET-01 | Settlement generation locks vouchers (`status=SETTLED`, `settlement_id` set) | Feature |
 
 ### 🟡 High Priority
 
@@ -42,8 +45,14 @@
 | T-STM-01 | Voucher: DRAFT → SUBMITTED valid | Feature |
 | T-STM-02 | Voucher: SUBMITTED → APPROVED_SS valid | Feature |
 | T-STM-03 | Voucher: APPROVED_SS → DISBURSED valid | Feature |
-| T-STM-04 | Voucher: DISBURSED → SETTLED valid (batch) | Feature |
+| T-STM-04 | Voucher: DISBURSED → SETTLED valid (KKCL settlement recap) | Feature |
 | T-STM-05 | Voucher: invalid transition rejected | Feature |
+| T-SET-02 | Sequential numbering `{SEQ}/KKCL/{STORE}/{ROMAN_MONTH}/{YEAR}` | Feature |
+| T-SET-03 | Columnar accounting matrix pivot calculation | Feature |
+| T-CAT-02 | Toggle active status for store and global categories | Feature |
+| T-IMP-01 | Dynamic category validation on voucher Excel import | Feature |
+| T-EXP-01 | Voucher recap export includes Column M: No. Rekap (KKCL) | Feature |
+| T-EXP-02 | Settlement matrix export with native Excel SUM formulas | Feature |
 | T-STM-06 | Opname: DRAFT → SUBMITTED → VERIFIED_SS → APPROVED | Feature |
 | T-STM-07 | Opname: SS reject → back to DRAFT with reason | Feature |
 | T-STM-08 | Opname: SM reject → back to DRAFT with reason | Feature |
@@ -109,9 +118,12 @@ tests/
 │   │   ├── CreateVoucherTest.php
 │   │   ├── ApproveVoucherTest.php
 │   │   ├── DisburseAndSettleVoucherTest.php
+│   │   ├── SettlementRecapTest.php
 │   │   ├── SelfApprovalPreventionTest.php
 │   │   ├── VoucherSoftDeleteTest.php
 │   │   └── VoucherStateTransitionTest.php
+│   ├── Category/
+│   │   └── CategoryManagementTest.php
 │   ├── Opname/
 │   │   ├── OpenSessionTest.php
 │   │   ├── UpdateDenominationsTest.php
@@ -154,23 +166,25 @@ tests/
 
 ```php
 // Key factories implemented:
-StoreFactory::class          // Default store with config
-UserFactory::class           // Per role variants (SYSTEM_ADMIN, SM, SS, SAC, SOA)
-VoucherFactory::class        // Per status variants
-OpnameSessionFactory::class  // Per status & type variants (KAS_KECIL, KAS_BESAR, etc.)
-BriFundPostingFactory::class // INFLOW/OUTFLOW variants
-ItemDefinitionFactory::class // Configurable denomination & physical item items
-VarianceResolutionFactory::class // REPLACED, WRITE_OFF, FOUND variants
+StoreFactory::class               // Default store with config
+UserFactory::class                // Per role variants (SYSTEM_ADMIN, SM, SS, SAC, SOA)
+VoucherFactory::class             // Per status variants
+PettyCashCategoryFactory::class   // Global vs custom store category variants
+PettyCashSettlementFactory::class // Settlement header with bound vouchers
+OpnameSessionFactory::class       // Per status & type variants (KAS_KECIL, KAS_BESAR, etc.)
+BriFundPostingFactory::class      // INFLOW/OUTFLOW variants
+ItemDefinitionFactory::class      // Configurable denomination & physical item items
+VarianceResolutionFactory::class  // REPLACED, WRITE_OFF, FOUND variants
 ```
 
 ## 5. Running Tests
 
 ```bash
-# Run all tests
-php artisan test
+# Run all tests (Current suite: 207 tests, 779 assertions)
+php artisan test --compact
 
 # Run specific test file
-php artisan test --filter=SelfApprovalPreventionTest
+php artisan test --filter=SettlementRecapTest
 
 # Run only critical tests
 php artisan test --group=critical

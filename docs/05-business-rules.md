@@ -179,3 +179,36 @@ No financial state change may occur without an audit log entry.
 3. **Strict Client Image Compression**:
    - Berkas foto bukti fisik wajib dikompresi di sisi browser maksimal $1280 \times 1920\text{ px}$ dan ukuran akhir $\le 250\text{ KB}$ sebelum diunggah ke server.
 
+## Rule 15: Mandatory Receipt Evidence Guard on Voucher Submission
+
+1. **Submission Guard (HTTP 422)**:
+   - Saat mengajukan voucher untuk ditinjau (`is_submit: true` atau transisi ke `SUBMITTED`), **foto bukti fisik struk/kuitansi (`receipt_image`) WAJIB dilampirkan**.
+   - Validasi sisi server (`CreateVoucherRequest` & Action layer) wajib mengembalikan HTTP 422 `ValidationException` dengan pesan jelas: *"Foto bukti fisik bon/kuitansi wajib dilampirkan sebelum voucher diajukan."*
+   - Dilarang melempar `InvalidArgumentException` tanpa penanganan yang memicu HTTP 500 Unhandled Exception.
+2. **Client-Side Submit Disabled**:
+   - Tombol "Ajukan Bon" pada formulir wajib otomatis dinonaktifkan (`disabled`) jika berkas foto struk belum dipilih/diunggah.
+3. **Draft Exemption**:
+   - Penyimpanan draf awal (`is_submit: false` / status `DRAFT`) diperbolehkan tanpa foto struk untuk memfasilitasi pencatatan cepat di lantai toko sebelum nota difoto.
+
+## Rule 16: Columnar Matrix Settlement & Scope Governance
+
+1. **Nomor Dokumen Rekapitulasi Kas Kecil (KKCL)**:
+   - Format: `{SEQ}/KKCL/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}` (Contoh: `001/KKCL/TG-001/X/2026`).
+   - Penomoran bersifat atomik berbasis transaksi database dan reset setiap pergantian bulan kalender per toko.
+2. **One-Click Instant Settlement by SAC**:
+   - Alur settlement rekapitulasi diselesaikan langsung saat dibuat oleh SAC (Status langsung `SETTLED`).
+   - Tidak memerlukan alur multi-step approval tambahan di level toko karena SAC memegang tanggung jawab fisik kasir.
+3. **Anti Double-Settlement Locking**:
+   - Seluruh voucher berstatus `DISBURSED` yang dipilih diikat secara permanen ke `settlement_id`.
+   - Status voucher seketika beralih ke `SETTLED` dan tidak dapat diikutsertakan pada rekapitulasi lain.
+4. **Dual-Scope Category Governance**:
+   - Kategori Kas Kecil beroperasi dalam 2 skop: **Global** (`store_id = NULL`) dan **Store-Specific** (`store_id = current_store_id`).
+   - Dropdown formulir voucher dan matriks rekapitulasi menggabungkan seluruh kategori global aktif dan kategori kustom aktif milik toko pemohon (`scopeForStore`).
+   - Pengguna toko dilarang memodifikasi atau menonaktifkan kategori global.
+5. **Columnar Accounting Matrix Invariant**:
+   - Rekapitulasi menyajikan pivot matriks: setiap voucher dipetakan ke 1 kolom kategori yang sesuai.
+   - Total per baris voucher = jumlah kolom kategori.
+   - Total per kolom kategori = akumulasi voucher pada kategori tersebut.
+   - Grand Total = $\sum \text{Total Kategori} = \sum \text{Total Baris Voucher}$.
+
+

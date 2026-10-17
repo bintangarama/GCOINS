@@ -9,17 +9,22 @@ erDiagram
     stores ||--o{ opname_item_definitions : "has many"
     stores ||--o{ cash_opname_sessions : "has many"
     stores ||--o{ petty_cash_vouchers : "has many"
+    stores ||--o{ petty_cash_categories : "has many (optional)"
+    stores ||--o{ petty_cash_settlements : "has many"
     stores ||--o{ bri_fund_postings : "has many"
     stores ||--o{ audit_logs : "has many"
     stores ||--o{ attachments : "has many"
     stores ||--o{ notifications : "has many"
 
     users ||--o{ petty_cash_vouchers : "requests"
+    users ||--o{ petty_cash_settlements : "settles"
     users ||--o{ cash_opname_sessions : "creates"
     users ||--o{ bri_fund_postings : "creates"
     users ||--o{ audit_logs : "performs"
     users ||--o{ attachments : "uploads"
     users ||--o{ notifications : "receives"
+
+    petty_cash_settlements ||--o{ petty_cash_vouchers : "recap groups"
 
     cash_opname_sessions ||--o{ opname_item_counts : "has many"
     cash_opname_sessions ||--o{ variance_resolutions : "has many"
@@ -168,9 +173,30 @@ erDiagram
         varchar approved_by_id FK
     }
 
+    petty_cash_categories {
+        varchar id PK
+        varchar store_id FK
+        varchar code
+        varchar name
+        varchar description
+        integer sort_order
+        boolean is_active
+    }
+
+    petty_cash_settlements {
+        varchar id PK
+        varchar store_id FK
+        varchar settlement_number UK
+        integer total_amount_cents
+        varchar status
+        varchar settled_by_id FK
+        text notes
+    }
+
     petty_cash_vouchers {
         varchar id PK
         varchar store_id FK
+        varchar settlement_id FK
         varchar voucher_number UK
         varchar requester_id FK
         integer amount_cents
@@ -229,8 +255,11 @@ erDiagram
 | stores | opname_item_definitions | 1:N | CASCADE |
 | stores | cash_opname_sessions | 1:N | RESTRICT |
 | stores | petty_cash_vouchers | 1:N | RESTRICT |
+| stores | petty_cash_categories | 1:N | CASCADE |
+| stores | petty_cash_settlements | 1:N | CASCADE |
 | stores | bri_fund_postings | 1:N | RESTRICT |
 | stores | variance_resolutions | 1:N | CASCADE |
+| petty_cash_settlements | petty_cash_vouchers | 1:N | SET NULL |
 | cash_opname_sessions | opname_item_counts | 1:N | CASCADE |
 | cash_opname_sessions | bri_sub_ledgers | 1:1 | CASCADE |
 | cash_opname_sessions | variance_resolutions | 1:N | CASCADE |
@@ -238,6 +267,7 @@ erDiagram
 | opname_item_definitions | opname_item_counts | 1:N | RESTRICT |
 | bri_sub_ledgers | bri_custom_allocations | 1:N | CASCADE |
 | users | petty_cash_vouchers | 1:N (requester) | RESTRICT |
+| users | petty_cash_settlements | 1:N (settled_by) | RESTRICT |
 | users | cash_opname_sessions | 1:N (creator) | RESTRICT |
 | users | bri_fund_postings | 1:N (creator) | RESTRICT |
 | users | variance_resolutions | 1:N (creator) | RESTRICT |

@@ -1,6 +1,6 @@
 # MASTER SPECIFICATION & TECHNICAL BLUEPRINT: G-COINS
 ## Gramedia Cash Opname Internal System — Multi-Store Retail Platform
-> **Versi Dokumen:** 2.1.0 (Master Unified Blueprint — Phase 7 Engine, Precision Ledger & SoD Hardened)  
+> **Versi Dokumen:** 2.2.0 (Master Unified Blueprint — Phase 8 Columnar Accounting Matrix, Dynamic Categories & KKCL Settlement Engine)  
 > **Target Pengguna:** Pengembang Perangkat Lunak, System Architect, Business Analyst, QA Engineer, Auditor Internal  
 > **Tujuan Dokumen:** Spesifikasi menyeluruh (*single source of truth*) yang mencakup logika bisnis, formula akuntansi, matriks wewenang, alur state machine, kamus data basis data, kontrak antarmuka Inertia.js, hingga arsitektur pelaporan Excel guna menjamin integritas finansial dan kepatuhan audit.
 
@@ -19,7 +19,7 @@
 9. [Kontrak Antarmuka (Inertia.js SPA), Validasi Input & Kode Kesalahan](#9-kontrak-antarmuka-inertiajs-spa-validasi-input--kode-kesalahan)
 10. [Pipeline Pengolahan Media & Multi-Lampiran](#10-pipeline-pengolahan-media--multi-lampiran)
 11. [Format Berita Acara Resmi & Mesin Spreadsheet Excel (.xlsx)](#11-format-berita-acara-resmi--mesin-spreadsheet-excel-xlsx)
-12. [Infrastruktur Deployment & Low-RAM Environment](#12-infrastruktur-deployment--low-ram-environment)
+12. [Infrastruktur Deployment, Production Migration & Low-RAM Environment](#12-infrastruktur-deployment--low-ram-environment)
 
 ---
 
@@ -221,6 +221,14 @@ Jika terjadi selisih, kasir atau supervisor mencatat tindakan resolusi:
    - Kasir (SAC) dilarang menyetujui voucher bon yang diajukan oleh dirinya sendiri.
    - Pembuat mutasi penarikan BRI dilarang menyetujui mutasinya sendiri.
 
+### 6.3. Dual-Scope Category Protection & Settlement Finality
+1. **Isolasi Master Kategori Global vs Toko**:
+   - Kategori Global (`store_id = NULL`) hanya boleh dikelola (create/update/toggle) oleh `SYSTEM_ADMIN`. Staf toko (`SAC`/`SM`) DILARANG mengubah nama, kode, atau status keaktifan kategori global.
+   - Kategori Khusus Toko (`store_id != NULL`) hanya boleh dibuat dan dikelola oleh `SAC` atau `SM` pada toko yang bersangkutan.
+2. **Finalitas Rekapitulasi (KKCL Lock)**:
+   - Voucher berstatus `DISBURSED` yang telah diikat ke dalam nomor rekapitulasi `PettyCashSettlement` seketika bertransisi menjadi `SETTLED`.
+   - Voucher berstatus `SETTLED` yang telah memiliki `settlement_id` tidak dapat dimasukkan kembali ke rekapitulasi lain (*anti double-claim/double-settle*).
+
 ---
 
 ## 7. STATE MACHINE & ALUR KERJA BISNIS END-TO-END
@@ -229,7 +237,7 @@ Jika terjadi selisih, kasir atau supervisor mencatat tindakan resolusi:
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT: Staf buat draf bon
-    DRAFT --> SUBMITTED: Upload nota & ajukan review
+    DRAFT --> SUBMITTED: Upload nota fisik & ajukan review (wajib foto)
     DRAFT --> [*]: Hapus draf (soft delete)
 
     SUBMITTED --> APPROVED_SS: SS/SAC/SM setujui (Anti self-approval)
@@ -238,7 +246,7 @@ stateDiagram-v2
     APPROVED_SS --> DISBURSED: SAC serahkan kas fisik (masuk K_bon)
     APPROVED_SS --> REJECTED: Pembatalan sebelum diserahkan
 
-    DISBURSED --> SETTLED: SAC batch settle (reimbursement selesai, keluar K_bon)
+    DISBURSED --> SETTLED: SAC ikat ke Rekap KKCL (reimbursement selesai, keluar K_bon)
     DISBURSED --> REJECTED_REFUND_PENDING: Ditolak pasca-cair oleh auditor
 
     REJECTED_REFUND_PENDING --> REFUNDED: Staf kembalikan uang ke kasir (keluar K_bon)
@@ -266,6 +274,43 @@ stateDiagram-v2
         [*] --> LOCKED: Seluruh data terkunci permanen (Immutable Snapshot)
     }
 ```
+
+### 7.3. Lifecycle Rekapitulasi Kas Kecil (KKCL) & Columnar Accounting Matrix
+1. **Penyusunan Rekap Kasir (SAC)**:
+   - Kasir memilih rentang tanggal periode dan menyeleksi voucher berstatus `DISBURSED` yang belum di-reimburse.
+   - Sistem menampilkan pratinjau matriks kolom (*columnar matrix pivot*) di mana setiap baris voucher dipetakan ke kolom kategori pengeluaran masing-masing.
+2. **One-Click Instant Settlement**:
+   - Menekan tombol **"Buat & Selesaikan Rekap"** seketika:
+     - Menerbitkan nomor KKCL atomik: `{SEQ}/KKCL/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`.
+     - Menyimpan dokumen header `PettyCashSettlement` berstatus `SETTLED`.
+     - Mengikat seluruh voucher terkait via `settlement_id` dan mengubah status voucher menjadi `SETTLED` (sehingga langsung keluar dari perhitungan $K_{\text{bon}}$ cash opname).
+3. **Cetak & Ekspor Langsung**:
+   - Tampilan dokumen KKCL siap cetak langsung A4 Landscape via peramban (`window.print()`).
+   - Ekspor berkas spreadsheet Excel (.xlsx) resmi berformula native `=SUM(...)` per kategori dan grand total.
+
+### 7.4. Lifecycle Master Kategori Kas Kecil (`PettyCashCategory`)
+1. **10 Kategori Standar Karawang (Global Scope)**:
+   - `ALAT_TULIS`: Alat Tulis Kantor (ATK)
+   - `KONSUMSI`: Konsumsi / Dapur Toko
+   - `PERLENGKAPAN`: Perlengkapan Operasional
+   - `KEBERSIHAN`: Kebersihan & Sanitasi Toko
+   - `EKSPEDISI`: Ekspedisi & Pos Kilat
+   - `MAINTENANCE`: Perbaikan & Perawatan Gedung/Peralatan
+   - `FOTOCOPY`: Fotocopy & Penjilidan / Bea Materai
+   - `PROMOSI`: Keperluan Promosi & Event Toko
+   - `PARKIR`: Parkir & Retribusi Resmi
+   - `KASBON`: Kasbon Karyawan Sementara
+2. **Kategori Kustom Toko**:
+   - Dibuat mandiri oleh SAC/SM toko sesuai dinamika belanja lokal tanpa mengganggu toko lain.
+3. **Toggle Keaktifan**:
+   - Kategori dapat dinonaktifkan (`is_active = false`) tanpa menghapus riwayat transaksi lama.
+
+### 7.5. Mandatory Receipt Evidence Guard on Voucher Submission
+1. **Strict Guard on Submit**:
+   - Saat voucher diajukan (`is_submit: true`), berkas foto struk/kuitansi asli (`receipt_image`) **WAJIB** dilampirkan.
+   - Sisi server melempar `ValidationException` (HTTP 422) dengan pesan informatif: *"Foto bukti fisik bon/kuitansi wajib dilampirkan sebelum voucher diajukan."*, mencegah kegagalan HTTP 500 fatal.
+2. **Draft Tolerance**:
+   - Mode penyimpanan draf (`is_submit: false`) diizinkan tanpa foto struk untuk memfasilitasi pencatatan awal belanja di lapangan.
 
 ---
 
@@ -423,19 +468,44 @@ stateDiagram-v2
 | `approved_at` | DATETIME | YES | NULL | Stempel waktu persetujuan |
 | `rejection_reason`| VARCHAR(255) | YES | NULL | Alasan jika ditolak |
 
-#### 11. Tabel: `petty_cash_vouchers`
+#### 11. Tabel: `petty_cash_categories`
+| Kolom | Tipe Data | Nullable | Default | Deskripsi |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | Primary Key |
+| `store_id` | VARCHAR(32) | YES | NULL | FK merujuk ke `stores.id` (NULL = Kategori Global Pusat) |
+| `code` | VARCHAR(50) | NO | — | Kode unik kategori (misal: `ALAT_TULIS`, `KONSUMSI`) |
+| `name` | VARCHAR(100) | NO | — | Nama tampilan kategori belanja |
+| `description` | VARCHAR(255) | YES | NULL | Deskripsi cakupan pengeluaran |
+| `sort_order` | INTEGER | NO | 0 | Urutan tampilan di dropdown & kolom matriks |
+| `is_active` | BOOLEAN | NO | TRUE | Status keaktifan kategori |
+| `created_at` / `updated_at` | DATETIME | NO | NOW() | Stempel waktu |
+
+#### 12. Tabel: `petty_cash_settlements`
 | Kolom | Tipe Data | Nullable | Default | Deskripsi |
 |---|---|:---:|:---:|---|
 | `id` | VARCHAR(32) | NO | CUID | Primary Key |
 | `store_id` | VARCHAR(32) | NO | — | FK merujuk ke `stores.id` |
+| `settlement_number` | VARCHAR(50) | NO | — | Nomor KKCL (`001/KKCL/TG-001/X/2026`). **UNIQUE**. |
+| `total_amount_cents` | BIGINT | NO | 0 | Total nominal seluruh voucher dalam sen |
+| `status` | VARCHAR(30) | NO | `SETTLED` | `SETTLED` (langsung selesai saat diterbitkan SAC) |
+| `settled_by_id` | VARCHAR(32) | NO | — | FK merujuk ke `users.id` (kasir pembuat) |
+| `notes` | TEXT | YES | NULL | Catatan operasional rekapitulasi kas kecil |
+| `created_at` / `updated_at` | DATETIME | NO | NOW() | Stempel waktu |
+
+#### 13. Tabel: `petty_cash_vouchers`
+| Kolom | Tipe Data | Nullable | Default | Deskripsi |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | Primary Key |
+| `store_id` | VARCHAR(32) | NO | — | FK merujuk ke `stores.id` |
+| `settlement_id` | VARCHAR(32) | YES | NULL | FK merujuk ke `petty_cash_settlements.id` (NULL saat bon belum direkap) |
 | `voucher_number` | VARCHAR(50) | NO | — | Nomor bon resmi (`024/KKCL/10435/IX/2026`). **UNIQUE**. |
 | `requester_id` | VARCHAR(32) | NO | — | FK merujuk ke `users.id` (staf pemohon) |
 | `amount_cents` | INTEGER | NO | — | Nominal bon dalam sen ($> 0$, $\le$ plafon) |
 | `purpose` | VARCHAR(255) | NO | — | Keperluan belanja operasional |
-| `category` | VARCHAR(20) | NO | `OPERASIONAL` | Kategori pengeluaran |
+| `category` | VARCHAR(50) | NO | `OPERASIONAL` | Kode kategori merujuk ke `petty_cash_categories.code` |
 | `status` | VARCHAR(30) | NO | `DRAFT` | `DRAFT`, `SUBMITTED`, `APPROVED_SS`, `DISBURSED`, `SETTLED`, `REJECTED`, `REJECTED_REFUND_PENDING`, `REFUNDED` |
-| `receipt_image_url` | VARCHAR(255) | YES | NULL | Path foto struk nota belanja (WebP) |
-| `item_photo_url` | VARCHAR(255) | YES | NULL | Path foto fisik barang belanjaan (WebP) |
+| `receipt_image_url` | VARCHAR(255) | YES | NULL | Path foto struk nota belanja (WebP/JPEG, wajib saat submit) |
+| `item_photo_url` | VARCHAR(255) | YES | NULL | Path foto fisik barang belanjaan (WebP/JPEG) |
 | `approved_by_id` | VARCHAR(32) | YES | NULL | FK merujuk ke `users.id` (penyetuju bon) |
 | `disbursed_by_id` | VARCHAR(32) | YES | NULL | FK merujuk ke `users.id` (SAC penyerah kas) |
 | `disbursed_at` | DATETIME | YES | NULL | Waktu penyerahan kas (mulai masuk $K_{\text{bon}}$) |
@@ -443,7 +513,7 @@ stateDiagram-v2
 | `rejection_reason`| VARCHAR(255) | YES | NULL | Alasan penolakan jika ditolak |
 | `deleted_at` | DATETIME | YES | NULL | Soft delete untuk draf bon |
 
-#### 12. Tabel Pendukung: `audit_logs`, `attachments`, `notifications`
+#### 14. Tabel Pendukung: `audit_logs`, `attachments`, `notifications`
 - `audit_logs`: Mencatat riwayat finansial lengkap (`id`, `store_id`, `entity_name`, `entity_id`, `action`, `performed_by_id`, `old_values`, `new_values`, `ip_address`, `created_at`).
 - `attachments`: Arsip dokumen pendukung (`id`, `store_id`, `entity_type`, `entity_id`, `category`, `file_name`, `file_path`, `file_size_bytes`, `mime_type`, `uploaded_by_id`).
 - `notifications`: Notifikasi alur kerja in-app (`id`, `store_id`, `user_id`, `type`, `title`, `message`, `entity_type`, `entity_id`, `read_at`).
@@ -463,22 +533,24 @@ Aplikasi dibangun murni menggunakan **Inertia.js v3** Monolith SPA (tanpa endpoi
 - `GET /profile` &rarr; `ProfileController@show`
 - `PUT /profile/pin` &rarr; `ProfileController@updatePin`
 
-#### B. Voucher Bon Kas Kecil
+#### B. Voucher Bon Kas Kecil & Settlement Rekap (KKCL)
 - `GET /vouchers` &rarr; `VoucherController@index`
-- `GET /vouchers/create` &rarr; `VoucherController@create`
-- `POST /vouchers` &rarr; `VoucherController@store`
+- `GET /vouchers/create` &rarr; `VoucherController@create` (Memuat kategori aktif toko)
+- `POST /vouchers` &rarr; `VoucherController@store` (Validasi foto struk wajib saat submit)
 - `GET /vouchers/{voucher}` &rarr; `VoucherController@show`
 - `DELETE /vouchers/{voucher}` &rarr; `VoucherController@destroy` (Soft delete draf)
-- `POST /vouchers/{voucher}/submit` &rarr; `VoucherController@submit`
+- `POST /vouchers/{voucher}/submit` &rarr; `VoucherController@submit` (Wajib foto nota)
 - `POST /vouchers/{voucher}/approve` &rarr; `VoucherController@approve` (Validasi anti self-approval)
 - `POST /vouchers/{voucher}/reject` &rarr; `VoucherController@reject` (Alasan wajib)
 - `POST /vouchers/{voucher}/disburse` &rarr; `VoucherController@disburse` (SAC serahkan kas)
 - `POST /vouchers/{voucher}/cancel` &rarr; `VoucherController@cancel` (Pasca-cair)
 - `POST /vouchers/{voucher}/refund` &rarr; `VoucherController@refund` (Konfirmasi uang kembali)
 - `GET /vouchers/pending` &rarr; `VoucherController@pending` (Antrean approval)
-- `GET /vouchers/settlement` &rarr; `VoucherController@settlement`
-- `POST /vouchers/batch-settle` &rarr; `VoucherController@batchSettle`
-- `GET /vouchers/export` &rarr; `VoucherController@export`
+- `GET /vouchers/settlements` &rarr; `PettyCashSettlementController@index` (Arsip dokumen KKCL)
+- `POST /vouchers/settlements` &rarr; `PettyCashSettlementController@store` (One-click instant settlement)
+- `GET /vouchers/settlements/{settlement}` &rarr; `PettyCashSettlementController@show` (Matriks kolom & cetak A4 landscape)
+- `GET /vouchers/settlements/{settlement}/export` &rarr; `PettyCashSettlementController@export` (Ekspor spreadsheet KKCL .xlsx)
+- `GET /vouchers/export` &rarr; `VoucherController@export` (Ekspor dataset voucher dengan kolom M No. KKCL)
 
 #### C. Cash Opname, Reference Lines & Resolutions
 - `GET /opname` &rarr; `OpnameController@index` (Riwayat sesi)
@@ -513,7 +585,13 @@ Aplikasi dibangun murni menggunakan **Inertia.js v3** Monolith SPA (tanpa endpoi
 - `GET /bri-funds/entity/{entityName}` &rarr; `BriFundController@entityDetail`
 - `GET /bri-funds/balances` &rarr; `BriFundController@balances`
 
-#### E. Administrasi & Import/Export Center
+#### E. Master Kategori Kas Kecil (Expense Categories)
+- `GET /admin/categories` &rarr; `PettyCashCategoryController@index` (Katalog master kategori)
+- `POST /admin/categories` &rarr; `PettyCashCategoryController@store` (Isolasi skop toko vs global)
+- `PUT /admin/categories/{category}` &rarr; `PettyCashCategoryController@update`
+- `POST /admin/categories/{category}/toggle-status` &rarr; `PettyCashCategoryController@toggleStatus`
+
+#### F. Administrasi & Import/Export Center
 - `GET /admin/users` &rarr; `UserController@index`
 - `POST /admin/users` &rarr; `UserController@store` (SoD: SAC dilarang buat user $\ge$ SS)
 - `PUT /admin/users/{user}` &rarr; `UserController@update` (Anti-escalation)
@@ -523,9 +601,9 @@ Aplikasi dibangun murni menggunakan **Inertia.js v3** Monolith SPA (tanpa endpoi
 - `GET /admin/audit-logs` &rarr; `AuditLogController@index`
 - `GET /admin/audit-logs/export` &rarr; `AuditLogController@export`
 - `GET /admin/import-export` &rarr; `ImportExportController@index`
-- `GET /admin/import-export/export/{users|vouchers|bri-postings|audit-logs}`
-- `GET /admin/import-export/template/{type}`
-- `POST /admin/import-export/preview` &rarr; Validasi baris per baris sebelum eksekusi
+- `GET /admin/import-export/export/{users|vouchers|categories|settlements|bri-postings|audit-logs}`
+- `GET /admin/import-export/template/{type}` (Multi-sheet template dengan lembar katalog kategori)
+- `POST /admin/import-export/preview` &rarr; Validasi baris per baris sebelum eksekusi (validasi kategori dinamis)
 - `POST /admin/import-export/commit` &rarr; Terapkan import ke database
 
 ### 9.2. Kode Kesalahan & Penolakan Standar
@@ -536,6 +614,7 @@ Aplikasi dibangun murni menggunakan **Inertia.js v3** Monolith SPA (tanpa endpoi
 - `INSUFFICIENT_RUNNING_BALANCE`: Saldo berjalan entitas tidak mencukupi untuk penarikan keluar (Zero-Deficit Guard).
 - `SESSION_LOCKED`: Sesi opname telah disahkan oleh Store Manager dan berstatus read-only permanen.
 - `MISSING_PHYSICAL_PROOF`: Sesi KAS_BESAR belum melampirkan foto struk fisik register POS Z-Report.
+- `MISSING_RECEIPT_PROOF`: Voucher diajukan tanpa foto bukti struk (dikembalikan via HTTP 422 `ValidationException`).
 
 ---
 
@@ -554,7 +633,7 @@ Foto asli kamera ponsel pintar (4 MB s/d 12 MB) wajib dikompresi di browser peng
 
 ## 11. FORMAT BERITA ACARA RESMI & MESIN SPREADSHEET EXCEL (.XLSX)
 
-Sistem menggunakan pustaka `maatwebsite/excel` di Laravel untuk mengekspor Berita Acara Cash Opname (BACO) resmi.
+Sistem menggunakan pustaka `maatwebsite/excel` di Laravel untuk mengekspor Berita Acara Cash Opname (BACO) dan Rekapitulasi Kas Kecil (KKCL).
 
 ### 11.1. Standar Format Sel & Formula Native
 - **Format Akuntansi Resmi:** `"Rp "#,##0;[Red]("-Rp "#,##0);"-"` (Nol ditampilkan sebagai tanda hubung `-`, angka minus berwarna merah dalam kurung).
@@ -562,10 +641,21 @@ Sistem menggunakan pustaka `maatwebsite/excel` di Laravel untuk mengekspor Berit
 - **Tata Letak Cetak A4:** Mengatur `fitToPage: true`, `fitToWidth: 1`, `fitToHeight: 0`, margin sempit (0.5 inci).
 - **Bagian Tanda Tangan Tiga Pihak:** Mencantumkan nama lengkap dan NIK dari kasir pembuat (SAC), supervisor saksi fisik (SS), dan manager pengesah (SM).
 
+### 11.2. Format Matriks Rekapitulasi Kas Kecil (KKCL) & Multi-Sheet Template
+1. **Spreadsheet Rekapitulasi KKCL (`PettyCashSettlementExport`)**:
+   - Berorientasi Landscape (`size: A4 landscape`).
+   - Menyajikan matriks kolom kategori pengeluaran dinamis.
+   - Kolom total per voucher di kanan dan baris total per kategori di bawah menggunakan formula native `=SUM(...)`.
+2. **Multi-Sheet Template Import Voucher (`PettyCashVoucherTemplateExport`)**:
+   - Lembar 1: *Template_Voucher* (format data siap isi).
+   - Lembar 2: *Katalog_Kategori* (daftar referensi kode dan nama kategori aktif milik toko).
+   - Formula validasi otomatis mencegah salah ketik nama kategori saat import massal.
+
 ---
 
-## 12. INFRASTRUKTUR DEPLOYMENT & LOW-RAM ENVIRONMENT
+## 12. INFRASTRUKTUR DEPLOYMENT, PRODUCTION MIGRATION & LOW-RAM ENVIRONMENT
 
+### 12.1. Arsitektur Low-RAM VPS
 Sistem dirancang secara khusus untuk berjalan stabil pada **VPS bersumber daya terbatas (1 vCPU, 1 GB – 2 GB RAM, 2 GB Swap)** yang berbagi sumber daya dengan service lain:
 1. **Zero-Build Server:** Asset frontend (`React 19 + Tailwind CSS v4`) dikompilasi di komputer lokal pengembang (`npm run build`). VPS **tidak menginstal Node.js / NPM**, menghemat memori dan kapasitas disk.
 2. **PHP-FPM Mode `ondemand`:** Worker PHP-FPM 8.4 melepaskan memori setelah 10 detik idle.
@@ -573,6 +663,37 @@ Sistem dirancang secara khusus untuk berjalan stabil pada **VPS bersumber daya t
 4. **SQLite WAL Mode:** Mengaktifkan `journal_mode = WAL`, `synchronous = NORMAL`, `busy_timeout = 5000`, dan `foreign_keys = ON`.
 5. **Skrip Backup Otomatis:** Skrip cron mencadangkan basis data SQLite dan berkas upload secara berkala dengan rotasi 30 hari.
 
+### 12.2. Prosedur Pembaruan Produksi VPS & Safe Migration Protocol
+1. **Pencegahan Perintah Destruktif**:
+   - Pada `AppServiceProvider.php`, Laravel mengaktifkan:
+     ```php
+     DB::prohibitDestructiveCommands($this->app->isProduction());
+     ```
+   - **Perintah `migrate:fresh` atau `migrate:reset` DIBLOKIR TOTAL di VPS** untuk melindungi integritas basis data finansial toko.
+2. **Prosedur Update Resmi**:
+   ```bash
+   # 1. Tarik pembaruan kode dari GitHub
+   git pull origin main
+
+   # 2. Update dependensi tanpa dev
+   composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+
+   # 3. Jalankan migrasi baru secara aman
+   php artisan migrate --force
+
+   # 4. Jalankan seeder kategori baru (jika ada)
+   php artisan db:seed --class=PettyCashCategorySeeder --force
+
+   # 5. Bersihkan dan segarkan cache konfigurasi & rute
+   php artisan optimize:clear
+   php artisan config:cache
+   php artisan route:cache
+
+   # 6. Pastikan izin kepemilikan direktori storage & cache
+   sudo chown -R $USER:www-data storage bootstrap/cache
+   sudo chmod -R 775 storage bootstrap/cache
+   ```
+
 ---
 > **Catatan Pengesahan Dokumen:**  
-> Dokumen Master Spesifikasi Versi 2.1.0 ini adalah konsolidasi resmi dari seluruh arsip dokumen `docs/00` sampai `docs/14` di repositori G-COINS Toko Gramedia World Karawang. Disusun sebagai acuan tunggal yang presisi, mencerminkan seluruh implementasi Phase 7, dan siap diaudit.
+> Dokumen Master Spesifikasi Versi 2.2.0 ini adalah konsolidasi resmi dari seluruh arsip dokumen `docs/00` sampai `docs/14` di repositori G-COINS Toko Gramedia World Karawang. Disusun sebagai acuan tunggal yang presisi, mencerminkan seluruh implementasi Phase 8 (Columnar Matrix, Master Categories & KKCL Settlement Engine), dan siap diaudit.

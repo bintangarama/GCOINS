@@ -66,19 +66,32 @@ SOA (Per-store, basic)
 | Create new store | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Configure opname types/items | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-### Voucher Bon Kas Kecil
+### Voucher Bon Kas Kecil & Settlement Rekap (KKCL)
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Create draft & upload photos | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Delete own draft (soft delete) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Submit for review | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Submit for review (foto struk wajib) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Approve voucher | ❌ | ✅ | ✅* | ✅ | ❌ |
 | Reject voucher (reason required) | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Disburse cash (DISBURSED) | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Batch settle (SETTLED) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Generate & Settle Rekap KKCL (SETTLED) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| View Settlement Matrix & Archive | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Print KKCL A4 Landscape & Export Excel | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Cancel post-disbursement | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Confirm refund (REFUNDED) | ❌ | ❌ | ✅ | ❌ | ❌ |
+
+### Master Kategori Kas Kecil
+
+| Action | SOA | SS | SAC | SM | SYSADMIN |
+|---|:---:|:---:|:---:|:---:|:---:|
+| View active categories (dropdowns) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Manage Master Categories Index | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Create/Edit Store-Specific Category | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Toggle Store-Specific Category Status | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Create/Edit Global Category | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Toggle Global Category Status | ❌ | ❌ | ❌ | ❌ | ✅ |
 
 ### Cash Opname Session & Resolution Ledger
 
@@ -112,10 +125,11 @@ SOA (Per-store, basic)
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Download BACO Excel (.xlsx) | ❌ | ✅ | ✅ | ✅ | ❌ |
-| Download voucher recap | ❌ | ✅ | ✅ | ✅ | ❌ |
-| Print-friendly A4 view | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Download voucher recap (incl. KKCL col) | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Download settlement matrix Excel | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Print-friendly A4 view (BACO & KKCL) | ❌ | ✅ | ✅ | ✅ | ❌ |
 | View audit logs | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Import/Export data | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Import/Export data (vouchers, cats, etc.)| ❌ | ❌ | ✅ | ✅ | ✅ |
 
 ## 4. Integrity & Security Rules (SoD)
 
@@ -143,3 +157,11 @@ All OUTFLOW postings recorded by SAC **cannot be approved by SAC**. Must be appr
 - All queries automatically scoped by `store_id` via Eloquent Global Scope (`HasStoreScope`).
 - SYSTEM_ADMIN can view cross-store data but cannot perform financial business operations.
 - Cross-tenant data leakage dicegah di level database dan authorization policy.
+
+### Rule 5: Dual-Scope Category Protection & Settlement Finality
+1. **Isolasi Master Kategori Global vs Toko**:
+   - Kategori Global (`store_id = NULL`) hanya boleh dikelola (create/update/toggle) oleh `SYSTEM_ADMIN`. Staf toko (`SAC`/`SM`) DILARANG mengubah nama, kode, atau status keaktifan kategori global.
+   - Kategori Khusus Toko (`store_id != NULL`) hanya boleh dibuat dan dikelola oleh `SAC` atau `SM` pada toko yang bersangkutan.
+2. **Finalitas Rekapitulasi (KKCL Lock)**:
+   - Voucher berstatus `DISBURSED` yang telah diikat ke dalam nomor rekapitulasi `PettyCashSettlement` seketika bertransisi menjadi `SETTLED`.
+   - Voucher berstatus `SETTLED` yang telah memiliki `settlement_id` tidak dapat dimasukkan kembali ke rekapitulasi lain (*anti double-claim/double-settle*).

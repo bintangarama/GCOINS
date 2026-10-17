@@ -64,12 +64,12 @@ These are used in flash messages and policy rejections:
 | GET | `/profile` | `ProfileController@show` | View profile and change PIN form |
 | PUT | `/profile/pin` | `ProfileController@updatePin` | Update PIN with current PIN verification |
 
-### Vouchers
+### Vouchers & Settlement Rekap (KKCL)
 | Method | URI | Controller | Action |
 |---|---|---|---|
 | GET | `/vouchers` | `VoucherController@index` | List with filters |
-| GET | `/vouchers/create` | `VoucherController@create` | Create form |
-| POST | `/vouchers` | `VoucherController@store` | Save draft/submit |
+| GET | `/vouchers/create` | `VoucherController@create` | Create form (loads active categories) |
+| POST | `/vouchers` | `VoucherController@store` | Save draft/submit (receipt guard enforced) |
 | GET | `/vouchers/{voucher}` | `VoucherController@show` | Detail view |
 | DELETE | `/vouchers/{voucher}` | `VoucherController@destroy` | Soft delete draft |
 | POST | `/vouchers/{voucher}/submit` | `VoucherController@submit` | Submit for review |
@@ -79,9 +79,13 @@ These are used in flash messages and policy rejections:
 | POST | `/vouchers/{voucher}/cancel` | `VoucherController@cancel` | Cancel post-disburse |
 | POST | `/vouchers/{voucher}/refund` | `VoucherController@refund` | Confirm refund (SAC only) |
 | GET | `/vouchers/pending` | `VoucherController@pending` | Approval queue |
-| GET | `/vouchers/settlement` | `VoucherController@settlement` | Settlement page |
-| POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Batch settle |
-| GET | `/vouchers/export` | `VoucherController@export` | Export filtered vouchers (.xlsx/.csv) |
+| GET | `/vouchers/settlements` | `PettyCashSettlementController@index` | Settlement archive list |
+| POST | `/vouchers/settlements` | `PettyCashSettlementController@store` | Generate KKCL & instant settle |
+| GET | `/vouchers/settlements/{settlement}` | `PettyCashSettlementController@show` | Columnar matrix workspace (A4 print) |
+| GET | `/vouchers/settlements/{settlement}/export` | `PettyCashSettlementController@export` | Export matrix spreadsheet (.xlsx) |
+| GET | `/vouchers/settlement` | `VoucherController@settlement` | Legacy settlement page |
+| POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Legacy batch settle |
+| GET | `/vouchers/export` | `VoucherController@export` | Export filtered vouchers (.xlsx/.csv, col M KKCL) |
 
 ### Cash Opname, Reference Lines & Resolutions
 | Method | URI | Controller | Action |
@@ -121,6 +125,14 @@ These are used in flash messages and policy rejections:
 | GET | `/bri-funds/balances` | `BriFundController@balances` | JSON: current balances for opname form |
 | GET | `/bri-funds/export` | `BriFundController@export` | Export posting summary |
 
+### Master Kategori Kas Kecil (Expense Categories)
+| Method | URI | Controller | Action |
+|---|---|---|---|
+| GET | `/admin/categories` | `PettyCashCategoryController@index` | Categories catalog list |
+| POST | `/admin/categories` | `PettyCashCategoryController@store` | Create category (Scope enforced) |
+| PUT | `/admin/categories/{category}` | `PettyCashCategoryController@update` | Update category (Scope protected) |
+| POST | `/admin/categories/{category}/toggle-status` | `PettyCashCategoryController@toggleStatus` | Activate / deactivate category |
+
 ### Administration & Settings
 | Method | URI | Controller | Action |
 |---|---|---|---|
@@ -140,10 +152,12 @@ These are used in flash messages and policy rejections:
 | GET | `/admin/import-export` | `ImportExportController@index` | Import/Export workspace |
 | GET | `/admin/import-export/export/users` | `ImportExportController@exportUsers` | Export user accounts |
 | GET | `/admin/import-export/export/vouchers` | `ImportExportController@exportVouchers` | Export vouchers dataset |
+| GET | `/admin/import-export/export/categories` | `ImportExportController@exportCategories` | Export expense categories catalog |
+| GET | `/admin/import-export/export/settlements` | `ImportExportController@exportSettlements` | Export settlement recaps |
 | GET | `/admin/import-export/export/bri-postings` | `ImportExportController@exportBriPostings` | Export BRI ledger |
 | GET | `/admin/import-export/export/audit-logs` | `ImportExportController@exportAuditLogs` | Export activity logs |
-| GET | `/admin/import-export/template/{type}` | `ImportExportController@downloadTemplate` | Download Excel import template |
-| POST | `/admin/import-export/preview` | `ImportExportController@preview` | Validate uploaded Excel and preview rows |
+| GET | `/admin/import-export/template/{type}` | `ImportExportController@downloadTemplate` | Download multi-sheet Excel template |
+| POST | `/admin/import-export/preview` | `ImportExportController@preview` | Validate uploaded Excel (dynamic categories) |
 | POST | `/admin/import-export/commit` | `ImportExportController@commit` | Commit validated rows to database |
 
 ### Notifications
@@ -165,9 +179,43 @@ These are used in flash messages and policy rejections:
 [
     'amount' => 'required|integer|min:1|max:' . $imprestFundCents,
     'purpose' => 'required|string|max:255',
-    'category' => 'required|in:OPERASIONAL,STRUK_KASIR,LOGISTIK,KONSUMSI,MAINTENANCE,LAINNYA',
-    'receipt_image' => 'nullable|file|mimes:webp,jpg,png|max:2048',
-    'item_photo' => 'nullable|file|mimes:webp,jpg,png|max:2048',
+    'category' => [
+        'required',
+        'string',
+        'max:50',
+        Rule::exists('petty_cash_categories', 'code')->where(function ($query) {
+            $query->where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('store_id')->orWhere('store_id', auth()->user()->store_id));
+        }),
+    ],
+    'is_submit' => 'nullable|boolean',
+    'receipt_image' => [
+        Rule::requiredIf(fn () => (bool) request('is_submit')),
+        'nullable',
+        'file',
+        'mimes:webp,jpg,jpeg,png',
+        'max:2048',
+    ],
+    'item_photo' => 'nullable|file|mimes:webp,jpg,jpeg,png|max:2048',
+]
+```
+
+### StoreSettlementRequest
+```php
+[
+    'voucher_ids' => 'required|array|min:1',
+    'voucher_ids.*' => 'required|string|exists:petty_cash_vouchers,id',
+    'notes' => 'nullable|string|max:1000',
+]
+```
+
+### CategoryRequest
+```php
+[
+    'name' => 'required|string|max:100',
+    'code' => 'nullable|string|max:50',
+    'description' => 'nullable|string|max:255',
+    'sort_order' => 'nullable|integer|min:0',
 ]
 ```
 

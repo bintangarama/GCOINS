@@ -103,6 +103,29 @@
 - Status timeline with timestamps and actor names
 - Action buttons shown based on current user's role and voucher status
 
+### FR-VCH-12: Master Kategori Kas Kecil (Expense Categories)
+- **Roles**: `SYSTEM_ADMIN` (Global Nasional), `SAC`/`SM` (Custom Store)
+- **10 Kategori Standar Gramedia**: `BDL`, `BBM_MOBIL`, `BBM_MOTOR`, `KERTAS_FORMULIR`, `BIAYA_PEMASARAN`, `IKLAN`, `ONGKIR`, `EMBALLAGE`, `KEP_RT`, `LAINNYA`
+- **Scope Isolation**: Store SAC/SM can only add/edit categories belonging to their store (`store_id`)
+- **Ordering**: Kolom `order` untuk menentukan urutan kolom pada tabel matriks rekap
+- **Status Toggle**: Aktif / Nonaktif tanpa menghapus data historis voucher yang ada
+
+### FR-VCH-13: Rekapitulasi Kas Kecil (KKCL Columnar Matrix Settlement)
+- **Role**: SAC only
+- **Batch Settle**: Memilih voucher `DISBURSED` secara massal untuk diselesaikan
+- **Penomoran Dokumen Otomatis**: Format resmi `{SEQ}/KKCL/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`
+- **Binding Transaksional**: Seluruh voucher terpilih otomatis terikat ke `settlement_id` dan berstatus `SETTLED`
+- **Status Rekap Selesai Seketika**: Rekap berstatus `SETTLED` langsung saat dibuat oleh SAC (tanpa blocking approval SM)
+- **Dual Format Output**:
+  - Direct Web Print A4 Landscape (`@media print` CSS 1:1 replika fisik lembar Karawang `GAM435`)
+  - Excel Columnar Matrix Pivot (`.xlsx`) dengan formula `=SUM()` dan kotak tanda tangan SAC & SM
+
+### FR-VCH-14: Validasi Foto Bukti Pengajuan (Receipt Image Guard)
+- Pengajuan langsung (`is_submit: true` atau tombol "Ajukan Sekarang") **WAJIB** melampirkan foto kuitansi/struk fisik
+- Pembuatan draft (`is_submit: false` atau tombol "Simpan Sebagai Draft") mengizinkan penyimpanan tanpa foto bukti
+- Validasi FormRequest mengembalikan error HTTP 422 (*Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.*) dan ditampilkan langsung di bawah input uploader tanpa menyebabkan crash 500
+- Action layer dilindungi dengan `ValidationException` jika dipanggil di luar FormRequest
+
 ---
 
 ## Module 3: BRI Fund Posting (Bank Sub-Ledger)
@@ -244,6 +267,7 @@
 ### FR-RPT-03: Voucher Recap Report
 - Export list of vouchers as .xlsx/.csv
 - Filterable by date range, status, category
+- **Kolom M (Nomor Rekap KKCL)**: Menyertakan nomor dokumen settlement bagi voucher yang sudah direkap
 
 ### FR-RPT-04: BRI Fund Summary Report
 - Export posting history and running balances
@@ -251,6 +275,17 @@
 ### FR-RPT-05: Signed BA Scan Upload
 - Upload scanned signed Berita Acara (physical document with wet signatures)
 - Attached to the opname session
+
+### FR-RPT-06: Petty Cash Matrix Recap Export (.xlsx)
+- Export dokumen KKCL dalam format matriks akuntansi berkolom
+- Pivot horizontal kategori pos beban toko
+- Format akuntansi `#,##0`, formula `=SUM()`, tanggal cetak, dan kotak tanda tangan SAC & SM
+
+### FR-RPT-07: Petty Cash Settlements List Export (.xlsx)
+- Export daftar seluruh arsip dokumen rekapitulasi kas kecil toko
+
+### FR-RPT-08: Master Categories Export (.xlsx)
+- Export seluruh daftar master kategori pos beban (Global & Khusus Toko)
 
 ---
 
@@ -276,15 +311,16 @@
 ## Module 7: Import/Export
 
 ### FR-IMP-01: Data Export (All Modules)
-- Export vouchers, BRI postings, users, audit logs as .xlsx or .csv
-- Respect current filters when exporting
+- Export vouchers, BRI postings, users, audit logs, categories, settlements as .xlsx
+- Respect current store scope and query filters
 
 ### FR-IMP-02: Data Import (Migration Support)
 - Import users from .xlsx/.csv (with validation preview)
-- Import historical vouchers from .xlsx
+- Import historical vouchers from .xlsx (multi-sheet template dengan Sheet 1 Format Data & Sheet 2 Katalog Kategori Referensi)
 - Import BRI fund postings from .xlsx
-- Preview with row-by-row validation before commit
-- Error rows highlighted, downloadable error report
+- Import master categories from .xlsx (kode unik, lingkup toko/global, urutan kolom)
+- Preview dengan row-by-row validation sebelum commit ke database
+- Error rows highlighted dengan penyebab kesalahan detail
 
 ---
 

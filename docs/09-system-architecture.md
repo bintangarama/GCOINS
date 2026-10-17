@@ -78,6 +78,12 @@ app/
 │   │   ├── CancelVoucherAction.php
 │   │   ├── DeleteVoucherAction.php
 │   │   └── RefundVoucherAction.php
+│   ├── Category/
+│   │   ├── CreateCategoryAction.php
+│   │   ├── UpdateCategoryAction.php
+│   │   └── ToggleCategoryStatusAction.php
+│   ├── Settlement/
+│   │   └── CreateSettlementAction.php
 │   ├── Opname/
 │   │   ├── OpenSessionAction.php
 │   │   ├── UpdateDenominationsAction.php
@@ -103,6 +109,7 @@ app/
 │   │   └── SendNotificationAction.php
 │   ├── Import/
 │   │   ├── ImportBriPostingsAction.php
+│   │   ├── ImportCategoriesAction.php
 │   │   ├── ImportUsersAction.php
 │   │   └── ImportVouchersAction.php
 │   └── User/
@@ -130,9 +137,11 @@ app/
 │   ├── BriSubLedger.php
 │   ├── BriCustomAllocation.php
 │   ├── BriFundPosting.php
+│   ├── PettyCashCategory.php
+│   ├── PettyCashSettlement.php
 │   ├── PettyCashVoucher.php
 │   ├── User.php
-│   └── Store.php
+│   ├── Store.php
 │   ├── Attachment.php
 │   └── Notification.php
 ├── Scopes/
@@ -143,7 +152,10 @@ app/
 │   └── BriFundPostingPolicy.php
 └── Exports/
     ├── BacoExport.php
-    └── VoucherRecapExport.php
+    ├── VoucherRecapExport.php                  # Includes Column M: No. Rekap (KKCL)
+    ├── PettyCashSettlementExport.php           # Columnar accounting matrix pivot
+    ├── PettyCashCategoriesExport.php           # Master categories dataset
+    └── PettyCashVoucherTemplateExport.php      # Multi-sheet import template with Category Catalog
 ```
 
 ### Why Action Classes?

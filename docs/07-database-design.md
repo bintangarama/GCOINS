@@ -256,20 +256,61 @@ Snapshot of BRI allocation balances at the time of a cash opname session. Comput
 
 ---
 
+## Table: `petty_cash_categories`
+
+Master catalog for petty cash expense categories supporting dual-scope governance (Global vs Store-Specific).
+
+| Column | Type | Nullable | Default | Description |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | PK |
+| `store_id` | VARCHAR(32) | YES | NULL | FK → `stores.id` (NULL = Global Category) |
+| `code` | VARCHAR(50) | NO | — | Unique identifier code (e.g. `ALAT_TULIS`, `KONSUMSI`) |
+| `name` | VARCHAR(100) | NO | — | Display label (e.g. "Alat Tulis Kantor") |
+| `description` | VARCHAR(255) | YES | NULL | Explanation of category scope |
+| `sort_order` | INTEGER | NO | 0 | Display sequence order |
+| `is_active` | BOOLEAN | NO | TRUE | Active status toggle |
+| `created_at` | DATETIME | NO | NOW() | |
+| `updated_at` | DATETIME | NO | NOW() | |
+
+**Indexes**: INDEX(`store_id`, `code`) (`categories_store_code_idx`), INDEX(`store_id`, `is_active`, `sort_order`) (`categories_store_active_sort_idx`)
+
+---
+
+## Table: `petty_cash_settlements`
+
+Document header for petty cash reimbursement recaps (KKCL) aggregating disbursed vouchers into a columnar accounting matrix.
+
+| Column | Type | Nullable | Default | Description |
+|---|---|:---:|:---:|---|
+| `id` | VARCHAR(32) | NO | CUID | PK |
+| `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
+| `settlement_number` | VARCHAR(50) | NO | — | `{SEQ}/KKCL/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`. UNIQUE. |
+| `total_amount_cents` | BIGINT | NO | 0 | Total aggregated voucher amount in cents |
+| `status` | VARCHAR(30) | NO | `SETTLED` | `SETTLED` (closed upon generation by SAC) |
+| `settled_by_id` | VARCHAR(32) | NO | — | FK → `users.id` (SAC who generated recap) |
+| `notes` | TEXT | YES | NULL | Notes / memo regarding period expenses |
+| `created_at` | DATETIME | NO | NOW() | |
+| `updated_at` | DATETIME | NO | NOW() | |
+
+**Indexes**: UNIQUE(`settlement_number`), INDEX(`store_id`, `created_at`) (`settlements_store_date_idx`)
+
+---
+
 ## Table: `petty_cash_vouchers`
 
 | Column | Type | Nullable | Default | Description |
 |---|---|:---:|:---:|---|
 | `id` | VARCHAR(32) | NO | CUID | PK |
 | `store_id` | VARCHAR(32) | NO | — | FK → `stores.id` |
+| `settlement_id` | VARCHAR(32) | YES | NULL | FK → `petty_cash_settlements.id` (NULL when disbursed/unsettled) |
 | `voucher_number` | VARCHAR(50) | NO | — | `024/KKCL/10435/IX/2026`. UNIQUE. |
 | `requester_id` | VARCHAR(32) | NO | — | FK → `users.id` |
 | `amount_cents` | INTEGER | NO | — | > 0, ≤ imprest fund |
 | `purpose` | VARCHAR(255) | NO | — | Expenditure description |
-| `category` | VARCHAR(20) | NO | `OPERASIONAL` | `OPERASIONAL`, `STRUK_KASIR`, `LOGISTIK`, `KONSUMSI`, `MAINTENANCE`, `LAINNYA` |
+| `category` | VARCHAR(50) | NO | `OPERASIONAL` | Category code referencing active `petty_cash_categories` |
 | `status` | VARCHAR(30) | NO | `DRAFT` | `DRAFT`, `SUBMITTED`, `APPROVED_SS`, `DISBURSED`, `SETTLED`, `REJECTED`, `REJECTED_REFUND_PENDING`, `REFUNDED` |
-| `receipt_image_url` | VARCHAR(255) | YES | NULL | Receipt photo (WebP) |
-| `item_photo_url` | VARCHAR(255) | YES | NULL | Item/delivery photo (WebP) |
+| `receipt_image_url` | VARCHAR(255) | YES | NULL | Receipt photo (WebP/JPEG, mandatory on submit) |
+| `item_photo_url` | VARCHAR(255) | YES | NULL | Item/delivery photo (WebP/JPEG) |
 | `approved_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (approver) |
 | `approved_at` | DATETIME | YES | NULL | |
 | `disbursed_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (SAC) |
@@ -280,7 +321,7 @@ Snapshot of BRI allocation balances at the time of a cash opname session. Comput
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
-**Indexes**: UNIQUE(`voucher_number`), INDEX(`store_id`, `status`), INDEX(`store_id`, `requester_id`, `status`), INDEX(`deleted_at`)
+**Indexes**: UNIQUE(`voucher_number`), INDEX(`store_id`, `status`), INDEX(`store_id`, `requester_id`, `status`), INDEX(`settlement_id`) (`vouchers_settlement_idx`), INDEX(`deleted_at`)
 
 ---
 

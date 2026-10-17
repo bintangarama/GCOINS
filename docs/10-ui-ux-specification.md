@@ -144,10 +144,13 @@
 - Form fields:
   - Nominal (Rupiah formatted input, auto-convert to cents)
   - Keperluan (text)
-  - Kategori (select dropdown)
+  - Kategori (dynamic select dropdown from `PettyCashCategory::forStore()`)
   - Foto Struk (upload with client-side WebP compression, preview)
   - Foto Barang (upload with client-side WebP compression, preview)
-- Submit button: "Ajukan" (creates as SUBMITTED) or "Simpan Draft"
+- **Mandatory Receipt Evidence Guard**:
+  - Tombol "Ajukan" otomatis disabled jika Foto Struk belum dipilih.
+  - Server-side validation via `FormRequest` returns 422 error jika diajukan tanpa foto struk.
+- Submit options: "Ajukan" (creates as `SUBMITTED`) or "Simpan Draft" (creates as `DRAFT`, foto struk opsional).
 - Cancel: navigate back
 
 ### 4.5. Voucher Detail (`/vouchers/:id`)
@@ -160,6 +163,30 @@
   - Disburse (SAC, when APPROVED_SS)
   - Cancel (SAC/SM, when DISBURSED)
   - Confirm Refund (SAC, when REJECTED_REFUND_PENDING)
+
+### 4.5.1. Petty Cash Settlement Matrix Workspace (`/vouchers/settlements/:id`)
+- Rekapitulasi Pengeluaran Kas Kecil (KKCL) berbasis **Matriks Akuntansi Kolom Kolom (Columnar Matrix)** sesuai standar fisik Toko Gramedia Karawang:
+  - **Header Dokumen**:
+    - Judul: REKAPITULASI PENGELUARAN KAS KECIL (KKCL)
+    - Metadata: Toko / Store Code, Periode Tanggal, No. Dokumen KKCL (`{SEQ}/KKCL/{STORE}/{MONTH}/{YEAR}`), Dibuat oleh (SAC).
+  - **Tabel Matriks Kolom**:
+    - Kolom Tetap Kiri: No., Tanggal, No. Bon, Uraian Keperluan.
+    - Kolom Dinamis Kategori: Kolom 1 s/d Kolom N mewakili kategori aktif (misal: Perlengkapan Toko, Konsumsi, Transport, Fotocopy/Materai, dll.).
+    - Sel Nominal: Nilai voucher diletakkan tepat pada perpotongan baris voucher dan kolom kategori yang dipilih.
+    - Kolom Total Kanan: Jumlah Rupiah per baris voucher.
+  - **Footer Total**:
+    - Baris Total per Kategori: $\sum \text{Nominal per Kolom Kategori}$.
+    - Grand Total: Total keseluruhan pengeluaran kas kecil periode rekap.
+  - **Area Tanda Tangan 3 Pihak**:
+    - Dibuat Oleh (SAC), Diperiksa Oleh (SS / Spv Keuangan), Disetujui Oleh (Store Manager).
+  - **Action Bar**:
+    - Tombol "Cetak Dokumen" &rarr; memicu dialog cetak peramban (`window.print()`) dengan stylesheet khusus **A4 Landscape**.
+    - Tombol "Download Excel (.xlsx)" &rarr; mengunduh berkas spreadsheet resmi dengan formula native `=SUM(...)`.
+
+### 4.5.2. Petty Cash Settlements Archive (`/vouchers/settlements`)
+- Riwayat seluruh dokumen rekapitulasi KKCL yang pernah diterbitkan.
+- Tabel daftar: No. Rekap, Periode, Jumlah Voucher, Total Nominal (Rp), Kasir Pembuat, Tanggal Dibuat, Aksi (Lihat Detail Matriks, Download Excel).
+- Filter rentang tanggal dan pencarian nomor rekap.
 
 ### 4.6. Active Opname Workspace (`/opname/active`)
 
@@ -202,6 +229,15 @@
 - No navigation, no buttons (hidden via `@media print`)
 - Download buttons: .xlsx, .pdf (visible on screen, hidden on print)
 - Ctrl+P compatible
+
+### 4.11. Master Petty Cash Categories Management (`/admin/categories`)
+- Workspace pengelolaan master kategori pengeluaran kas kecil toko.
+- **Tabel Kategori**:
+  - Kolom: Urutan, Kode, Nama Kategori, Deskripsi, Lingkup (Badge: `Global (Pusat)` vs `Kustom Toko`), Status (Switch Toggle: `Aktif` / `Nonaktif`), Aksi (Edit, Toggle).
+  - Scope Guard: Pengguna toko (`SAC`/`SM`) hanya dapat mengubah data kategori bertanda `Kustom Toko`. Kategori `Global` berstatus read-only bagi pengguna toko dan hanya dapat diedit/ditoggle oleh `SYSTEM_ADMIN`.
+- **Modal Tambah / Edit Kategori**:
+  - Field: Nama Kategori, Kode Kategori (auto-slug UPPERCASE), Deskripsi, Urutan Tampilan (Sort Order).
+  - Preview real-time bagaimana nama kategori akan muncul di dropdown formulir voucher dan header matriks rekapitulasi.
 
 ## 5. Key Interaction Patterns
 
@@ -253,10 +289,18 @@
   /* Reset backgrounds and shadows */
   * { background: white !important; box-shadow: none !important; }
 
-  /* A4 page setup */
+  /* Default A4 Portrait (BACO Cash Opname) */
   @page {
     size: A4 portrait;
     margin: 0.5in;
+  }
+
+  /* Specific A4 Landscape for KKCL Columnar Settlement Matrix */
+  .settlement-print-landscape {
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
   }
 
   /* Ensure tables don't break across pages */
