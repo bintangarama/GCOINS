@@ -189,6 +189,10 @@ No financial state change may occur without an audit log entry.
    - Tombol "Ajukan Bon" pada formulir wajib otomatis dinonaktifkan (`disabled`) jika berkas foto struk belum dipilih/diunggah.
 3. **Draft Exemption**:
    - Penyimpanan draf awal (`is_submit: false` / status `DRAFT`) diperbolehkan tanpa foto struk untuk memfasilitasi pencatatan cepat di lantai toko sebelum nota difoto.
+4. **Historical Import Exemption & Approval Attribution**:
+   - Impor voucher massal melalui spreadsheet (.xlsx) diizinkan tanpa berkas foto struk (`receipt_image_url = null`) guna mendukung migrasi data lampau/tutup buku toko. Bukti fisik kertas tetap diarsipkan secara fisik di ordner toko sesuai kaidah audit.
+   - Pilihan status pada berkas impor terbatas pada `SETTLED` (tutup buku rekapitulasi, keluar dari $K_{bon}$) dan `DISBURSED` (bon cair gantung, masuk $K_{bon}$ kas opname).
+   - Otorisasi persetujuan dan pencairan (`approved_by_id`, `disbursed_by_id`) otomatis dicatat atas nama aktor yang mengeksekusi commit (SM atau SAC), dengan tanggal persetujuan disamakan dengan tanggal transaksi bon.
 
 ## Rule 16: Columnar Matrix Settlement & Scope Governance
 

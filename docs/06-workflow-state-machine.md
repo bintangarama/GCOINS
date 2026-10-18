@@ -39,6 +39,8 @@ stateDiagram-v2
 | DISBURSED | SETTLED | SAC | Grouped into `PettyCashSettlement` | Set `settled_at`, set `settlement_id`, exits K_bon |
 | DISBURSED | REJECTED_REFUND_PENDING | SAC/SM | — | Staff must return cash |
 | REJECTED_REFUND_PENDING | REFUNDED | SAC | Cash returned confirmed | Exits K_bon |
+| (import) | SETTLED | SM/SAC | Excel commit with status `SETTLED` | `approved_by` & `disbursed_by` set to actor; backdated; exits K_bon |
+| (import) | DISBURSED | SM/SAC | Excel commit with status `DISBURSED` | `approved_by` & `disbursed_by` set to actor; backdated; enters K_bon |
 
 ---
 

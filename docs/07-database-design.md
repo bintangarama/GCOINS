@@ -310,7 +310,7 @@ Document header for petty cash reimbursement recaps (KKCL) aggregating disbursed
 | `purpose` | VARCHAR(255) | NO | — | Expenditure description |
 | `category` | VARCHAR(50) | NO | `OPERASIONAL` | Category code referencing active `petty_cash_categories` |
 | `status` | VARCHAR(30) | NO | `DRAFT` | `DRAFT`, `SUBMITTED`, `APPROVED_SS`, `DISBURSED`, `SETTLED`, `REJECTED`, `REJECTED_REFUND_PENDING`, `REFUNDED` |
-| `receipt_image_url` | VARCHAR(255) | YES | NULL | Receipt photo (WebP/JPEG, mandatory on submit) |
+| `receipt_image_url` | VARCHAR(255) | YES | NULL | Receipt photo (WebP/JPEG, mandatory on web submit `SUBMITTED`, optional/null for Excel import) |
 | `item_photo_url` | VARCHAR(255) | YES | NULL | Item/delivery photo (WebP/JPEG) |
 | `approved_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (approver) |
 | `approved_at` | DATETIME | YES | NULL | |

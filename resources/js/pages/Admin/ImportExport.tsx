@@ -74,14 +74,24 @@ export default function ImportExportIndex({ store }: ImportExportProps) {
         formData.append('file', selectedFile);
 
         try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+            const metaToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+            const cookieMatch = document.cookie.match(/(^|;\s*)XSRF-TOKEN=([^;]+)/);
+            const xsrfCookie = cookieMatch ? decodeURIComponent(cookieMatch[2]) : '';
+
+            const headers: Record<string, string> = {
+                'Accept': 'application/json',
+            };
+
+            if (metaToken) {
+                headers['X-CSRF-TOKEN'] = metaToken;
+            } else if (xsrfCookie) {
+                headers['X-XSRF-TOKEN'] = xsrfCookie;
+            }
+
             const response = await fetch('/admin/import-export/preview', {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
+                headers,
             });
 
             if (!response.ok) {

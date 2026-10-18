@@ -160,6 +160,8 @@ These are used in flash messages and policy rejections:
 | POST | `/admin/import-export/preview` | `ImportExportController@preview` | Validate uploaded Excel (dynamic categories) |
 | POST | `/admin/import-export/commit` | `ImportExportController@commit` | Commit validated rows to database |
 
+> **Catatan Proteksi CSRF Import**: Request AJAX `/admin/import-export/preview` dan `/commit` memvalidasi CSRF token melalui header `X-CSRF-TOKEN` (dari tag `<meta name="csrf-token">`) atau header `X-XSRF-TOKEN` (dari cookie terenkripsi browser `XSRF-TOKEN`).
+
 ### Notifications
 | Method | URI | Controller | Action |
 |---|---|---|---|

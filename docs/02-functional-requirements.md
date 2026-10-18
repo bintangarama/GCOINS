@@ -323,10 +323,13 @@
 
 ### FR-IMP-02: Data Import (Migration Support)
 - Import users from .xlsx/.csv (with validation preview)
-- Import historical vouchers from .xlsx (multi-sheet template dengan Sheet 1 Format Data & Sheet 2 Katalog Kategori Referensi)
+- Import historical vouchers from .xlsx (multi-sheet template dengan Sheet 1 Format Data & Sheet 2 Katalog Kategori Referensi):
+  - Mendukung pilihan status `SETTLED` (arsip pembukuan lampau/tutup buku, tidak masuk $K_{bon}$ opname) dan `DISBURSED` (bon cair aktif, masuk $K_{bon}$, dapat direkap ke KKCL baru).
+  - Foto bukti struk/kuitansi fisik (`receipt_image_url`) bersifat opsional/null pada file Excel; struk fisik asli diarsipkan pada ordner binder toko.
+  - Otorisasi data impor (`approved_by_id`, `disbursed_by_id`) otomatis dicatat atas nama pengguna yang mengeksekusi commit (SM atau SAC), dengan tanggal persetujuan disinkronkan ke tanggal transaksi.
 - Import BRI fund postings from .xlsx
 - Import master categories from .xlsx (kode unik, lingkup toko/global, urutan kolom)
-- Preview dengan row-by-row validation sebelum commit ke database
+- Preview dengan row-by-row validation sebelum commit ke database (terlindungi proteksi CSRF header `X-CSRF-TOKEN` / cookie `X-XSRF-TOKEN`)
 - Error rows highlighted dengan penyebab kesalahan detail
 
 ---
