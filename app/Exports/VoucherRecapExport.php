@@ -134,6 +134,11 @@ class VoucherRecapExport implements Export, WithEvents, WithTitle
             ->with(['requester', 'approvedBy', 'disbursedBy', 'settlement'])
             ->latest('created_at');
 
+        if (! empty($this->filters['voucher_ids'])) {
+            $ids = is_array($this->filters['voucher_ids']) ? $this->filters['voucher_ids'] : explode(',', (string) $this->filters['voucher_ids']);
+            $query->whereIn('id', $ids);
+        }
+
         if (! empty($this->filters['status']) && $this->filters['status'] !== 'ALL') {
             $query->where('status', $this->filters['status']);
         }

@@ -77,6 +77,25 @@ class OpnameController extends Controller
             $query->where('opname_number', 'like', "%{$search}%");
         }
 
+        $sort = $request->query('sort', 'date');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'date' => 'date',
+            'opname_number' => 'opname_number',
+            'opname_type' => 'opname_type',
+            'status' => 'status',
+            'current_variance_cents' => 'current_variance_cents',
+            'system_total_cents' => 'system_total_cents',
+            'created_at' => 'created_at',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest('date')->latest('created_at');
+        }
+
         $sessions = $query->paginate(15)->withQueryString();
 
         $user = $request->user();
@@ -98,6 +117,8 @@ class OpnameController extends Controller
                 'date_from' => $request->input('date_from', ''),
                 'date_to' => $request->input('date_to', ''),
                 'search' => $request->input('search', ''),
+                'sort' => $sort,
+                'direction' => $direction,
             ],
             'stats' => $stats,
             'canCreate' => $user->can('create', CashOpnameSession::class),

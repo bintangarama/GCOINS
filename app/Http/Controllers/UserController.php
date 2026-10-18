@@ -26,10 +26,37 @@ class UserController extends Controller
         Gate::authorize('viewAny', User::class);
 
         $currentUser = $request->user();
-        $query = User::with('store')->latest();
+        $query = User::with('store');
 
         if ($currentUser->role !== 'SYSTEM_ADMIN') {
             $query->where('store_id', $currentUser->store_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('nik', 'like', "%{$search}%")
+                    ->orWhere('role', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
+            });
+        }
+
+        $sort = $request->query('sort', 'created_at');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'name' => 'name',
+            'nik' => 'nik',
+            'role' => 'role',
+            'is_active' => 'is_active',
+            'created_at' => 'created_at',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest();
         }
 
         $users = $query->paginate(15)->withQueryString();
@@ -38,6 +65,11 @@ class UserController extends Controller
         return Inertia::render('Admin/Users', [
             'users' => $users,
             'stores' => $stores,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
         ]);
     }
 

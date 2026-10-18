@@ -61,17 +61,51 @@ interface PaginatedUsers {
 interface UsersProps {
     users: PaginatedUsers;
     stores: Store[];
+    filters?: {
+        search?: string;
+        sort?: string;
+        direction?: 'asc' | 'desc';
+    };
 }
 
-export default function UsersPage({ users, stores }: UsersProps) {
+export default function UsersPage({ users, stores, filters }: UsersProps) {
     const { auth } = usePage<PageProps>().props;
     const currentUser = auth.user;
 
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(filters?.search || '');
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [resetPinDialogOpen, setResetPinDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+    const handleSort = (field: string) => {
+        const currentSort = filters?.sort || 'created_at';
+        const isCurrent = currentSort === field;
+        const nextDirection = isCurrent && filters?.direction === 'asc' ? 'desc' : 'asc';
+        router.get(
+            usersRoutes.index.url(),
+            {
+                search: search || undefined,
+                sort: field,
+                direction: nextDirection,
+            },
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            router.get(
+                usersRoutes.index.url(),
+                {
+                    search: search || undefined,
+                    sort: filters?.sort || undefined,
+                    direction: filters?.direction || undefined,
+                },
+                { preserveState: true, replace: true }
+            );
+        }
+    };
 
     // Create User Form
     const createForm = useForm({
@@ -151,13 +185,6 @@ export default function UsersPage({ users, stores }: UsersProps) {
         });
     };
 
-    const filteredUsers = users.data.filter(
-        (u) =>
-            u.name.toLowerCase().includes(search.toLowerCase()) ||
-            u.nik.toLowerCase().includes(search.toLowerCase()) ||
-            u.role.toLowerCase().includes(search.toLowerCase())
-    );
-
     return (
         <AppLayout title="Manajemen Pengguna">
             <div className="space-y-6">
@@ -179,9 +206,10 @@ export default function UsersPage({ users, stores }: UsersProps) {
                             <div className="relative w-full sm:w-72">
                                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
                                 <Input
-                                    placeholder="Cari NIK, Nama, Peran..."
+                                    placeholder="Cari NIK, Nama, Peran... (Tekan Enter)"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={handleSearchKeyDown}
                                     className="pl-9 h-10 text-sm"
                                 />
                             </div>
@@ -194,17 +222,49 @@ export default function UsersPage({ users, stores }: UsersProps) {
                         <DataTable>
                             <DataTableHead>
                                 <tr>
-                                    <DataTableHeaderCell>NIK</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Nama Lengkap</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Peran (RBAC)</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="nik"
+                                        currentSort={filters?.sort || 'created_at'}
+                                        currentDirection={filters?.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        NIK
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="name"
+                                        currentSort={filters?.sort || 'created_at'}
+                                        currentDirection={filters?.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Nama Lengkap
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="role"
+                                        currentSort={filters?.sort || 'created_at'}
+                                        currentDirection={filters?.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Peran (RBAC)
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Toko / Unit</DataTableHeaderCell>
                                     <DataTableHeaderCell>No. HP</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="is_active"
+                                        currentSort={filters?.sort || 'created_at'}
+                                        currentDirection={filters?.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Status
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">Aksi</DataTableHeaderCell>
                                 </tr>
                             </DataTableHead>
                             <DataTableBody>
-                                {filteredUsers.length === 0 ? (
+                                {users.data.length === 0 ? (
                                     <DataTableEmpty
                                         colSpan={7}
                                         icon={<UsersIcon className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
@@ -212,7 +272,15 @@ export default function UsersPage({ users, stores }: UsersProps) {
                                         description={search ? "Coba gunakan kata kunci pencarian yang lain." : "Belum ada data pengguna yang terdaftar."}
                                         action={
                                             search ? (
-                                                <Button variant="outline" size="sm" onClick={() => setSearch('')} className="text-xs h-8">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSearch('');
+                                                        router.get(usersRoutes.index.url());
+                                                    }}
+                                                    className="text-xs h-8"
+                                                >
                                                     Reset Pencarian
                                                 </Button>
                                             ) : (
@@ -224,7 +292,7 @@ export default function UsersPage({ users, stores }: UsersProps) {
                                         }
                                     />
                                 ) : (
-                                    filteredUsers.map((userItem) => (
+                                    users.data.map((userItem) => (
                                         <DataTableRow key={userItem.id}>
                                             <DataTableCell mono className="font-medium text-foreground">
                                                 {userItem.nik}

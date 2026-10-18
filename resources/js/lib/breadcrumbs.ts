@@ -6,12 +6,12 @@ import type { BreadcrumbItem } from '@/types/navigation';
 export function resolveDefaultBreadcrumbs(url: string, title?: string): BreadcrumbItem[] {
     const cleanUrl = url.split('?')[0].split('#')[0];
 
-    // Home / Dashboard needs no breadcrumbs
-    if (cleanUrl === '/' || cleanUrl === '/dashboard') {
-        return [];
-    }
-
     const homeItem: BreadcrumbItem = { title: 'Dashboard', href: '/dashboard' };
+
+    // Home / Dashboard
+    if (cleanUrl === '/' || cleanUrl === '/dashboard') {
+        return [homeItem];
+    }
 
     // Vouchers Module
     if (cleanUrl.startsWith('/vouchers')) {

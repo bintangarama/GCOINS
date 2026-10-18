@@ -59,6 +59,21 @@ class AuditLogController extends Controller
             });
         }
 
+        $sort = $request->query('sort', 'created_at');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'created_at' => 'created_at',
+            'action' => 'action',
+            'entity_name' => 'entity_name',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest('created_at');
+        }
+
         $logs = $query->paginate(20)->withQueryString();
 
         // Distinct actions and entity names for filter dropdowns
@@ -74,6 +89,8 @@ class AuditLogController extends Controller
                 'date_from' => $request->query('date_from', ''),
                 'date_to' => $request->query('date_to', ''),
                 'store_id' => $request->query('store_id', ''),
+                'sort' => $sort,
+                'direction' => $direction,
             ],
             'availableActions' => $availableActions,
             'availableEntities' => $availableEntities,

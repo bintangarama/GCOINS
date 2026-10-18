@@ -104,6 +104,24 @@ class BriFundController extends Controller
             });
         }
 
+        $sort = $request->query('sort', 'created_at');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'created_at' => 'created_at',
+            'amount_cents' => 'amount_cents',
+            'entity_name' => 'entity_name',
+            'category' => 'category',
+            'type' => 'type',
+            'status' => 'status',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest();
+        }
+
         $postings = $query->paginate(20)->withQueryString();
 
         $existingEntities = BriFundPosting::select('entity_name')
@@ -113,7 +131,10 @@ class BriFundController extends Controller
 
         return Inertia::render('BriFund/Postings', [
             'postings' => $postings,
-            'filters' => $request->only(['category', 'entity_name', 'type', 'status', 'date_from', 'date_to', 'search']),
+            'filters' => array_merge(
+                $request->only(['category', 'entity_name', 'type', 'status', 'date_from', 'date_to', 'search']),
+                ['sort' => $sort, 'direction' => $direction]
+            ),
             'categories' => BriFundPosting::CATEGORIES,
             'entities' => $existingEntities,
         ]);

@@ -15,6 +15,7 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
     Select,
@@ -35,6 +36,7 @@ import {
     DataTableEmpty,
     DataTableMobileList,
     DataTableMobileCard,
+    DataTableBulkBar,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
@@ -50,6 +52,8 @@ interface VoucherIndexProps {
         date_from?: string;
         date_to?: string;
         search?: string;
+        sort?: string;
+        direction?: 'asc' | 'desc';
     };
     categories: (string | PettyCashCategoryItem)[];
     requesters: Pick<User, 'id' | 'name' | 'nik' | 'role'>[];
@@ -67,6 +71,53 @@ export default function VoucherIndexPage({
     const [requesterId, setRequesterId] = useState(filters.requester_id || 'ALL');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    const isAllSelected =
+        vouchers.data.length > 0 &&
+        vouchers.data.every((v) => selectedIds.includes(v.id));
+
+    const selectedTotalAmount = vouchers.data
+        .filter((v) => selectedIds.includes(v.id))
+        .reduce((sum, v) => sum + v.amount_cents, 0);
+
+    const handleSelectAll = () => {
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(vouchers.data.map((v) => v.id));
+        }
+    };
+
+    const handleToggleRow = (id: string) => {
+        setSelectedIds((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+        );
+    };
+
+    const handleSort = (field: string) => {
+        const currentSort = filters.sort || 'created_at';
+        const isCurrent = currentSort === field;
+        const nextDirection = isCurrent && filters.direction === 'asc' ? 'desc' : 'asc';
+        router.get(
+            '/vouchers',
+            {
+                search: search || undefined,
+                status: status !== 'ALL' ? status : undefined,
+                category: category !== 'ALL' ? category : undefined,
+                requester_id: requesterId !== 'ALL' ? requesterId : undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
+                sort: field,
+                direction: nextDirection,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            }
+        );
+    };
 
     const applyFilters = () => {
         router.get(
@@ -78,6 +129,8 @@ export default function VoucherIndexPage({
                 requester_id: requesterId !== 'ALL' ? requesterId : undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                sort: filters.sort || undefined,
+                direction: filters.direction || undefined,
             },
             {
                 preserveState: true,
@@ -93,6 +146,7 @@ export default function VoucherIndexPage({
         setRequesterId('ALL');
         setDateFrom('');
         setDateTo('');
+        setSelectedIds([]);
         router.get('/vouchers');
     };
 
@@ -250,20 +304,69 @@ export default function VoucherIndexPage({
                         <DataTable>
                             <DataTableHead>
                                 <tr>
-                                    <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Tanggal</DataTableHeaderCell>
+                                    <DataTableHeaderCell className="w-10 px-3">
+                                        <Checkbox
+                                            checked={isAllSelected}
+                                            onCheckedChange={handleSelectAll}
+                                            aria-label="Pilih semua baris"
+                                        />
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="voucher_number"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        No. Voucher
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="receipt_date"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Tanggal
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Kategori</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="category"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Kategori
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="right"
+                                        sortable
+                                        sortField="amount_cents"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Nominal
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="center"
+                                        sortable
+                                        sortField="status"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Status
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell align="center">Aksi</DataTableHeaderCell>
                                 </tr>
                             </DataTableHead>
                             <DataTableBody>
                                 {vouchers.data.length === 0 ? (
                                     <DataTableEmpty
-                                        colSpan={8}
+                                        colSpan={9}
                                         icon={<Receipt className="w-10 h-10 stroke-1" />}
                                         message="Tidak ada voucher yang ditemukan"
                                         description="Coba sesuaikan filter pencarian atau buat pengajuan bon kas kecil baru."
@@ -284,48 +387,58 @@ export default function VoucherIndexPage({
                                         }
                                     />
                                 ) : (
-                                    vouchers.data.map((v) => (
-                                        <DataTableRow key={v.id}>
-                                            <DataTableCell className="font-mono font-semibold text-primary">
-                                                {v.voucher_number}
-                                            </DataTableCell>
-                                            <DataTableCell className="text-muted-foreground whitespace-nowrap">
-                                                {new Date(v.receipt_date || v.created_at).toLocaleDateString('id-ID', {
-                                                    day: '2-digit',
-                                                    month: 'short',
-                                                    year: 'numeric',
-                                                })}
-                                            </DataTableCell>
-                                            <DataTableCell>
-                                                <div className="font-medium text-foreground">{v.requester?.name || '-'}</div>
-                                                <div className="text-[10px] text-muted-foreground font-mono">
-                                                    {v.requester?.nik} ({v.requester?.role})
-                                                </div>
-                                            </DataTableCell>
-                                            <DataTableCell>
-                                                <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
-                                                    {v.category}
-                                                </span>
-                                            </DataTableCell>
-                                            <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
-                                                {v.purpose}
-                                            </DataTableCell>
-                                            <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
-                                                {formatMoney(v.amount_cents)}
-                                            </DataTableCell>
-                                            <DataTableCell align="center" className="whitespace-nowrap">
-                                                <StatusBadge status={v.status} />
-                                            </DataTableCell>
-                                            <DataTableCell align="center" className="whitespace-nowrap">
-                                                <Link href={`/vouchers/${v.id}`}>
-                                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                                                        <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                                                        Detail
-                                                    </Button>
-                                                </Link>
-                                            </DataTableCell>
-                                        </DataTableRow>
-                                    ))
+                                    vouchers.data.map((v) => {
+                                        const isSelected = selectedIds.includes(v.id);
+                                        return (
+                                            <DataTableRow key={v.id} selected={isSelected}>
+                                                <DataTableCell className="w-10 px-3">
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => handleToggleRow(v.id)}
+                                                        aria-label={`Pilih voucher ${v.voucher_number}`}
+                                                    />
+                                                </DataTableCell>
+                                                <DataTableCell className="font-mono font-semibold text-primary">
+                                                    {v.voucher_number}
+                                                </DataTableCell>
+                                                <DataTableCell className="text-muted-foreground whitespace-nowrap">
+                                                    {new Date(v.receipt_date || v.created_at).toLocaleDateString('id-ID', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </DataTableCell>
+                                                <DataTableCell>
+                                                    <div className="font-medium text-foreground">{v.requester?.name || '-'}</div>
+                                                    <div className="text-[10px] text-muted-foreground font-mono">
+                                                        {v.requester?.nik} ({v.requester?.role})
+                                                    </div>
+                                                </DataTableCell>
+                                                <DataTableCell>
+                                                    <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
+                                                        {v.category}
+                                                    </span>
+                                                </DataTableCell>
+                                                <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
+                                                    {v.purpose}
+                                                </DataTableCell>
+                                                <DataTableCell align="right" mono className="font-bold text-foreground whitespace-nowrap">
+                                                    {formatMoney(v.amount_cents)}
+                                                </DataTableCell>
+                                                <DataTableCell align="center" className="whitespace-nowrap">
+                                                    <StatusBadge status={v.status} />
+                                                </DataTableCell>
+                                                <DataTableCell align="center" className="whitespace-nowrap">
+                                                    <Link href={`/vouchers/${v.id}`}>
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                            <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                                            Detail
+                                                        </Button>
+                                                    </Link>
+                                                </DataTableCell>
+                                            </DataTableRow>
+                                        );
+                                    })
                                 )}
                             </DataTableBody>
                         </DataTable>
@@ -354,37 +467,47 @@ export default function VoucherIndexPage({
                             </div>
                         ) : (
                             <DataTableMobileList>
-                                {vouchers.data.map((v) => (
-                                    <DataTableMobileCard key={v.id}>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className="font-mono font-semibold text-xs text-primary">
-                                                {v.voucher_number}
-                                            </span>
-                                            <StatusBadge status={v.status} />
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                            <span className="font-medium text-foreground">{v.requester?.name || '-'}</span>
-                                            <span>
-                                                {new Date(v.created_at).toLocaleDateString('id-ID', {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                })}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground line-clamp-2">{v.purpose}</p>
-                                        <div className="flex items-center justify-between pt-1 border-t border-border/60">
-                                            <span className="font-mono num font-bold text-sm text-foreground">
-                                                {formatMoney(v.amount_cents)}
-                                            </span>
-                                            <Link href={`/vouchers/${v.id}`}>
-                                                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                                                    <Eye className="w-3.5 h-3.5" />
-                                                    Detail
-                                                </Button>
-                                            </Link>
-                                        </div>
-                                    </DataTableMobileCard>
-                                ))}
+                                {vouchers.data.map((v) => {
+                                    const isSelected = selectedIds.includes(v.id);
+                                    return (
+                                        <DataTableMobileCard key={v.id} selected={isSelected}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => handleToggleRow(v.id)}
+                                                        aria-label={`Pilih voucher ${v.voucher_number}`}
+                                                    />
+                                                    <span className="font-mono font-semibold text-xs text-primary">
+                                                        {v.voucher_number}
+                                                    </span>
+                                                </div>
+                                                <StatusBadge status={v.status} />
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                                <span className="font-medium text-foreground">{v.requester?.name || '-'}</span>
+                                                <span>
+                                                    {new Date(v.receipt_date || v.created_at).toLocaleDateString('id-ID', {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">{v.purpose}</p>
+                                            <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                                                <span className="font-mono num font-bold text-sm text-foreground">
+                                                    {formatMoney(v.amount_cents)}
+                                                </span>
+                                                <Link href={`/vouchers/${v.id}`}>
+                                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        Detail
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </DataTableMobileCard>
+                                    );
+                                })}
                             </DataTableMobileList>
                         )}
                     </div>
@@ -399,6 +522,30 @@ export default function VoucherIndexPage({
                         total={vouchers.total}
                     />
                 </Card>
+
+                {/* Floating Bulk Action Bar for Selected Vouchers */}
+                <DataTableBulkBar
+                    selectedCount={selectedIds.length}
+                    totalAmount={selectedTotalAmount}
+                    onClearSelection={() => setSelectedIds([])}
+                    actions={
+                        <Button
+                            asChild
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm"
+                        >
+                            <a
+                                href={`/vouchers/export?${new URLSearchParams({
+                                    voucher_ids: selectedIds.join(','),
+                                }).toString()}`}
+                                download
+                            >
+                                <FileSpreadsheet className="size-3.5" />
+                                Export Excel Terpilih ({selectedIds.length})
+                            </a>
+                        </Button>
+                    }
+                />
             </div>
         </AppLayout>
     );

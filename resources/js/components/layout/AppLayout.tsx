@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard,
@@ -11,6 +11,8 @@ import {
     LogOut,
     Menu,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Store as StoreIcon,
     Shield,
     Layers,
@@ -23,6 +25,8 @@ import {
     Moon,
     Monitor,
     Tags,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from 'lucide-react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
@@ -36,10 +40,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { resolveDefaultBreadcrumbs } from '@/lib/breadcrumbs';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useFlashToast } from '@/hooks/use-flash-toast';
+import { cn } from '@/lib/utils';
 import { PageProps, Role } from '@/types/auth';
 import type { BreadcrumbItem } from '@/types/navigation';
 
@@ -59,6 +65,32 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
     const { auth, flash } = props;
     const user = auth.user;
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('gcoins_sidebar_collapsed') === 'true';
+        }
+        return false;
+    });
+
+    const toggleSidebar = () => {
+        setSidebarCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem('gcoins_sidebar_collapsed', String(next));
+            return next;
+        });
+    };
+
+    // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                toggleSidebar();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // Resolve breadcrumbs: prioritizes explicit prop (even if []), otherwise auto-resolves from URL & title
     const resolvedBreadcrumbs = breadcrumbs !== undefined ? breadcrumbs : resolveDefaultBreadcrumbs(url, title);
@@ -93,15 +125,12 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     label: 'Daftar Bon',
                     href: '/vouchers',
                     icon: Receipt,
-                    active: url === '/vouchers' || (url.startsWith('/vouchers') && !['/vouchers/create', '/vouchers/pending', '/vouchers/settlement'].includes(url) && !url.startsWith('/vouchers/settlements')),
+                    active:
+                        url.startsWith('/vouchers') &&
+                        !url.startsWith('/vouchers/pending') &&
+                        !url.startsWith('/vouchers/settlement') &&
+                        !url.startsWith('/vouchers/settlements'),
                     show: hasRole('SOA', 'SS', 'SAC', 'SM'),
-                },
-                {
-                    label: 'Buat Pengajuan',
-                    href: '/vouchers/create',
-                    icon: FileText,
-                    active: url === '/vouchers/create',
-                    show: hasRole('SOA', 'SS', 'SAC'),
                 },
                 {
                     label: 'Antrean Approval',
@@ -152,7 +181,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     label: 'Overview Saldo',
                     href: '/bri-funds',
                     icon: Building2,
-                    active: url === '/bri-funds',
+                    active: url === '/bri-funds' || url === '/bri-funds/create',
                     show: hasRole('SS', 'SAC', 'SM'),
                 },
                 {
@@ -161,13 +190,6 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     icon: History,
                     active: url.startsWith('/bri-funds/postings'),
                     show: hasRole('SS', 'SAC', 'SM'),
-                },
-                {
-                    label: 'Catat Mutasi',
-                    href: '/bri-funds/create',
-                    icon: PlusCircle,
-                    active: url === '/bri-funds/create',
-                    show: hasRole('SAC', 'SS'),
                 },
                 {
                     label: 'Antrean Approval',
@@ -220,97 +242,194 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
         },
     ];
 
-    const renderNavContent = () => (
+    const renderNavContent = (isCollapsed: boolean = false) => (
         <div className="flex flex-col h-full bg-slate-900 text-slate-100">
             {/* Brand Logo & Title */}
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
-                <div className="flex items-center justify-center size-10 rounded-lg bg-blue-600 font-bold text-white shadow-md shadow-blue-500/20">
+            <div
+                className={cn(
+                    'flex items-center border-b border-slate-800 transition-all duration-300',
+                    isCollapsed ? 'justify-center px-2 py-3.5' : 'gap-3 px-6 py-4'
+                )}
+            >
+                <div className="flex items-center justify-center size-9 rounded-lg bg-blue-600 font-bold text-white shadow-md shadow-blue-500/20 shrink-0">
                     GC
                 </div>
-                <div>
-                    <h1 className="font-bold text-lg leading-tight tracking-tight text-white">G-COINS</h1>
-                    <p className="text-xs text-slate-400">Cash Opname System</p>
-                </div>
+                {!isCollapsed && (
+                    <div className="min-w-0 flex-1 overflow-hidden animate-in fade-in duration-200">
+                        <h1 className="font-bold text-base leading-tight tracking-tight text-white">G-COINS</h1>
+                        <p
+                            className="text-xs text-slate-400 truncate"
+                            title={user?.store ? user.store.name : 'Cash Opname System'}
+                        >
+                            {user?.store ? user.store.name.replace(/^Toko\s+/i, '') : 'Cash Opname System'}
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Navigation links */}
-            <nav className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <nav
+                className={cn(
+                    'flex-1 overflow-y-auto py-4 flex flex-col gap-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+                    isCollapsed ? 'px-2' : 'px-4'
+                )}
+            >
                 {navSections.map((section, idx) => {
                     const visibleItems = section.items.filter((item) => item.show);
                     if (visibleItems.length === 0) return null;
 
                     return (
                         <div key={idx} className="flex flex-col gap-1">
-                            <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                                {section.title}
-                            </p>
+                            {!isCollapsed ? (
+                                <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 truncate animate-in fade-in duration-150">
+                                    {section.title}
+                                </p>
+                            ) : (
+                                idx > 0 && <div className="my-1.5 border-t border-slate-800/80 mx-2" />
+                            )}
                             {visibleItems.map((item, itemIdx) => {
                                 const Icon = item.icon;
-                                return (
+                                const linkElement = (
                                     <Link
                                         key={itemIdx}
                                         href={item.href}
                                         onClick={() => setMobileOpen(false)}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                        className={cn(
+                                            'flex items-center rounded-lg text-sm font-medium transition-colors',
+                                            isCollapsed
+                                                ? 'justify-center size-10 mx-auto'
+                                                : 'gap-3 px-3 py-2.5',
                                             item.active
                                                 ? 'bg-blue-600 text-white shadow-xs'
                                                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                                        }`}
+                                        )}
                                     >
-                                        <Icon className="size-4 shrink-0" />
-                                        <span>{item.label}</span>
+                                        <Icon className={cn('shrink-0', isCollapsed ? 'size-5' : 'size-4')} />
+                                        {!isCollapsed && <span className="truncate">{item.label}</span>}
                                     </Link>
                                 );
+
+                                if (isCollapsed) {
+                                    return (
+                                        <Tooltip key={itemIdx}>
+                                            <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+                                            <TooltipContent
+                                                side="right"
+                                                sideOffset={10}
+                                                className="bg-slate-800 text-white border border-slate-700 shadow-md font-medium text-xs py-1.5 px-2.5"
+                                            >
+                                                {item.label}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                }
+
+                                return linkElement;
                             })}
                         </div>
                     );
                 })}
             </nav>
+
+            {/* Desktop Bottom Collapse Toggle */}
+            <div className="p-2 border-t border-slate-800 hidden lg:block">
+                <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className={cn(
+                        'flex items-center w-full rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors py-2 cursor-pointer',
+                        isCollapsed ? 'justify-center px-1' : 'px-3 gap-3'
+                    )}
+                    title={isCollapsed ? 'Perluas Sidebar (Ctrl+B)' : 'Ciutkan Sidebar (Ctrl+B)'}
+                >
+                    {isCollapsed ? (
+                        <ChevronRight className="size-4 shrink-0" />
+                    ) : (
+                        <>
+                            <ChevronLeft className="size-4 shrink-0" />
+                            <span className="truncate">Ciutkan Sidebar</span>
+                            <kbd className="ml-auto text-[10px] bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-400 font-mono">
+                                Ctrl+B
+                            </kbd>
+                        </>
+                    )}
+                </button>
+            </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col lg:flex-row text-foreground">
-            {title && <Head title={title} />}
+        <TooltipProvider delayDuration={100}>
+            <div className="min-h-screen bg-slate-50/50 dark:bg-background flex flex-col lg:flex-row text-foreground">
+                {title && <Head title={title} />}
 
-            {/* Desktop Fixed Sidebar */}
-            <aside className="hidden lg:block w-64 shrink-0 border-r border-slate-800 bg-slate-900">
-                <div className="fixed inset-y-0 w-64">{renderNavContent()}</div>
-            </aside>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Topbar */}
-                <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-2xs transition-colors">
-                    {/* Left: Mobile trigger & Store Context */}
-                    <div className="flex items-center gap-2.5 sm:gap-3">
-                        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                            <SheetTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    aria-label="Buka menu navigasi"
-                                    className="lg:hidden text-muted-foreground hover:text-foreground size-10"
-                                >
-                                    <Menu className="size-5" />
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r-slate-800 text-slate-100">
-                                <SheetHeader className="sr-only">
-                                    <SheetTitle>Menu Navigasi</SheetTitle>
-                                </SheetHeader>
-                                {renderNavContent()}
-                            </SheetContent>
-                        </Sheet>
-
-                        {/* Store Badge Display */}
-                        <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground bg-muted/60 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border">
-                            <StoreIcon className="size-4 text-primary shrink-0" />
-                            <span className="truncate max-w-[130px] sm:max-w-xs md:max-w-md">
-                                {user?.store ? `${user.store.code} — ${user.store.name}` : 'Sistem Pusat (Global)'}
-                            </span>
-                        </div>
+                {/* Desktop Fixed Sidebar */}
+                <aside
+                    className={cn(
+                        'hidden lg:block shrink-0 border-r border-slate-800 bg-slate-900 transition-all duration-300 ease-in-out',
+                        sidebarCollapsed ? 'w-16' : 'w-64'
+                    )}
+                >
+                    <div
+                        className={cn(
+                            'fixed inset-y-0 transition-all duration-300 ease-in-out z-20',
+                            sidebarCollapsed ? 'w-16' : 'w-64'
+                        )}
+                    >
+                        {renderNavContent(sidebarCollapsed)}
                     </div>
+                </aside>
+
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    {/* Topbar */}
+                    <header className="sticky top-0 z-30 bg-white/95 dark:bg-card/90 backdrop-blur-xs border-b border-slate-200 dark:border-border h-14 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-2xs transition-colors">
+                        {/* Left: Mobile trigger, Desktop Toggle & Breadcrumbs in Topbar */}
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-4">
+                            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                                <SheetTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="Buka menu navigasi"
+                                        className="lg:hidden text-muted-foreground hover:text-foreground size-9 shrink-0"
+                                    >
+                                        <Menu className="size-5" />
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r-slate-800 text-slate-100">
+                                    <SheetHeader className="sr-only">
+                                        <SheetTitle>Menu Navigasi</SheetTitle>
+                                    </SheetHeader>
+                                    {renderNavContent(false)}
+                                </SheetContent>
+                            </Sheet>
+
+                            {/* Desktop Sidebar Toggle Button */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={toggleSidebar}
+                                aria-label={sidebarCollapsed ? 'Perluas sidebar (Ctrl+B)' : 'Ciutkan sidebar (Ctrl+B)'}
+                                className="hidden lg:flex size-9 text-muted-foreground hover:text-foreground hover:bg-muted/60 shrink-0"
+                                title={sidebarCollapsed ? 'Perluas sidebar (Ctrl+B)' : 'Ciutkan sidebar (Ctrl+B)'}
+                            >
+                                {sidebarCollapsed ? (
+                                    <PanelLeftOpen className="size-4" />
+                                ) : (
+                                    <PanelLeftClose className="size-4" />
+                                )}
+                            </Button>
+
+                            <div className="hidden lg:block h-4 w-px bg-slate-200 dark:bg-border shrink-0" />
+
+                            {/* Topbar Breadcrumbs */}
+                            {resolvedBreadcrumbs && resolvedBreadcrumbs.length > 0 && (
+                                <div className="min-w-0 overflow-hidden">
+                                    <Breadcrumbs breadcrumbs={resolvedBreadcrumbs} />
+                                </div>
+                            )}
+                        </div>
 
                     {/* Right: Notifications Dropdown & User Profile Dropdown */}
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -331,9 +450,19 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-60">
                                 <DropdownMenuLabel>
-                                    <div>
-                                        <p className="font-semibold text-sm">{user?.name}</p>
-                                        <p className="text-xs text-muted-foreground font-mono">NIK: {user?.nik}</p>
+                                    <div className="space-y-0.5">
+                                        <p className="font-semibold text-sm leading-tight">{user?.name}</p>
+                                        <p className="text-xs text-muted-foreground font-mono">NIK: {user?.nik || '—'}</p>
+                                        {user?.store ? (
+                                            <p className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5 font-normal truncate">
+                                                <StoreIcon className="size-3 text-primary shrink-0" />
+                                                <span className="truncate">{user.store.name.replace(/^Toko\s+/i, '')}</span>
+                                            </p>
+                                        ) : (
+                                            <p className="text-[11px] text-muted-foreground pt-1 font-normal">
+                                                Sistem Pusat (Global)
+                                            </p>
+                                        )}
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
@@ -411,16 +540,9 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     </div>
                 </header>
 
-                {/* Consistent Breadcrumb Bar */}
-                {resolvedBreadcrumbs && resolvedBreadcrumbs.length > 0 && (
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2.5 transition-colors">
-                        <Breadcrumbs breadcrumbs={resolvedBreadcrumbs} />
-                    </div>
-                )}
-
                 {/* Flash Messages (Only rendered when message exists) */}
                 {(flash?.success || flash?.error) && (
-                    <div className="px-4 sm:px-6 lg:px-8 pt-4">
+                    <div className="px-4 sm:px-6 pt-4">
                         {flash.success && (
                             <div className="mb-2 p-3.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm font-medium flex items-center justify-between shadow-xs">
                                 <span>{flash.success}</span>
@@ -435,9 +557,10 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                 )}
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+                <main className="flex-1 p-4 sm:p-6">{children}</main>
             </div>
         </div>
+    </TooltipProvider>
     );
 }
 

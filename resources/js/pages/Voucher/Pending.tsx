@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -23,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { StatusBadge } from '@/components/shared/StatusBadge';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import {
     DataTable,
     DataTableHead,
@@ -34,6 +35,7 @@ import {
     DataTableEmpty,
     DataTableMobileList,
     DataTableMobileCard,
+    DataTableBulkBar,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
@@ -43,23 +45,89 @@ interface PendingApprovalsProps {
     vouchers: PaginatedVouchers;
     currentUserId: string;
     currentUserRole: string;
+    filters?: {
+        sort?: string;
+        direction?: 'asc' | 'desc';
+    };
 }
 
 export default function PendingApprovalsPage({
     vouchers,
     currentUserId,
     currentUserRole,
+    filters = { sort: 'created_at', direction: 'desc' },
 }: PendingApprovalsProps) {
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+    const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
     const [selectedVoucher, setSelectedVoucher] = useState<PettyCashVoucher | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    // Eligible vouchers for approval (excluding self-vouchers for SAC)
+    const eligibleVouchers = vouchers.data.filter(
+        (v) => !(currentUserRole === 'SAC' && v.requester_id === currentUserId)
+    );
+
+    const isAllEligibleSelected =
+        eligibleVouchers.length > 0 &&
+        eligibleVouchers.every((v) => selectedIds.includes(v.id));
+
+    const selectedTotalAmount = vouchers.data
+        .filter((v) => selectedIds.includes(v.id))
+        .reduce((sum, v) => sum + v.amount_cents, 0);
+
+    const handleSelectAll = () => {
+        if (isAllEligibleSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(eligibleVouchers.map((v) => v.id));
+        }
+    };
+
+    const handleToggleRow = (id: string, isBlocked: boolean) => {
+        if (isBlocked) return;
+        setSelectedIds((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+        );
+    };
+
+    const handleSort = (field: string) => {
+        const isCurrent = filters?.sort === field;
+        const nextDirection = isCurrent && filters?.direction === 'asc' ? 'desc' : 'asc';
+        router.get(
+            '/vouchers/pending',
+            {
+                ...filters,
+                sort: field,
+                direction: nextDirection,
+            },
+            { preserveState: true, preserveScroll: true }
+        );
+    };
 
     const handleApprove = (voucher: PettyCashVoucher) => {
         setIsProcessing(true);
         router.post(`/vouchers/${voucher.id}/approve`, {}, {
             onFinish: () => setIsProcessing(false),
         });
+    };
+
+    const handleBulkApprove = () => {
+        if (selectedIds.length === 0) return;
+
+        setIsProcessing(true);
+        router.post(
+            '/vouchers/bulk-approve',
+            { voucher_ids: selectedIds },
+            {
+                onSuccess: () => {
+                    setSelectedIds([]);
+                    setBulkConfirmOpen(false);
+                },
+                onFinish: () => setIsProcessing(false),
+            }
+        );
     };
 
     const handleReject = () => {
@@ -88,7 +156,7 @@ export default function PendingApprovalsPage({
                 <PageHeader
                     title="Antrean Persetujuan Voucher"
                     icon={Clock}
-                    description="Voucher kas kecil yang diajukan dan menunggu verifikasi serta persetujuan"
+                    description="Voucher kas kecil yang diajukan dan menunggu verifikasi serta persetujuan supervisor"
                 >
                     <span className="text-xs font-semibold px-3 py-1 bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-full">
                         {vouchers.total} Menunggu Persetujuan
@@ -106,18 +174,59 @@ export default function PendingApprovalsPage({
                 )}
 
                 {/* Table */}
-                <Card className="border shadow-sm overflow-hidden">
+                <Card className="border shadow-xs overflow-hidden">
                     {/* Desktop View */}
                     <div className="hidden sm:block">
                         <DataTable>
                             <DataTableHead>
                                 <tr>
-                                    <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Tanggal Diajukan</DataTableHeaderCell>
+                                    <DataTableHeaderCell className="w-12 text-center">
+                                        <Checkbox
+                                            checked={isAllEligibleSelected}
+                                            disabled={eligibleVouchers.length === 0}
+                                            onCheckedChange={handleSelectAll}
+                                            aria-label="Pilih semua voucher yang memenuhi syarat"
+                                        />
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="voucher_number"
+                                        currentSort={filters?.sort}
+                                        currentDirection={filters?.direction}
+                                        onSort={handleSort}
+                                    >
+                                        No. Voucher
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="created_at"
+                                        currentSort={filters?.sort}
+                                        currentDirection={filters?.direction}
+                                        onSort={handleSort}
+                                    >
+                                        Tanggal Diajukan
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Kategori</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="category"
+                                        currentSort={filters?.sort}
+                                        currentDirection={filters?.direction}
+                                        onSort={handleSort}
+                                    >
+                                        Kategori
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Keperluan</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="right"
+                                        sortable
+                                        sortField="amount_cents"
+                                        currentSort={filters?.sort}
+                                        currentDirection={filters?.direction}
+                                        onSort={handleSort}
+                                    >
+                                        Nominal
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell align="center">Status Anti-Self</DataTableHeaderCell>
                                     <DataTableHeaderCell align="center">Aksi Cepat</DataTableHeaderCell>
                                 </tr>
@@ -125,7 +234,7 @@ export default function PendingApprovalsPage({
                             <DataTableBody>
                                 {vouchers.data.length === 0 ? (
                                     <DataTableEmpty
-                                        colSpan={8}
+                                        colSpan={9}
                                         icon={<Check className="w-10 h-10 text-emerald-500 stroke-1" />}
                                         message="Semua voucher telah diproses"
                                         description="Tidak ada antrean voucher yang menunggu verifikasi atau persetujuan saat ini."
@@ -141,9 +250,22 @@ export default function PendingApprovalsPage({
                                     vouchers.data.map((v) => {
                                         const isSelfApprovalBlocked =
                                             currentUserRole === 'SAC' && v.requester_id === currentUserId;
+                                        const isSelected = selectedIds.includes(v.id);
 
                                         return (
-                                            <DataTableRow key={v.id}>
+                                            <DataTableRow
+                                                key={v.id}
+                                                selected={isSelected}
+                                                onClick={() => handleToggleRow(v.id, isSelfApprovalBlocked)}
+                                            >
+                                                <DataTableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        disabled={isSelfApprovalBlocked}
+                                                        onCheckedChange={() => handleToggleRow(v.id, isSelfApprovalBlocked)}
+                                                        aria-label={`Pilih voucher ${v.voucher_number}`}
+                                                    />
+                                                </DataTableCell>
                                                 <DataTableCell className="font-mono font-semibold text-primary">
                                                     {v.voucher_number}
                                                 </DataTableCell>
@@ -179,19 +301,14 @@ export default function PendingApprovalsPage({
                                                         </span>
                                                     ) : (
                                                         <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-                                                            Siap Diverifikasi
+                                                            Siap Verifikasi
                                                         </span>
                                                     )}
                                                 </DataTableCell>
-                                                <DataTableCell align="center" className="whitespace-nowrap">
+                                                <DataTableCell align="center" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center justify-center gap-1.5">
                                                         <Link href={`/vouchers/${v.id}`}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-7 px-2 text-xs"
-                                                                title="Buka Detail"
-                                                            >
+                                                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
                                                                 <Eye className="w-3.5 h-3.5" />
                                                             </Button>
                                                         </Link>
@@ -250,13 +367,25 @@ export default function PendingApprovalsPage({
                                 {vouchers.data.map((v) => {
                                     const isSelfApprovalBlocked =
                                         currentUserRole === 'SAC' && v.requester_id === currentUserId;
+                                    const isSelected = selectedIds.includes(v.id);
 
                                     return (
-                                        <DataTableMobileCard key={v.id}>
+                                        <DataTableMobileCard
+                                            key={v.id}
+                                            selected={isSelected}
+                                            onClick={() => handleToggleRow(v.id, isSelfApprovalBlocked)}
+                                        >
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="font-mono font-semibold text-xs text-primary">
-                                                    {v.voucher_number}
-                                                </span>
+                                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        disabled={isSelfApprovalBlocked}
+                                                        onCheckedChange={() => handleToggleRow(v.id, isSelfApprovalBlocked)}
+                                                    />
+                                                    <span className="font-mono font-semibold text-xs text-primary">
+                                                        {v.voucher_number}
+                                                    </span>
+                                                </div>
                                                 {isSelfApprovalBlocked ? (
                                                     <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                         <ShieldAlert className="w-3 h-3" />
@@ -282,7 +411,7 @@ export default function PendingApprovalsPage({
                                                 <span className="font-mono num font-bold text-sm text-foreground">
                                                     {formatMoney(v.amount_cents)}
                                                 </span>
-                                                <div className="flex items-center gap-1.5">
+                                                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                     <Link href={`/vouchers/${v.id}`}>
                                                         <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
                                                             <Eye className="w-3.5 h-3.5" />
@@ -331,7 +460,36 @@ export default function PendingApprovalsPage({
                         total={vouchers.total}
                     />
                 </Card>
+
+                {/* Floating Bulk Action Bar */}
+                <DataTableBulkBar
+                    selectedCount={selectedIds.length}
+                    totalAmountCents={selectedTotalAmount}
+                    onClearSelection={() => setSelectedIds([])}
+                >
+                    <Button
+                        size="sm"
+                        disabled={isProcessing}
+                        onClick={() => setBulkConfirmOpen(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs text-xs h-8 gap-1.5"
+                    >
+                        <CheckCircle className="size-3.5" />
+                        Setujui {selectedIds.length} Bon Terpilih
+                    </Button>
+                </DataTableBulkBar>
             </div>
+
+            {/* Bulk Approve Confirmation Dialog */}
+            <ConfirmDialog
+                open={bulkConfirmOpen}
+                onOpenChange={setBulkConfirmOpen}
+                title="Persetujuan Massal Voucher Kas Kecil"
+                description={`Apakah Anda yakin ingin menyetujui ${selectedIds.length} voucher bon kas kecil terpilih dengan total nominal ${formatMoney(selectedTotalAmount)}?`}
+                confirmText="Ya, Setujui Semua"
+                cancelText="Batal"
+                isLoading={isProcessing}
+                onConfirm={handleBulkApprove}
+            />
 
             {/* Reject Modal */}
             <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>

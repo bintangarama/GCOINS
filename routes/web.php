@@ -52,6 +52,7 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::get('pending', [VoucherController::class, 'pending'])->name('pending');
         Route::get('settlement', [VoucherController::class, 'settlement'])->name('settlement');
         Route::post('batch-settle', [VoucherController::class, 'batchSettle'])->name('batch-settle');
+        Route::post('bulk-approve', [VoucherController::class, 'bulkApprove'])->name('bulk-approve');
         Route::get('settlements', [PettyCashSettlementController::class, 'index'])->name('settlements.index');
         Route::get('settlements/{settlement}', [PettyCashSettlementController::class, 'show'])->name('settlements.show');
         Route::get('settlements/{settlement}/export-excel', [PettyCashSettlementController::class, 'exportExcel'])->name('settlements.export-excel');

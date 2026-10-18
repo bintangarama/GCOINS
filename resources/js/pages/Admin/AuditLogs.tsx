@@ -77,6 +77,8 @@ interface AuditLogsProps {
         date_from: string;
         date_to: string;
         store_id: string;
+        sort?: string;
+        direction?: 'asc' | 'desc';
     };
     availableActions: string[];
     availableEntities: string[];
@@ -97,16 +99,37 @@ export default function AuditLogs({
     const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
 
+    const handleSort = (field: string) => {
+        const currentSort = filters.sort || 'created_at';
+        const isCurrent = currentSort === field;
+        const nextDirection = isCurrent && filters.direction === 'asc' ? 'desc' : 'asc';
+        router.get(
+            '/admin/audit-logs',
+            {
+                search: search || undefined,
+                entity_name: entityName || undefined,
+                action: action || undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
+                sort: field,
+                direction: nextDirection,
+            },
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
+
     const handleFilterSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
             '/admin/audit-logs',
             {
-                search,
-                entity_name: entityName,
-                action,
-                date_from: dateFrom,
-                date_to: dateTo,
+                search: search || undefined,
+                entity_name: entityName || undefined,
+                action: action || undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
+                sort: filters.sort || undefined,
+                direction: filters.direction || undefined,
             },
             { preserveState: true }
         );
@@ -288,14 +311,38 @@ export default function AuditLogs({
                 </Card>
 
                 {/* Logs Table */}
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                <div className="bg-card rounded-xl border border-border overflow-hidden shadow-xs">
                     <DataTable>
                         <DataTableHead>
                             <tr>
-                                <DataTableHeaderCell>Waktu</DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    sortField="created_at"
+                                    currentSort={filters.sort || 'created_at'}
+                                    currentDirection={filters.direction || 'desc'}
+                                    onSort={handleSort}
+                                >
+                                    Waktu
+                                </DataTableHeaderCell>
                                 <DataTableHeaderCell>Pelaksana</DataTableHeaderCell>
-                                <DataTableHeaderCell>Modul & ID Entitas</DataTableHeaderCell>
-                                <DataTableHeaderCell>Aksi</DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    sortField="entity_name"
+                                    currentSort={filters.sort || 'created_at'}
+                                    currentDirection={filters.direction || 'desc'}
+                                    onSort={handleSort}
+                                >
+                                    Modul & ID Entitas
+                                </DataTableHeaderCell>
+                                <DataTableHeaderCell
+                                    sortable
+                                    sortField="action"
+                                    currentSort={filters.sort || 'created_at'}
+                                    currentDirection={filters.direction || 'desc'}
+                                    onSort={handleSort}
+                                >
+                                    Aksi
+                                </DataTableHeaderCell>
                                 <DataTableHeaderCell>IP Address</DataTableHeaderCell>
                                 <DataTableHeaderCell align="right">Detail</DataTableHeaderCell>
                             </tr>
@@ -304,7 +351,7 @@ export default function AuditLogs({
                             {logs.data.length === 0 ? (
                                 <DataTableEmpty
                                     colSpan={6}
-                                    icon={<Activity className="w-10 h-10 text-slate-300 dark:text-slate-600 stroke-1" />}
+                                    icon={<Activity className="w-10 h-10 text-muted-foreground/40 stroke-1" />}
                                     message="Tidak ada log aktivitas yang cocok dengan filter"
                                     description="Coba sesuaikan tanggal atau kriteria filter untuk melihat riwayat aktivitas."
                                     action={
@@ -319,9 +366,9 @@ export default function AuditLogs({
                                 logs.data.map((log) => (
                                     <DataTableRow key={log.id}>
                                         {/* Waktu */}
-                                        <DataTableCell mono className="whitespace-nowrap text-slate-600">
+                                        <DataTableCell mono className="whitespace-nowrap text-muted-foreground">
                                             <div className="flex items-center gap-1.5">
-                                                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                <Clock className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
                                                 <span>{formatDateTime(log.created_at)}</span>
                                             </div>
                                         </DataTableCell>

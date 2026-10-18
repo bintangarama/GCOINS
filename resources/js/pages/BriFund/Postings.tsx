@@ -54,6 +54,8 @@ interface BriFundPostingsProps {
         date_from?: string;
         date_to?: string;
         search?: string;
+        sort?: string;
+        direction?: 'asc' | 'desc';
     };
     categories: string[];
     entities: string[];
@@ -75,6 +77,13 @@ export default function BriFundPostings({
 
     const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
 
+    const handleSort = (field: string) => {
+        const currentSort = filters.sort || 'created_at';
+        const isCurrent = currentSort === field;
+        const nextDirection = isCurrent && filters.direction === 'asc' ? 'desc' : 'asc';
+        handleFilter({ sort: field, direction: nextDirection });
+    };
+
     const handleFilter = (customParams = {}) => {
         const params: Record<string, string> = {
             ...(search ? { search } : {}),
@@ -84,6 +93,8 @@ export default function BriFundPostings({
             ...(status !== 'all' ? { status } : {}),
             ...(dateFrom ? { date_from: dateFrom } : {}),
             ...(dateTo ? { date_to: dateTo } : {}),
+            ...(filters.sort ? { sort: filters.sort } : {}),
+            ...(filters.direction ? { direction: filters.direction } : {}),
             ...customParams,
         };
 
@@ -283,13 +294,55 @@ export default function BriFundPostings({
                         <DataTable>
                             <DataTableHead>
                                 <tr>
-                                    <DataTableHeaderCell>Tanggal & Waktu</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Tipe & Kategori</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Entitas / Rekanan</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="created_at"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Tanggal & Waktu
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="category"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Tipe & Kategori
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="entity_name"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Entitas / Rekanan
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Keterangan / Keperluan</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">Nominal</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="right"
+                                        sortable
+                                        sortField="amount_cents"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Nominal
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell align="center">Bukti</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="center"
+                                        sortable
+                                        sortField="status"
+                                        currentSort={filters.sort || 'created_at'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Status
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Petugas</DataTableHeaderCell>
                                 </tr>
                             </DataTableHead>

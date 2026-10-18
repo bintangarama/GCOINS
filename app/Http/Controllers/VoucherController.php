@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Voucher\ApproveVoucherAction;
 use App\Actions\Voucher\BatchSettleVouchersAction;
+use App\Actions\Voucher\BulkApproveVouchersAction;
 use App\Actions\Voucher\CancelVoucherAction;
 use App\Actions\Voucher\CreateVoucherAction;
 use App\Actions\Voucher\DeleteVoucherAction;
@@ -11,6 +12,7 @@ use App\Actions\Voucher\DisburseVoucherAction;
 use App\Actions\Voucher\RefundVoucherAction;
 use App\Actions\Voucher\RejectVoucherAction;
 use App\Actions\Voucher\SubmitVoucherAction;
+use App\Exceptions\ForbiddenSelfApprovalException;
 use App\Exports\VoucherRecapExport;
 use App\Http\Requests\Voucher\BatchSettleVoucherRequest;
 use App\Http\Requests\Voucher\RejectVoucherRequest;
@@ -38,7 +40,7 @@ class VoucherController extends Controller
 
         $store = $request->user()->store;
         $storeCode = $store?->code ?? 'STORE';
-        $filters = $request->only(['status', 'category', 'requester_id', 'date_from', 'date_to', 'search']);
+        $filters = $request->only(['status', 'category', 'requester_id', 'date_from', 'date_to', 'search', 'voucher_ids']);
 
         $filename = "Voucher-Recap-{$storeCode}-".now()->format('Ymd-His').'.xlsx';
 
@@ -53,7 +55,7 @@ class VoucherController extends Controller
         Gate::authorize('viewAny', PettyCashVoucher::class);
 
         $currentUser = $request->user();
-        $query = PettyCashVoucher::with(['requester', 'approvedBy', 'disbursedBy'])->latest();
+        $query = PettyCashVoucher::with(['requester', 'approvedBy', 'disbursedBy']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -91,6 +93,24 @@ class VoucherController extends Controller
             });
         }
 
+        $sort = $request->query('sort', 'created_at');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'voucher_number' => 'voucher_number',
+            'amount_cents' => 'amount_cents',
+            'receipt_date' => 'receipt_date',
+            'status' => 'status',
+            'category' => 'category',
+            'created_at' => 'created_at',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest('created_at');
+        }
+
         $vouchers = $query->paginate(20)->withQueryString();
 
         $requesters = User::where('store_id', $currentUser->store_id)
@@ -114,7 +134,10 @@ class VoucherController extends Controller
 
         return Inertia::render('Voucher/Index', [
             'vouchers' => $vouchers,
-            'filters' => $request->only(['status', 'category', 'requester_id', 'date_from', 'date_to', 'search']),
+            'filters' => array_merge(
+                $request->only(['status', 'category', 'requester_id', 'date_from', 'date_to', 'search']),
+                ['sort' => $sort, 'direction' => $direction]
+            ),
             'categories' => $categories,
             'requesters' => $requesters,
         ]);
@@ -307,8 +330,24 @@ class VoucherController extends Controller
         $currentUser = $request->user();
 
         $query = PettyCashVoucher::with('requester')
-            ->where('status', PettyCashVoucher::STATUS_SUBMITTED)
-            ->latest();
+            ->where('status', PettyCashVoucher::STATUS_SUBMITTED);
+
+        $sort = $request->query('sort', 'created_at');
+        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $allowedSorts = [
+            'voucher_number' => 'voucher_number',
+            'amount_cents' => 'amount_cents',
+            'receipt_date' => 'receipt_date',
+            'category' => 'category',
+            'created_at' => 'created_at',
+        ];
+
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderBy($allowedSorts[$sort], $direction);
+        } else {
+            $query->latest('created_at');
+        }
 
         $vouchers = $query->paginate(20)->withQueryString();
 
@@ -316,7 +355,41 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'currentUserId' => $currentUser->id,
             'currentUserRole' => $currentUser->role,
+            'filters' => [
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
         ]);
+    }
+
+    /**
+     * Bulk approve multiple submitted vouchers.
+     */
+    public function bulkApprove(Request $request, BulkApproveVouchersAction $action): RedirectResponse
+    {
+        $request->validate([
+            'voucher_ids' => ['required', 'array', 'min:1'],
+            'voucher_ids.*' => ['required', 'string'],
+        ]);
+
+        $currentUser = $request->user();
+        if (! in_array($currentUser->role, ['SS', 'SAC', 'SM'], true)) {
+            abort(403, 'Anda tidak memiliki hak untuk menyetujui voucher.');
+        }
+
+        try {
+            $approved = $action->execute(
+                $request->input('voucher_ids'),
+                $currentUser,
+                $request->ip()
+            );
+
+            return redirect()->back()->with('success', "{$approved->count()} voucher berhasil disetujui sekaligus.");
+        } catch (ForbiddenSelfApprovalException $e) {
+            abort(403, $e->getMessage());
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal memproses approval massal: '.$e->getMessage());
+        }
     }
 
     /**

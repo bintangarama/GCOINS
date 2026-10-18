@@ -55,6 +55,8 @@ interface OpnameIndexProps {
         date_from?: string;
         date_to?: string;
         search?: string;
+        sort?: string;
+        direction?: 'asc' | 'desc';
     };
     stats: {
         total_sessions: number;
@@ -77,6 +79,29 @@ export default function OpnameIndexPage({
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
+    const handleSort = (field: string) => {
+        const currentSort = filters.sort || 'date';
+        const isCurrent = currentSort === field;
+        const nextDirection = isCurrent && filters.direction === 'asc' ? 'desc' : 'asc';
+        router.get(
+            '/opname',
+            {
+                search: search || undefined,
+                status: status !== 'ALL' ? status : undefined,
+                opname_type: opnameType !== 'ALL' ? opnameType : undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
+                sort: field,
+                direction: nextDirection,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            }
+        );
+    };
+
     const applyFilters = () => {
         router.get(
             '/opname',
@@ -86,6 +111,8 @@ export default function OpnameIndexPage({
                 opname_type: opnameType !== 'ALL' ? opnameType : undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                sort: filters.sort || undefined,
+                direction: filters.direction || undefined,
             },
             {
                 preserveState: true,
@@ -283,16 +310,50 @@ export default function OpnameIndexPage({
                         <DataTable>
                             <DataTableHead>
                                 <tr>
-                                    <DataTableHeaderCell>No. Opname</DataTableHeaderCell>
-                                    <DataTableHeaderCell>Tanggal</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="opname_number"
+                                        currentSort={filters.sort || 'date'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        No. Opname
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        sortable
+                                        sortField="date"
+                                        currentSort={filters.sort || 'date'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Tanggal
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell>Petugas</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">K_fisik (Safe)</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">K_bon</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">K_bri</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">Total Aktual</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">Target</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">Selisih (V_current)</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="right"
+                                        sortable
+                                        sortField="current_variance_cents"
+                                        currentSort={filters.sort || 'date'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Selisih (V_current)
+                                    </DataTableHeaderCell>
+                                    <DataTableHeaderCell
+                                        align="center"
+                                        sortable
+                                        sortField="status"
+                                        currentSort={filters.sort || 'date'}
+                                        currentDirection={filters.direction || 'desc'}
+                                        onSort={handleSort}
+                                    >
+                                        Status
+                                    </DataTableHeaderCell>
                                     <DataTableHeaderCell align="center">Aksi</DataTableHeaderCell>
                                 </tr>
                             </DataTableHead>
