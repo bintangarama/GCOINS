@@ -5,6 +5,7 @@ use App\Actions\BriFund\CreatePostingAction;
 use App\Actions\BriFund\RejectOutflowAction;
 use App\Exceptions\InvalidBriPostingStateException;
 use App\Models\AuditLog;
+use App\Models\BriFundPosting;
 use App\Models\Store;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -53,16 +54,23 @@ beforeEach(function () {
         'amount_cents' => 500000000,
         'purpose' => 'Deposit awal',
     ], $this->sacUser);
+
+    $this->createPendingOutflow = function (int $amountCents = 100000000) {
+        return BriFundPosting::create([
+            'store_id' => $this->store->id,
+            'category' => 'B2B',
+            'entity_name' => 'SMA Negeri 1 Karawang',
+            'type' => 'OUTFLOW',
+            'amount_cents' => $amountCents,
+            'purpose' => 'Pengeluaran kas',
+            'status' => BriFundPosting::STATUS_PENDING_SS,
+            'created_by_id' => $this->sacUser->id,
+        ]);
+    };
 });
 
 test('ApproveOutflowAction transitions status to APPROVED and sets approver info', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     expect($outflow->status)->toBe('PENDING_SS');
 
@@ -83,13 +91,7 @@ test('ApproveOutflowAction transitions status to APPROVED and sets approver info
 });
 
 test('RejectOutflowAction transitions status to REJECTED with mandatory reason', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     $reason = 'Nomor rekening transfer tujuan tidak terverifikasi.';
     $rejected = $this->rejectAction->execute($outflow, $this->ssUser, $reason, '10.0.0.2');
@@ -109,13 +111,7 @@ test('RejectOutflowAction transitions status to REJECTED with mandatory reason',
 });
 
 test('RejectOutflowAction throws exception if rejection reason is empty', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     expect(function () use ($outflow) {
         $this->rejectAction->execute($outflow, $this->ssUser, '   ');
@@ -123,13 +119,7 @@ test('RejectOutflowAction throws exception if rejection reason is empty', functi
 });
 
 test('Cannot approve an already APPROVED posting (invalid state transition)', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     $this->approveAction->execute($outflow, $this->ssUser);
 
@@ -140,13 +130,7 @@ test('Cannot approve an already APPROVED posting (invalid state transition)', fu
 });
 
 test('Cannot reject an already APPROVED posting (invalid state transition)', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     $this->approveAction->execute($outflow, $this->ssUser);
 
@@ -156,13 +140,7 @@ test('Cannot reject an already APPROVED posting (invalid state transition)', fun
 });
 
 test('Reject outflow via HTTP route enforces validation', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran kas',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(100000000);
 
     // Empty rejection reason fails validation
     $response = $this->actingAs($this->ssUser)
@@ -204,13 +182,7 @@ test('outflow >= Rp 100.000.000 cannot be approved by SS and must be approved di
     ], $this->sacUser);
 
     // Outflow Rp 150.000.000 (15.000.000.000 cents)
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 15000000000,
-        'purpose' => 'Pengeluaran pengadaan besar',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)(15000000000);
 
     // SS attempts to approve -> throws AuthorizationException
     expect(function () use ($outflow) {

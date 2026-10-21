@@ -41,7 +41,7 @@ beforeEach(function () {
     ], $this->sacUser);
 });
 
-test('T-STM-10: BRI OUTFLOW creates posting with status PENDING_SS', function () {
+test('T-STM-10: BRI OUTFLOW creates posting with status APPROVED under SAC operational control', function () {
     $posting = $this->createAction->execute([
         'category' => 'B2B',
         'entity_name' => 'SMA Negeri 1 Karawang',
@@ -51,11 +51,11 @@ test('T-STM-10: BRI OUTFLOW creates posting with status PENDING_SS', function ()
     ], $this->sacUser);
 
     expect($posting)->toBeInstanceOf(BriFundPosting::class);
-    expect($posting->status)->toBe('PENDING_SS');
+    expect($posting->status)->toBe('APPROVED');
     expect($posting->type)->toBe('OUTFLOW');
     expect($posting->amount_cents)->toBe(150000000);
-    expect($posting->approved_by_id)->toBeNull();
-    expect($posting->approved_at)->toBeNull();
+    expect($posting->approved_by_id)->toBe($this->sacUser->id);
+    expect($posting->approved_at)->not->toBeNull();
 });
 
 test('BRI OUTFLOW creates audit log with CREATE_BRI_OUTFLOW action', function () {
@@ -91,8 +91,9 @@ test('BRI OUTFLOW via HTTP succeeds within balance and redirects', function () {
     $this->assertDatabaseHas('bri_fund_postings', [
         'category' => 'B2B',
         'entity_name' => 'SMA Negeri 1 Karawang',
-        'status' => 'PENDING_SS',
+        'status' => 'APPROVED',
         'type' => 'OUTFLOW',
         'amount_cents' => 200000000,
+        'approved_by_id' => $this->sacUser->id,
     ]);
 });

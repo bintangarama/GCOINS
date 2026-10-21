@@ -72,7 +72,7 @@ The BRI bank account pools multiple fund types:
 ### Sub-Ledger Posting Rules
 
 1. **INFLOW** (incoming fund): Status immediately `APPROVED`. Running balance increases.
-2. **OUTFLOW** (fund withdrawal): Status `PENDING_SS`. Running balance does **not** decrease until approved by SS/SM (Dual Control).
+2. **OUTFLOW** (fund withdrawal): Status immediately `APPROVED` under SAC operational control (Rule 6). Running balance decreases immediately upon creation, subject strictly to the Zero-Deficit Guard. Legacy `PENDING_SS` records remain actionable via the approval queue.
 3. **Zero-Deficit Guard**: Outflow amount must not exceed the entity's current running balance.
 4. **Running Balance Formula**:
    ```

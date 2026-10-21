@@ -1,0 +1,26 @@
+{
+    "name": "G-COINS \u2014 Gramedia Cash Opname Internal System",
+    "short_name": "G-COINS",
+    "description": "Gramedia Cash Opname Internal System",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ],
+    "theme_color": "#2563EB",
+    "background_color": "#0F172A",
+    "display": "standalone",
+    "start_url": "/"
+}

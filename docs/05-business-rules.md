@@ -70,18 +70,15 @@ THEN REJECT with error code FORBIDDEN_SELF_APPROVAL
 
 SAC can approve vouchers from others. SAC cannot approve their own vouchers. This rule prevents embezzlement.
 
-## Rule 6: Tiered Dual Control — BRI Outflow Approval
+## Rule 6: SAC Operational Control & Instant Outflow Approval
 
 ```
 IF bri_posting.type == 'OUTFLOW':
-   CANNOT be approved by the user who created it (Anti-Maker-Checker)
-   IF amount <= Rp 500.000:
-      CAN be approved by SS or SM
-   ELSE (amount > Rp 500.000):
-      MUST be approved by SM
+   Directly APPROVED upon creation by SAC (Single-step approval under SAC operational control)
+   Subject strictly to Rule 7 (Zero-Deficit Guard)
 ```
 
-This ensures high-value bank withdrawals undergo top-level store manager scrutiny.
+Sesuai kebutuhan operasional aktual toko (analogi dengan Rule 16 pada *Voucher Settlement*), kasir/Store Accounting (SAC) memegang kendali penuh atas fisik uang kasir dan rekening pooling BRI toko. Mutasi penarikan dana (OUTFLOW) langsung berstatus `APPROVED` saat dicatat oleh SAC guna mempermudah rekonsiliasi dan transaksi mitra, dengan catatan tidak pernah melanggar Rule 7 (*Zero-Deficit Guard*). Untuk mutasi berstatus `PENDING_SS` (legacy/riwayat lampau), persetujuan tetap dapat dilakukan oleh SS/SM.
 
 ## Rule 7: Zero-Deficit Guard (Anti-Minus)
 
@@ -122,8 +119,8 @@ DRAFT → SUBMITTED → VERIFIED_SS → APPROVED
 ### BRI Fund Posting State Machine
 ```
 INFLOW  → APPROVED (immediate)
-OUTFLOW → PENDING_SS → APPROVED
-                      ↘ REJECTED
+OUTFLOW → APPROVED (immediate by SAC under Rule 6)
+          (Legacy: PENDING_SS → APPROVED / REJECTED)
 ```
 
 ## Rule 10: Audit Trail for All Financial Changes
@@ -214,5 +211,30 @@ No financial state change may occur without an audit log entry.
    - Total per baris voucher = jumlah kolom kategori.
    - Total per kolom kategori = akumulasi voucher pada kategori tersebut.
    - Grand Total = $\sum \text{Total Kategori} = \sum \text{Total Baris Voucher}$.
+
+## Rule 17: Selective Bulk Actions & Financial Safety Non-Negotiables
+
+Fitur aksi massal (*bulk actions*) diatur secara ketat berdasarkan risiko finansial dan kepatuhan audit. Sistem secara tegas membedakan operasi yang diizinkan dan yang **DILARANG KERAS** untuk diproses secara massal:
+
+1. **OPERASI YANG DIIZINKAN (*Permitted Bulk Actions*)**:
+   - **Persetujuan Massal Bon Kas Kecil (`POST /vouchers/bulk-approve`)**:
+     - Diizinkan bagi `SS`, `SAC`, dan `SM`.
+     - **Wajib Menegakkan Rule 5 (Anti Self-Approval)**: SAC dilarang menyetujui bon miliknya sendiri. Jika dalam satu batch terdapat 1 saja bon milik SAC yang login, transaksi DIBATALKAN SELURUHNYA secara atomik (`DB::transaction`) dan melempar HTTP 403 `ForbiddenSelfApprovalException`.
+     - UI wajib menonaktifkan checkbox seleksi untuk bon milik sendiri dan menampilkan badge `Milik Sendiri (Perlu SS/SM)`.
+   - **Ekspor Excel Selektif (`GET /vouchers/export?voucher_ids=...`)**:
+     - Diizinkan pada seluruh role toko yang memiliki izin ekspor.
+     - Operasi pembacaan non-mutasi untuk kemudahan pencetakan laporan selektif.
+
+2. **OPERASI YANG DILARANG KERAS SECARA MASSAL (*Strict Non-Bulk Financial Invariants*)**:
+   - **DILARANG Massal pada Sesi Cash Opname (`/opname`)**:
+     - *Dasar Hukum*: Rule 2 (Formula 3-Kantong), Rule 3 (Carry-Forward Chain), dan Rule 4 (Immutable Snapshot).
+     - *Alasan*: Setiap sesi fisik wajib dihitung, diverifikasi saksi (SS), dan ditandatangani SM di hadapan fisik uang brankas secara individual. Tidak boleh ada "persetujuan opname massal".
+   - **DILARANG Massal pada Pengeluaran Bank BRI (`/bri-funds/pending`)**:
+     - *Dasar Hukum*: Rule 6 (Tiered Dual Control) dan Rule 7 (Zero-Deficit Guard).
+     - *Alasan*: Setiap pengeluaran bank wajib diverifikasi terhadap ketersediaan saldo berjalan sub-ledger mitra/kegiatan secara independen saat transaksi disetujui guna mencegah defisit saldo sub-ledger.
+   - **DILARANG Massal Edit/Hapus pada Audit Log (`/admin/audit-logs`)**:
+     - *Dasar Hukum*: Rule 10 (Audit Trail for All Financial Changes).
+     - *Alasan*: Log audit bersifat *append-only* dan *strictly immutable* demi integritas kepatuhan hukum dan audit internal Gramedia.
+
 
 

@@ -107,8 +107,9 @@ test('T-AMN-02: Outflow accepted when amount = running balance (Exact)', functio
     ], $this->sacUser);
 
     expect($outflow)->toBeInstanceOf(BriFundPosting::class);
-    expect($outflow->status)->toBe('PENDING_SS');
+    expect($outflow->status)->toBe('APPROVED');
     expect($outflow->amount_cents)->toBe(100000000);
+    expect($this->balanceService->getEntityBalance($this->store->id, $entityName, 'B2B'))->toBe(0);
 });
 
 test('T-AMN-03: Outflow accepted when amount < running balance', function () {
@@ -133,8 +134,9 @@ test('T-AMN-03: Outflow accepted when amount < running balance', function () {
     ], $this->sacUser);
 
     expect($outflow)->toBeInstanceOf(BriFundPosting::class);
-    expect($outflow->status)->toBe('PENDING_SS');
+    expect($outflow->status)->toBe('APPROVED');
     expect($outflow->amount_cents)->toBe(80000000);
+    expect($this->balanceService->getEntityBalance($this->store->id, $entityName, 'B2B'))->toBe(120000000);
 });
 
 test('T-AMN-04: Zero-Deficit Guard is checked a SECOND time during approval', function () {
@@ -149,8 +151,20 @@ test('T-AMN-04: Zero-Deficit Guard is checked a SECOND time during approval', fu
         'purpose' => 'Pemasukan awal',
     ], $this->sacUser);
 
-    // Request 1: Rp 700.000 (valid at creation time, balance = 1.000.000)
-    $posting1 = $this->createAction->execute([
+    // Existing pending request: Rp 500.000
+    $posting2 = BriFundPosting::create([
+        'store_id' => $this->store->id,
+        'category' => 'B2B',
+        'entity_name' => $entityName,
+        'type' => 'OUTFLOW',
+        'amount_cents' => 50000000,
+        'purpose' => 'Penarikan 2',
+        'status' => BriFundPosting::STATUS_PENDING_SS,
+        'created_by_id' => $this->sacUser->id,
+    ]);
+
+    // An outflow of Rp 700.000 is executed -> Balance reduces to 1.000.000 - 700.000 = Rp 300.000
+    $this->createAction->execute([
         'category' => 'B2B',
         'entity_name' => $entityName,
         'type' => 'OUTFLOW',
@@ -158,20 +172,9 @@ test('T-AMN-04: Zero-Deficit Guard is checked a SECOND time during approval', fu
         'purpose' => 'Penarikan 1',
     ], $this->sacUser);
 
-    // Request 2: Rp 500.000 (also valid at creation time because balance is still 1.000.000 since request 1 is PENDING_SS)
-    $posting2 = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => $entityName,
-        'type' => 'OUTFLOW',
-        'amount_cents' => 50000000,
-        'purpose' => 'Penarikan 2',
-    ], $this->sacUser);
-
-    // Approve Request 1 -> Balance reduces to 1.000.000 - 700.000 = Rp 300.000
-    $this->approveAction->execute($posting1, $this->ssUser);
     expect($this->balanceService->getEntityBalance($this->store->id, $entityName, 'B2B'))->toBe(30000000);
 
-    // Now try to approve Request 2 (amount 500.000 > current balance 300.000)
+    // Now try to approve pending posting2 (amount 500.000 > current balance 300.000)
     // MUST BE REJECTED at approval time!
     expect(function () use ($posting2) {
         $this->approveAction->execute($posting2, $this->ssUser);
@@ -193,14 +196,17 @@ test('T-BRI-03: PENDING_SS outflow does NOT affect running balance until approve
         'purpose' => 'Pemasukan dana event',
     ], $this->sacUser);
 
-    // Create Outflow Rp 400.000 -> status is PENDING_SS
-    $outflow = $this->createAction->execute([
+    // Create Outflow Rp 400.000 with PENDING_SS status
+    $outflow = BriFundPosting::create([
+        'store_id' => $this->store->id,
         'category' => 'EVENT',
         'entity_name' => $entityName,
         'type' => 'OUTFLOW',
         'amount_cents' => 40000000,
         'purpose' => 'Uang muka sewa panggung',
-    ], $this->sacUser);
+        'status' => BriFundPosting::STATUS_PENDING_SS,
+        'created_by_id' => $this->sacUser->id,
+    ]);
 
     expect($outflow->status)->toBe('PENDING_SS');
 

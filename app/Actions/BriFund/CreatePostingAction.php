@@ -68,12 +68,12 @@ class CreatePostingAction
             );
         }
 
-        // Status rule: INFLOW is immediately APPROVED; OUTFLOW is PENDING_SS
-        $status = $data['type'] === BriFundPosting::TYPE_INFLOW
-            ? BriFundPosting::STATUS_APPROVED
-            : BriFundPosting::STATUS_PENDING_SS;
+        // Both INFLOW and OUTFLOW are immediately APPROVED under SAC operational control (subject to Zero-Deficit Guard)
+        $status = BriFundPosting::STATUS_APPROVED;
+        $approvedById = $actor->id;
+        $approvedAt = now();
 
-        return DB::transaction(function () use ($data, $actor, $store, $status, $customCategoryName, $ipAddress) {
+        return DB::transaction(function () use ($data, $actor, $store, $status, $approvedById, $approvedAt, $customCategoryName, $ipAddress) {
             $posting = BriFundPosting::create([
                 'store_id' => $store->id,
                 'category' => $data['category'],
@@ -85,8 +85,8 @@ class CreatePostingAction
                 'proof_attachment_url' => null,
                 'status' => $status,
                 'created_by_id' => $actor->id,
-                'approved_by_id' => null,
-                'approved_at' => null,
+                'approved_by_id' => $approvedById,
+                'approved_at' => $approvedAt,
                 'rejection_reason' => null,
             ]);
 
@@ -112,6 +112,8 @@ class CreatePostingAction
                     'amount_cents' => $posting->amount_cents,
                     'purpose' => $posting->purpose,
                     'status' => $posting->status,
+                    'approved_by_id' => $posting->approved_by_id,
+                    'approved_at' => $posting->approved_at?->toISOString(),
                 ],
                 'ip_address' => $ipAddress,
             ]);
@@ -122,9 +124,9 @@ class CreatePostingAction
                 $this->notificationAction->toStoreRoles(
                     $store->id,
                     ['SS', 'SM'],
-                    'BRI_OUTFLOW_PENDING',
-                    'Pengajuan Pengeluaran Dana BRI',
-                    "Pengeluaran dana {$posting->entity_name} ({$posting->category}) sebesar {$formattedAmount} menunggu persetujuan.",
+                    'BRI_OUTFLOW_RECORDED',
+                    'Pengeluaran Dana BRI Dicatat',
+                    "Pengeluaran dana {$posting->entity_name} ({$posting->category}) sebesar {$formattedAmount} telah dicatat & disetujui oleh {$actor->name}.",
                     'BriFundPosting',
                     $posting->id,
                     $actor->id
@@ -135,7 +137,7 @@ class CreatePostingAction
                     ['SS', 'SM'],
                     'BRI_INFLOW_RECORDED',
                     'Pemasukan Dana BRI Dicatat',
-                    "Pemasukan dana {$posting->entity_name} ({$posting->category}) sebesar {$formattedAmount} telah dicatat.",
+                    "Pemasukan dana {$posting->entity_name} ({$posting->category}) sebesar {$formattedAmount} telah dicatat & disetujui oleh {$actor->name}.",
                     'BriFundPosting',
                     $posting->id,
                     $actor->id

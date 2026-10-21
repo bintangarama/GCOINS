@@ -129,7 +129,7 @@ export default function BriFundCreate({ categories, entities }: BriFundCreatePro
                                 <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
                                     <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
                                     <span>
-                                        <strong>OUTFLOW:</strong> Membutuhkan persetujuan Supervisor (SS) atau Store Manager (SM) (Dual Control) serta tunduk pada <strong>Zero-Deficit Guard</strong>. Saldo baru berkurang setelah disetujui.
+                                        <strong>OUTFLOW:</strong> Pengeluaran langsung berstatus <strong>APPROVED</strong> atas kendali operasional kasir (SAC) dan otomatis memotong saldo berjalan entitas (tunduk pada <strong>Zero-Deficit Guard</strong>).
                                     </span>
                                 </div>
                             )}
@@ -308,7 +308,7 @@ export default function BriFundCreate({ categories, entities }: BriFundCreatePro
                             ) : data.type === 'INFLOW' ? (
                                 'Simpan & Setujui Pemasukan'
                             ) : (
-                                'Ajukan Pengeluaran (Pending SS)'
+                                'Simpan & Setujui Pengeluaran'
                             )}
                         </Button>
                     </div>

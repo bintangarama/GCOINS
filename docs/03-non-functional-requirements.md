@@ -29,15 +29,15 @@
   - SAC dilarang membuat, mengedit, atau menugaskan role $\ge$ `SS`.
   - User dilarang memodifikasi rolenya sendiri.
   - SAC dilarang me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
-- **Tiered Dual Control**:
-  - BRI Outflow: $\le$ Rp 500.000 (SS atau SM), > Rp 500.000 (**SM only**).
+- **Tiered Dual Control & SAC Operational Control**:
+  - BRI Outflow: Seluruh penarikan dana baru disetujui seketika (`APPROVED`) saat dicatat oleh SAC di bawah kendali operasional kasir (Rule 6) dengan penegakan *Zero-Deficit Guard* (Rule 7). Pada antrean mutasi lama/legacy (`PENDING_SS`), berlaku Tiered Dual Control: $\le$ Rp 500.000 (SS atau SM), > Rp 500.000 (**SM only**).
   - Variance Write-Off: $\le$ Rp 1.000.000 (SS atau SM), > Rp 1.000.000 (**SM only**).
 - Global scope ensures users can only access their store's data (tenant isolation)
 
 ### Data Protection
 - All financial amounts stored as INTEGER cents (no floating-point)
 - HTTPS enforced via Nginx + Let's Encrypt
-- File uploads validated for MIME type and size before storage
+- File uploads validated for MIME type and size before storage (WebP, JPG, PNG $\le$ 250KB terkompresi; PDF $\le$ 2MB untuk rekening koran)
 - SQL injection prevented by Eloquent ORM parameterized queries
 - XSS prevented by React's default escaping + Laravel's sanitization
 

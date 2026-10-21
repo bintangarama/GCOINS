@@ -116,13 +116,13 @@ stateDiagram-v2
 
 ---
 
-## 3. BRI Fund Posting Lifecycle & Tiered Dual Control
+## 3. BRI Fund Posting Lifecycle (SAC Operational Control & Legacy Approvals)
 
 ```mermaid
 stateDiagram-v2
     [*] --> APPROVED: SAC/SS records INFLOW\n(immediately approved)
-
-    [*] --> PENDING_SS: SAC/SS records OUTFLOW\n(zero-deficit validated)
+    [*] --> APPROVED: SAC records OUTFLOW\n(immediately approved under operational control,\nzero-deficit validated)
+    [*] --> PENDING_SS: Legacy OUTFLOW\n(unapproved historical postings)
 
     PENDING_SS --> APPROVED: SS (if ≤ Rp 500.000)\nSM (if > Rp 500.000)\n(balance deducted)
     PENDING_SS --> REJECTED: SS/SM rejects\n(reason mandatory, balance unchanged)
@@ -137,7 +137,8 @@ stateDiagram-v2
 | From | To | Actor | Conditions | Side Effects |
 |---|---|---|---|---|
 | - | APPROVED | SAC/SS | type=INFLOW, proof attached | Running balance increases |
-| - | PENDING_SS | SAC/SS | type=OUTFLOW, amount ≤ balance, proof attached | Notify approvers |
+| - | APPROVED | SAC | type=OUTFLOW, amount ≤ balance (Zero-Deficit Guard), proof attached | Running balance decreases immediately, notification sent to SS/SM |
+| - | PENDING_SS | System / Legacy | Historical / legacy unapproved outflow | Awaiting supervisor sign-off |
 | PENDING_SS | APPROVED | SS/SM | Dual control (not creator). If amount > Rp 500.000: **SM only** | Running balance decreases |
 | PENDING_SS | REJECTED | SS/SM | Reason required | Balance unchanged |
 

@@ -526,26 +526,25 @@ export default function VoucherIndexPage({
                 {/* Floating Bulk Action Bar for Selected Vouchers */}
                 <DataTableBulkBar
                     selectedCount={selectedIds.length}
-                    totalAmount={selectedTotalAmount}
+                    totalAmountCents={selectedTotalAmount}
                     onClearSelection={() => setSelectedIds([])}
-                    actions={
-                        <Button
-                            asChild
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm"
+                >
+                    <Button
+                        asChild
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm"
+                    >
+                        <a
+                            href={`/vouchers/export?${new URLSearchParams({
+                                voucher_ids: selectedIds.join(','),
+                            }).toString()}`}
+                            download
                         >
-                            <a
-                                href={`/vouchers/export?${new URLSearchParams({
-                                    voucher_ids: selectedIds.join(','),
-                                }).toString()}`}
-                                download
-                            >
-                                <FileSpreadsheet className="size-3.5" />
-                                Export Excel Terpilih ({selectedIds.length})
-                            </a>
-                        </Button>
-                    }
-                />
+                            <FileSpreadsheet className="size-3.5" />
+                            Export Excel Terpilih ({selectedIds.length})
+                        </a>
+                    </Button>
+                </DataTableBulkBar>
             </div>
         </AppLayout>
     );

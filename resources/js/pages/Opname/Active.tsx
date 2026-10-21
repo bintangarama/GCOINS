@@ -969,6 +969,7 @@ export default function Active({
                                                         label="Unggah Rekening Koran"
                                                         description="Format: WebP / JPG / PNG / PDF (maks. 2MB)"
                                                         initialUrl={session.sub_ledger?.statement_proof_url}
+                                                        allowPdf={true}
                                                         onChange={(file) => {
                                                             setStatementFile(file);
                                                             setIsBriDirty(true);

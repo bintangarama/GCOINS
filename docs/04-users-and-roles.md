@@ -17,7 +17,7 @@
 
 ### SS — Store Supervisor
 - **Scope**: Per-store
-- **Purpose**: Operations supervisor. Approves vouchers, witnesses physical cash counting, approves BRI outflows.
+- **Purpose**: Operations supervisor. Approves vouchers, witnesses physical cash counting, approves legacy BRI outflows.
 
 ### SOA — Store Operation Associate
 - **Scope**: Per-store
@@ -31,19 +31,19 @@ SYSTEM_ADMIN (Global)
 
 SM (Per-store, top tier)
     ├── Final sign-off on opname sessions
-    ├── Approve/reject vouchers and BRI outflows
+    ├── Approve/reject vouchers and legacy BRI outflows
     └── Manage users within their store
 
 SAC (Per-store, financial operator)
     ├── Open and operate opname sessions
     ├── Disburse cash for approved vouchers
-    ├── Record BRI fund postings
+    ├── Record BRI fund postings (instant approved under operational control)
     └── Generate reports
 
 SS (Per-store, operational supervisor)
     ├── Approve/reject voucher requests
     ├── Witness physical cash counting
-    └── Approve/reject BRI outflows
+    └── Approve/reject legacy BRI outflows
 
 SOA (Per-store, basic)
     └── Submit petty cash voucher requests only
@@ -109,15 +109,15 @@ SOA (Per-store, basic)
 | Approve Resolution (≤ Rp 1.000.000) | ❌ | ✅ | ❌ | ✅ | ❌ |
 | Approve Write-Off (> Rp 1.000.000) | ❌ | ❌ | ❌ | ✅ | ❌ |
 
-### BRI Fund Postings & Tiered Outflow Approval
+### BRI Fund Postings & Outflow Management
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Record INFLOW + proof | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Record OUTFLOW + proof | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Approve OUTFLOW ≤ Rp 500.000 | ❌ | ✅ | ❌** | ✅ | ❌ |
-| Approve OUTFLOW > Rp 500.000 | ❌ | ❌ | ❌** | ✅ | ❌ |
-| Reject OUTFLOW | ❌ | ✅ | ❌ | ✅ | ❌ |
+| Record INFLOW + proof (Instant APPROVED) | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Record OUTFLOW + proof (Instant APPROVED under SAC control) | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Approve Legacy OUTFLOW ≤ Rp 500.000 | ❌ | ✅ | ❌** | ✅ | ❌ |
+| Approve Legacy OUTFLOW > Rp 500.000 | ❌ | ❌ | ❌** | ✅ | ❌ |
+| Reject Legacy OUTFLOW | ❌ | ✅ | ❌ | ✅ | ❌ |
 | View posting history & balances | ❌ | ✅ | ✅ | ✅ | ❌ |
 
 ### Reports & Admin
@@ -136,10 +136,13 @@ SOA (Per-store, basic)
 ### Rule 1: Anti Self-Approval (*)
 SAC can approve vouchers submitted by **other** users (SOA/SS). However, if SAC submits a voucher for themselves (`requester_id == current_user.id && current_user.role == SAC`), the system **strictly prohibits self-approval**. That voucher must be approved by SS or SM.
 
-### Rule 2: Tiered Dual Control BRI Outflow (**)
-All OUTFLOW postings recorded by SAC **cannot be approved by SAC**. Must be approved through tiered segregation:
+### Rule 2: SAC Operational Control & Tiered Dual Control on Legacy Outflows (**)
+Sesuai kebutuhan operasional kasir toko (analogi dengan Rule 16 pada *Voucher Settlement*), SAC memegang kendali operasional penuh atas fisik kasir dan rekening pooling BRI toko. Mutasi penarikan dana (OUTFLOW) langsung berstatus `APPROVED` seketika saat dicatat oleh SAC dengan penegakan ketat **Rule 7 (Zero-Deficit Guard)** guna mencegah saldo negatif.
+
+Untuk mutasi berstatus `PENDING_SS` (legacy/riwayat lampau), persetujuan tetap tunduk pada aturan Tiered Dual Control:
 - **Nominal $\le \text{Rp } 500.000$**: Dapat disetujui oleh Store Supervisor (SS) atau Store Manager (SM).
 - **Nominal $> \text{Rp } 500.000$**: **Wajib disetujui oleh Store Manager (SM)**.
+- **Anti Self-Approval**: Pembuat mutasi DILARANG menyetujui mutasi `PENDING_SS` buatannya sendiri.
 
 ### Rule 3: Segregation of Duties (SoD) pada User Management
 1. **Pencegahan Privilege Escalation**:

@@ -15,15 +15,28 @@
 - Primary font: **Inter** (Google Fonts) — clean, professional, excellent readability
 - Monospace (numbers): **JetBrains Mono** or system mono — for financial figures
 
-### Color Palette (shadcn/ui default theme, customized)
-- Background: `hsl(0 0% 100%)` (white)
-- Foreground: `hsl(224 71% 4%)` (near-black)
-- Primary: `hsl(220 70% 50%)` (professional blue)
-- Destructive: `hsl(0 84% 60%)` (red for errors, shortages)
-- Success: `hsl(142 71% 45%)` (green for balanced, approved)
+### Color Palette & Theme Tokens
+
+#### Light Mode (Clean Corporate)
+- Background: `hsl(0 0% 100%)` (clean white)
+- Card / Panel: `hsl(0 0% 100%)` with subtle border `hsl(220 13% 91%)`
+- Foreground: `hsl(224 71% 4%)` (slate near-black)
+- Primary: `hsl(220 70% 50%)` (Gramedia professional blue)
+- Destructive: `hsl(0 84% 60%)` (red for errors, shortages, negative variance)
+- Success: `hsl(142 71% 45%)` (emerald green for balanced, approved)
 - Warning: `hsl(38 92% 50%)` (amber for pending, surplus)
-- Muted: `hsl(220 14% 96%)` (light gray backgrounds)
+- Muted Background: `hsl(220 14% 96%)` / `bg-muted/20` for gentle zebra striping
 - Border: `hsl(220 13% 91%)`
+
+#### Dark Mode (Deep Midnight Slate — Ergonomic & High Contrast)
+Untuk menjamin kenyamanan mata di lingkungan kerja kasir yang minim pencahayaan dan mencegah kelelahan mata (*eye-strain*), tema gelap menggunakan palet **Deep Midnight Slate** (bukan hitam pekat #000000):
+- Background Halaman: `#0b1120` (slate-950 pekat elegan)
+- Card / Table / Dialog: `#151e32` (slate-900 elevated)
+- Border / Divider: `#1e293b` (slate-800 subtle)
+- Teks Utama (Foreground): `#f1f5f9` (slate-100 kontras tinggi WCAG AAA)
+- Teks Sekunder (Muted): `#94a3b8` (slate-400 jelas terbaca)
+- Highlight Baris Terpilih: `bg-primary/10 border-l-2 border-l-primary`
+- Zebra Striping: `even:bg-muted/20` (lembut, tidak silau)
 
 ### Status Badge Colors
 | Status | Color | Context |
@@ -44,75 +57,75 @@
 
 ## 3. Layout Structure
 
+### Workspace Optimization & Vertical Space Ergonomics
+Untuk memberikan area kerja vertikal yang lebih luas bagi data tabel keuangan dan rekonsiliasi kasir, arsitektur layout mengadopsi prinsip:
+1. **Breadcrumb Terintegrasi di Topbar**: Jalur navigasi breadcrumb dipindahkan langsung ke dalam Topbar header utama, mengeliminasi baris kosong redundan di atas konten halaman.
+2. **Eliminasi Redundansi Teks Toko**: Penulisan toko yang berulang ("Toko Gramedia Gramedia...") dibersihkan menjadi format ringkas: `[Kode Toko] Nama Toko` di Topbar.
+3. **Desktop Collapsible Sidebar**: Sidebar desktop dapat di-minimize/expand secara dinamis via tombol collapse, memberikan lebar horizontal penuh saat meninjau tabel laporan lebar atau matriks kolom.
+4. **Perampingan Menu Navigasi**: Menu aksi yang redundan (seperti sub-menu "Buat Bon" di sidebar utama) dirampingkan karena tombol primer "Buat Bon" sudah tersemat langsung pada action bar halaman Daftar Bon.
+
 ### Desktop Layout (≥ 1024px)
 
 ```
-┌──────────────────────────────────────────────────────┐
-│  Topbar [Logo] [Store Name]     [Notifications 🔔] [User ▾]  │
-├──────────┬───────────────────────────────────────────┤
-│          │                                           │
-│ Sidebar  │              Main Content                 │
-│ (fixed)  │                                           │
-│          │  ┌─────────────────────────────────────┐   │
-│ Dashboard│  │  Page Header                        │   │
-│ Vouchers │  │  ├── Title                          │   │
-│ Opname   │  │  ├── Breadcrumbs                    │   │
-│ BRI Fund │  │  └── Action Buttons                 │   │
-│ Admin ▾  │  ├─────────────────────────────────────┤   │
-│          │  │                                     │   │
-│          │  │  Page Content                       │   │
-│          │  │  (tables, forms, cards)              │   │
-│          │  │                                     │   │
-│          │  └─────────────────────────────────────┘   │
-│          │                                           │
-└──────────┴───────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Topbar [☰ Collapse] [Breadcrumb Nav]        [🔔 Notifications] [User ▾]│
+├──────────────┬─────────────────────────────────────────────────────────┤
+│              │                                                         │
+│ Sidebar      │                     Main Content                        │
+│ (Collapsible)│                                                         │
+│              │  ┌───────────────────────────────────────────────────┐  │
+│ 📊 Dashboard │  │ Page Header (Title + Action Buttons)              │  │
+│ 📝 Bon Kas   │  ├───────────────────────────────────────────────────┤  │
+│ 💰 Opname    │  │ Filter Bar / Summary Metrics                      │  │
+│ 🏦 BRI Fund  │  ├───────────────────────────────────────────────────┤  │
+│ ⚙️ Admin     │  │ Data Table (Sortable, Zebra, Multi-Select)        │  │
+│              │  └───────────────────────────────────────────────────┘  │
+│              │      [Floating Bulk Action Bar (if items selected)]     │
+└──────────────┴─────────────────────────────────────────────────────────┘
 ```
 
 ### Mobile Layout (< 1024px)
 
 ```
-┌──────────────────────────┐
-│  Topbar [☰] [Logo] [🔔]  │
-├──────────────────────────┤
-│                          │
-│  Page Header             │
-│  ├── Title               │
-│  └── Action Buttons      │
-├──────────────────────────┤
-│                          │
-│  Page Content            │
-│  (stacked, full-width)   │
-│                          │
-└──────────────────────────┘
+┌──────────────────────────────────────┐
+│  Topbar [☰] [G-COINS]          [🔔]   │
+├──────────────────────────────────────┤
+│  Page Header                         │
+│  ├── Title                           │
+│  └── Action Buttons                  │
+├──────────────────────────────────────┤
+│  Page Content                        │
+│  (stacked cards, touch-friendly)     │
+│                                      │
+│  [Floating Bulk Bar on Selection]    │
+└──────────────────────────────────────┘
 
-[☰] → Slide-out sidebar (sheet/drawer)
+[☰] → Slide-out responsive drawer
 ```
 
-### Sidebar Navigation
+### Sidebar Navigation Tree
 
 ```
 📊 Dashboard
 📝 Bon Kas Kecil
-   ├── Daftar Bon
-   ├── Buat Pengajuan
-   ├── Antrean Approval
-   └── Settlement
+   ├── Daftar Bon (Akses langsung ke Buat Bon & Export)
+   ├── Antrean Approval (SS/SAC/SM - Multi-select Bulk Approve)
+   └── Settlement (Matriks Rekapitulasi KKCL)
 💰 Cash Opname
-   ├── Riwayat Sesi
-   └── Sesi Aktif
+   ├── Riwayat Sesi (Semua tipe opname)
+   └── Sesi Aktif (Workspace 5 tipe opname)
 🏦 Mutasi BRI
-   ├── Overview Saldo
-   ├── Daftar Transaksi
-   ├── Catat Mutasi
-   └── Antrean Outflow
-⚙️ Administrasi
-   ├── Manajemen User
+   ├── Overview Saldo (Sub-ledger & breakdown)
+   ├── Riwayat Mutasi (Sortable INFLOW & OUTFLOW)
+   ├── Catat Mutasi Baru
+   └── Antrean Outflow (Persetujuan pengeluaran legacy)
+⚙️ Administrasi (Role $\ge$ SAC / SM / SYSTEM_ADMIN)
+   ├── Manajemen User (NIK, Role, Status)
+   ├── Master Kategori Kas Kecil (Dual-scope)
    ├── Pengaturan Toko
-   ├── Audit Log
-   └── Import/Export
+   ├── Audit Log (Immutable append-only)
+   └── Import/Export Center
 ```
-
-> Note: Menu items shown/hidden based on user's role permissions.
 
 ## 4. Page Specifications
 
@@ -124,21 +137,36 @@
 - No registration link (users are created by admin)
 
 ### 4.2. Dashboard (`/dashboard`)
-- **Top row**: Summary cards
-  - Current cash status (if active opname exists)
-  - Pending vouchers count (for approvers)
-  - Pending BRI outflows count (for approvers)
-  - Last opname date & status
-- **Middle**: Recent activity feed (last 10 actions)
-- **Bottom**: Quick action buttons based on role
+- **Interactive Clickable Summary Cards**:
+  - Setiap kartu metrik berfungsi sebagai tautan navigasi langsung ke modul terkait.
+  - Kartu disesuaikan secara dinamis berdasarkan peran (**Role-Based Metrics**):
+    - **SOA**: Hanya melihat status bon miliknya, plafon kas kecil, dan saldo berjalan (tidak dibebani metrik sesi cash opname kasir).
+    - **SAC**: Status kas fisik aktif, antrean bon siap cair (`APPROVED_SS`), total bon gantung ($K_{bon}$), dan status rekening pooling BRI.
+    - **SS / SM**: Antrean persetujuan bon (`SUBMITTED`), antrean persetujuan outflow BRI (legacy), status sesi opname butuh verifikasi/sign-off, dan integritas variansi.
+- **Recent Activities Feed**:
+  - Dibatasi secara optimal ke **5 aktivitas terbaru** untuk menjaga kerapian vertikal dashboard tanpa scroll berlebih.
+- **Quick Action Bar**:
+  - Shortcut cepat sesuai hak akses (Buat Bon, Mulai Opname, Catat Mutasi BRI).
 
 ### 4.3. Voucher List (`/vouchers`)
-- Data table with columns: No. Voucher, Tanggal, Pemohon, Keperluan, Nominal, Status, Aksi
-- Filters: Status dropdown, Date range picker, Category
-- Search: voucher number, purpose text
-- Pagination: 20 per page
-- Status badges with colors
-- Click row → navigate to detail
+- **Tabel Data Interaktif**:
+  - Kolom: Checkbox Pilihan, No. Voucher, Tanggal Struk, Pemohon, Kategori, Keperluan, Nominal, Status, Aksi.
+  - **Sorting Kolom Interaktif**: Pengurutan instan *ascending* / *descending* pada kolom No. Voucher, Tanggal, Kategori, Nominal, dan Status.
+  - Filter: Status, Rentang Tanggal, Kategori, Pemohon.
+  - Pencarian Real-Time: Nomor voucher dan keperluan.
+  - Pagination: 20 data per halaman dengan link navigasi responsif.
+  - **Bulk Export Excel**: Kemampuan memilih baris tertentu via checkbox untuk mengunduh rekap Excel selektif via `DataTableBulkBar`.
+
+### 4.3.1. Voucher Pending Approval Queue (`/vouchers/pending`)
+- Antrean khusus bagi supervisor/kasir untuk meninjau bon yang menunggu persetujuan.
+- **Bulk Approve (Persetujuan Massal)**:
+  - Checkbox multi-select di header dan setiap baris bon yang berhak disetujui.
+  - **Anti Self-Approval Enforcement (Rule 5)**:
+    - Jika pengguna login adalah kasir (SAC), baris bon yang diajukan oleh dirinya sendiri otomatis dinonaktifkan (`disabled`) dengan badge penanda `"Milik Sendiri (Perlu SS/SM)"`.
+    - Checkbox "Pilih Semua" hanya mencentang bon yang berhak disetujui (mengecualikan bon sendiri).
+  - **Floating Bulk Action Bar (`DataTableBulkBar`)**:
+    - Bar melayang di bagian bawah layar menampilkan: Jumlah item terpilih, Akumulasi nominal (Rp), Tombol "Setujui X Voucher Sekaligus", dan Tombol Batalkan Pilihan.
+    - Konfirmasi tindakan massal melalui `ConfirmDialog` sebelum mutasi dieksekusi secara atomik (`DB::transaction`).
 
 ### 4.4. Create Voucher (`/vouchers/create`)
 - Form fields:
@@ -242,19 +270,57 @@
 
 ## 5. Key Interaction Patterns
 
+### Data Table UX & Selective Bulk Action Architecture (`DataTable.tsx`)
+Seluruh modul operasional (`Voucher`, `Opname`, `BriFund`, `Users`, `AuditLogs`) menggunakan komponen tabel terstandarisasi dengan spesifikasi interaksi:
+1. **Interactive Column Sorting (`DataTableHeaderCell`)**:
+   - Kolom yang dapat diurutkan menampilkan indikator visual:
+     - Netral: `ArrowUpDown` redup (`opacity-50`).
+     - Ascending (A-Z / Terkecil): `ArrowUp` tajam berwarna primer.
+     - Descending (Z-A / Terbesar): `ArrowDown` tajam berwarna primer.
+   - Terintegrasi dengan URL query parameters (`sort={field}&direction={asc|desc}`) dan whitelist ketat di controller backend.
+   - Kolom monospaced angka/nominal memiliki perataan kanan (`align="right"`), dengan ikon sort otomatis berada di posisi yang harmonis.
+2. **Visual Ergonomics & Row Scanning (`DataTableRow`)**:
+   - **Gentle Zebra Striping**: Baris genap menggunakan `even:bg-muted/20` untuk memandu pandangan mata saat memindai puluhan baris data keuangan.
+   - **Active Row Selection**: Baris yang dicentang diberi highlight kontras lembut `bg-primary/10` dan garis aksen tepi kiri `border-l-2 border-l-primary`.
+3. **Floating Glassmorphic Bulk Action Bar (`DataTableBulkBar`)**:
+   - Muncul otomatis dengan animasi transisi saat minimal 1 item baris dicentang (`selectedCount > 0`).
+   - Melayang di tengah bawah layar (*bottom-fixed pill*) dengan efek glassmorphism (`backdrop-blur-md bg-card/95 border shadow-2xl`).
+   - Komponen internal:
+     - Badge jumlah item terpilih (`{count} item dipilih`).
+     - Akumulasi total nilai uang (Rp) dari seluruh baris terpilih jika modul keuangan.
+     - Slot tombol aksi kontekstual (misal: "Setujui Bon", "Export Excel Terpilih").
+     - Tombol batal / bersihkan pilihan (`X Batal`).
+4. **Selective Bulk Action vs Non-Bulk Financial Invariant Matrix**:
+   - **Persetujuan Massal (Bulk Approve)**: HANYA diizinkan pada antrean bon kas kecil (`/vouchers/pending`), dilindungi oleh **Rule 5 Anti Self-Approval** (SAC tidak dapat menyetujui bon miliknya sendiri, checkbox dinonaktifkan di UI, dan ditolak di Action layer).
+   - **Ekspor Massal (Bulk Export)**: Diizinkan pada daftar bon kas kecil (`/vouchers`) untuk mengunduh rekap Excel berdasarkan seleksi checkbox.
+   - **DILARANG UNTUK BULK ACTION**:
+     - *Cash Opname (`/opname`)*: Setiap sesi fisik wajib diverifikasi dan disetujui satu per satu (Rule 2, 3, 4).
+     - *Mutasi Outflow BRI (`/bri-funds/pending`)*: Setiap pengeluaran bank pada antrean pending (legacy) wajib diverifikasi maker-checker secara terpisah dengan pengecekan running balance (Rule 6, 7).
+     - *Audit Logs (`/admin/audit-logs`)*: Log bersifat *append-only* dan *strictly immutable* (Rule 10).
+
 ### Money Input Component
 - Display: `Rp 5.000.000` (formatted with thousand separators)
 - Storage: `500000000` (integer cents)
 - Input: user types digits, auto-formats as they type
 - No decimals (Rupiah only, no sen in daily cash operations)
 
-### Hardened Client-Side Image Compression (`image-compressor.ts`)
-1. User clicks upload / captures photo via mobile camera.
-2. Dimensi dibatasi maksimal proporsional $1280 \times 1920\text{ px}$.
-3. Strict Size Guard ($\le 250\text{ KB}$):
-   - Iterasi kualitas Canvas dari 0.85 turun bertahap hingga 0.3.
-   - Jika pada kualitas 0.3 ukuran masih $> 250\text{ KB}$, kompresor otomatis melakukan *two-stage dimensional scaling* (skala turun 80% &rarr; 60%) hingga ukuran file wajib $\le 250\text{ KB}$.
-4. Fallback Safari iOS: Jika `canvas.toBlob` tidak menghasilkan tipe `image/webp`, file otomatis disimpan sebagai format JPEG terkompresi dengan ekstensi `.jpg` yang valid (mencegah file JPEG yang dinamai `.webp` palsu).
+### ImageUploader Component & Hardened Client-Side Compression (`ImageUploader.tsx` & `image-compressor.ts`)
+1. **Opsi Kamera vs File/Galeri (Mobile-Friendly)**:
+   - Area dropzone menyediakan 2 tombol aksi interaktif:
+     - `[ 📷 Buka Kamera ]`: Menggunakan `capture="environment"` untuk mengaktifkan kamera belakang perangkat mobile secara instan.
+     - `[ 📁 Pilih File / Galeri ]`: Menggunakan input file standar tanpa atribut `capture` sehingga perangkat mobile membuka sheet pemilihan sistem (Galeri foto, Media picker, Dokumen/Files) dan desktop membuka file explorer.
+   - Mengetuk area kartu atau *drag & drop* mengarahkan ke pemilih berkas secara aman.
+2. **Menu Ganti Berkas (`DropdownMenu`)**:
+   - Saat foto/berkas telah terunggah, pengguna dapat mengganti foto langsung via menu dropdown ("Ambil Foto Baru" atau "Pilih dari Galeri/Berkas") tanpa harus menghapus terlebih dahulu.
+3. **Dukungan Dokumen PDF Opsional (`allowPdf?: boolean`)**:
+   - Untuk berkas rekening koran bank BRI (`/opname/active`), uploader menerima berkas PDF (maksimal 2MB) dengan kartu pratinjau dokumen khusus dan tautan untuk membuka PDF di tab baru.
+4. **Hardened Client-Side Image Compression**:
+   - Dimensi dibatasi maksimal proporsional $1280 \times 1920\text{ px}$.
+   - Strict Size Guard ($\le 250\text{ KB}$):
+     - Iterasi kualitas Canvas dari 0.85 turun bertahap hingga 0.3.
+     - Jika pada kualitas 0.3 ukuran masih $> 250\text{ KB}$, kompresor otomatis melakukan *two-stage dimensional scaling* (skala turun 80% &rarr; 60%) hingga ukuran file wajib $\le 250\text{ KB}$.
+   - Fallback Safari iOS: Jika `canvas.toBlob` tidak menghasilkan tipe `image/webp`, file otomatis disimpan sebagai format JPEG terkompresi dengan ekstensi `.jpg` yang valid (mencegah file JPEG yang dinamai `.webp` palsu).
+
 
 ### Denomination Numpad Traversal
 - Input numerik besar dengan format font monospaced.

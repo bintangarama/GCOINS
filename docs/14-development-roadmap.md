@@ -11,9 +11,10 @@
 | Phase 5 | Reports & Excel Export | Week 5-6 | Complete ✅ |
 | Phase 6 | Polish & Production Baseline | Week 6-7 | Complete ✅ |
 | Phase 7 | Full 5 Item Engine, Precision Ledger & UX | Week 8 | Complete ✅ |
-| Phase 8 | Operational Enhancements & Analytics | Future | Planned ⏳ |
+| Phase 8 | Operational Ergonomics, Dark Mode & Table UX | Week 9 | Complete ✅ |
+| Phase 9 | Analytics & Mobile Enhancements | Future | Planned ⏳ |
 
-**Scope Status**: Scope Penuh 5 Item Cash Count Engine, SoD Hardening, dan Precision Accounting selesai diimplementasikan dan terverifikasi penuh.
+**Scope Status**: Scope Penuh 5 Item Cash Count Engine, SoD Hardening, Precision Accounting, Deep Midnight Slate Dark Mode, Layout Ergonomics, dan Selective Bulk Actions selesai diimplementasikan dengan 214 pengujian unit & fitur lulus 100% (799 assertions).
 
 ---
 
@@ -171,12 +172,12 @@
 
 #### 3.1 Fund Posting CRUD
 - [x] BriFundPosting model, factory, policy
-- [x] CreatePostingAction (INFLOW → immediate APPROVED, OUTFLOW → PENDING_SS)
+- [x] CreatePostingAction (INFLOW → immediate APPROVED; OUTFLOW → immediate APPROVED under SAC operational control with Zero-Deficit Guard; Legacy: PENDING_SS)
 - [x] Posting create page (form + proof upload)
 - [x] Posting list page (DataTable with filters)
 
 #### 3.2 Approval Flow
-- [x] ApproveOutflowAction (dual control check)
+- [x] ApproveOutflowAction (dual control check on legacy pending outflows)
 - [x] RejectOutflowAction (reason required)
 - [x] Pending outflows page
 
@@ -192,10 +193,10 @@
 - [x] T-BRI-01 through T-BRI-03 (balance calculations)
 
 ### Acceptance Criteria
-- ✅ INFLOW immediately approved and increases balance
-- ✅ OUTFLOW requires SS/SM approval before balance decreases
-- ✅ Outflow rejected if amount > running balance (tested)
-- ✅ Creator cannot approve own outflow (tested)
+- ✅ INFLOW & OUTFLOW immediately approved under SAC operational control
+- ✅ Legacy PENDING_SS OUTFLOW requires SS/SM approval before balance decreases
+- ✅ Outflow rejected if amount > running balance (Zero-Deficit Guard enforced)
+- ✅ Creator cannot approve own legacy outflow (anti self-approval tested)
 - ✅ Balance dashboard shows correct aggregations
 
 ---
@@ -400,11 +401,65 @@
 
 ---
 
-## Phase 8 — Operational Enhancements & Analytics (Post-MVP)
+## Phase 8 — Operational Ergonomics, Dark Mode & Table UX (Week 9) — Complete ✅
+
+### Objectives
+- Area vertikal kerja kasir lebih luas dan bebas distraksi
+- Mode gelap Deep Midnight Slate yang nyaman di mata kasir
+- Dashboard interaktif dan adaptif terhadap peran pengguna
+- Universal Interactive Column Sorting di seluruh tabel data operasional
+- Selective Bulk Action Architecture yang patuh pada batas-batas Invariant Finansial
+
+### Tasks
+
+#### 8.1 Workspace & Layout Ergonomics
+- [x] Breadcrumb terintegrasi di Topbar dengan penanganan overflow adaptif
+- [x] Pembersihan redundansi nama toko ("Toko Gramedia Gramedia...") menjadi format ringkas `[Kode] Nama Toko`
+- [x] Collapsible Desktop Sidebar dengan toggle animasi dan penyimpanan state
+- [x] Perampingan menu sidebar (menghilangkan duplikasi tombol primer formulir)
+
+#### 8.2 Deep Midnight Slate Dark Mode
+- [x] Implementasi palet `#0b1120` (background), `#151e32` (elevated card), `#1e293b` (border), `#f1f5f9` (teks utama)
+- [x] Pembersihan hardcoded classes `bg-white` dan `border-slate-200` pada seluruh tabel admin dan modal
+- [x] Kontras tinggi WCAG AAA untuk teks monospaced nominal keuangan
+
+#### 8.3 Role-Aware Interactive Dashboard
+- [x] Clickable metric cards menghubungkan langsung ke modul terkait
+- [x] Filter metrik berbasis peran (SOA tidak dibebani metrik opname brankas kasir)
+- [x] Optimasi aktivitas terbaru dibatasi ke 5 item teratas
+
+#### 8.5 Universal Table Sorting & Selective Bulk Actions
+- [x] Komponen `DataTableHeaderCell` dengan indikator visual panah aktif/netral
+- [x] Server-side sorting pada 6 tabel utama: `Voucher/Index`, `Voucher/Pending`, `BriFund/Postings`, `Opname/Index`, `Admin/Users`, `Admin/AuditLogs`
+- [x] Zebra striping lembut `even:bg-muted/20` dan highlight baris terpilih `bg-primary/10 border-l-2 border-l-primary`
+- [x] Floating glassmorphic action bar `DataTableBulkBar`
+- [x] `BulkApproveVouchersAction` & endpoint `POST /vouchers/bulk-approve` dengan pengawalan Rule 5 Anti Self-Approval atomik
+- [x] Bulk export Excel selektif via query parameter `voucher_ids` pada `/vouchers`
+- [x] Penegakan aturan larangan bulk action pada Opname (Rule 2, 3, 4), Outflow BRI (Rule 6, 7), dan Audit Log (Rule 10)
+
+#### 8.6 Mobile Photo & File Upload Options & SAC Instant Outflow Approval
+- [x] Dual action buttons pada `ImageUploader.tsx`: `[ 📷 Buka Kamera ]` (`capture="environment"`) & `[ 📁 Pilih File / Galeri ]` (standard picker tanpa capture)
+- [x] Opsi ganti foto langsung via `DropdownMenu` ("Ambil Foto Baru" & "Pilih dari Galeri/Berkas") tanpa harus menghapus foto terlebih dahulu
+- [x] Dukungan dokumen PDF (hingga 2MB) pada upload rekening koran bank BRI (`/opname/active`)
+- [x] Kendali operasional penuh kasir/SAC (Rule 6): Seluruh mutasi OUTFLOW BRI langsung disetujui seketika (`STATUS_APPROVED`) saat dicatat oleh SAC
+- [x] Validasi ketat *Zero-Deficit Guard* (Rule 7) saat pencatatan OUTFLOW untuk mencegah saldo negatif
+- [x] Pengiriman notifikasi informatif `BRI_OUTFLOW_RECORDED` ke SS dan SM
+- [x] Kompatibilitas antrean persetujuan mutasi lama (`PENDING_SS`) melalui `ApproveOutflowAction` & `RejectOutflowAction`
+- [x] Feature tests disesuaikan (214 tests, 799 assertions, 100% lulus)
+
+### Acceptance Criteria
+- ✅ Area vertikal bertambah signifikan untuk efisiensi pandang kasir
+- ✅ Pengurutan kolom berfungsi mulus dan persisten via URL di seluruh modul
+- ✅ Pengguna mobile memiliki kendali penuh memilih kamera langsung atau galeri perangkat
+- ✅ SAC dapat mengeksekusi penarikan BRI instan tanpa hambatan persetujuan dengan saldo terlindungi
+- ✅ Seluruh pengujian unit & fitur hijau tanpa regresi
+
+---
+
+## Phase 9 — Analytics & Mobile Enhancements (Future / Post-MVP)
 
 ### Planned Enhancements
 - [ ] Dashboard analytics (grafik tren variansi per tipe, velocity rekonsiliasi kasir)
 - [ ] PWA installability (Add to Home Screen untuk smartphone supervisor/manager)
 - [ ] WhatsApp notification webhook integration
 - [ ] Multi-store aggregated dashboard untuk SYSTEM_ADMIN & Regional Auditor
-- [ ] Dark mode theme support

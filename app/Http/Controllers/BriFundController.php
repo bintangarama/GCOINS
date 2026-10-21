@@ -168,8 +168,8 @@ class BriFundController extends Controller
         );
 
         $msg = $posting->type === BriFundPosting::TYPE_INFLOW
-            ? 'Posting pemasukan dana BRI berhasil dicatat dan langsung disetujui.'
-            : 'Pengajuan pengeluaran dana BRI berhasil dibuat dan menunggu persetujuan Supervisor.';
+            ? 'Posting pemasukan dana BRI berhasil dicatat dan disetujui.'
+            : 'Posting pengeluaran dana BRI berhasil dicatat dan langsung disetujui.';
 
         return redirect()->route('bri-funds.postings')->with('success', $msg);
     }

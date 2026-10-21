@@ -47,7 +47,7 @@
 - Fields: amount (> 0, ≤ imprest fund), receipt_date (optional, default: today), purpose, category, receipt photo, item photo
 - Auto-generate voucher number: `{SEQ}/{TYPE_CODE}/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`
 - Status: `DRAFT`
-- Photos compressed client-side to WebP (≤ 250KB)
+- Photos compressed client-side to WebP (≤ 250KB); support dual mobile actions (kamera langsung & galeri/file)
 
 ### FR-VCH-02: Delete Draft
 - Only draft owner can delete their own draft
@@ -133,6 +133,19 @@
 - Ditampilkan secara konsisten pada antarmuka tabel daftar voucher, detail voucher, ekspor Excel rekapitulasi voucher (`VoucherRecapExport`), serta rekap matriks KKCL (`PettyCashMatrixRecapExport`)
 - Impor data voucher historis dari Excel otomatis memetakan tanggal dokumen ke kolom `receipt_date`
 
+### FR-VCH-16: Persetujuan Massal Bon (Bulk Approval)
+- **Roles**: SS, SAC, SM
+- **Endpoint**: `POST /vouchers/bulk-approve`
+- **Fitur**: Multi-select voucher berstatus `SUBMITTED` dari antrean `/vouchers/pending`.
+- **Anti Self-Approval Enforcement**: Jika pengguna login adalah kasir (SAC), sistem memblokir pemilihan voucher milik sendiri di UI (checkbox disabled + badge penanda) dan memvalidasi ketat di Action layer (`BulkApproveVouchersAction`).
+- **Atomicity Guard**: Seluruh batch voucher dieksekusi dalam satu transaksi database (`DB::transaction`). Jika ditemukan 1 saja voucher milik sendiri atau berstatus invalid, seluruh batch dibatalkan secara atomik dan mengembalikan HTTP 403 `ForbiddenSelfApprovalException`.
+- **Audit Trail**: Setiap voucher yang disetujui dalam batch otomatis mencatat entri log audit tersendiri (`APPROVE_VOUCHER`).
+
+### FR-VCH-17: Ekspor Excel Selektif (Bulk Export)
+- **Roles**: All authenticated store roles
+- **Endpoint**: `GET /vouchers/export?voucher_ids={id1,id2,...}`
+- **Fitur**: Pengguna dapat mencentang voucher tertentu pada daftar `/vouchers` dan mengklik "Export Excel Terpilih" pada `DataTableBulkBar` untuk mengunduh rekap spreadsheet (.xlsx) hanya dari voucher yang dipilih.
+
 ---
 
 ## Module 3: BRI Fund Posting (Bank Sub-Ledger)
@@ -147,10 +160,12 @@
 - Roles: SAC, SS
 - Fields: same as INFLOW + destination account
 - Validation: amount ≤ entity's current running balance (Zero-Deficit Guard)
-- Status: `PENDING_SS`
-- Running balance does **not** decrease until approved
+- Status: immediately `APPROVED` under SAC operational control (Rule 6)
+- Running balance decreases immediately upon creation
+- Notification: Informational notification (`BRI_OUTFLOW_RECORDED`) dispatched to SS and SM
 
-### FR-BRI-03: Approve OUTFLOW (Tiered Dual Control)
+### FR-BRI-03: Approve OUTFLOW (Legacy & Pending Approval Queue)
+- Scope: Berlaku untuk antrean mutasi penarikan berstatus `PENDING_SS` (misalnya mutasi legacy/lampau).
 - Roles: SS, SM
 - **Tiered Dual Control & Anti Self-Approval**:
   - Creator DILARANG meng-approve outflow buatannya sendiri (anti self-approval).
@@ -159,7 +174,8 @@
 - Status: `PENDING_SS` → `APPROVED`
 - Running balance decreases
 
-### FR-BRI-04: Reject OUTFLOW
+### FR-BRI-04: Reject OUTFLOW (Legacy & Pending Approval Queue)
+- Scope: Berlaku untuk mutasi penarikan dalam antrean `PENDING_SS`.
 - Roles: SS, SM
 - Rejection reason mandatory
 - Status: `PENDING_SS` → `REJECTED`
@@ -252,7 +268,11 @@
 - Tampilan detail read-only lengkap dengan tab reference lines, audit timeline, dan resolusi selisih
 
 ### FR-OPN-10: Client-Side Resilience & UX Enhancements
-- **Multi-tier WebP Compressor**: Kompresi foto bukti di browser (max 1280x1920 px, $\le$ 250KB WebP) dengan fallback penskalaan dimensi
+- **Multi-tier WebP Compressor & Dual Input**:
+  - Kompresi foto bukti di browser (max 1280x1920 px, $\le$ 250KB WebP) dengan fallback penskalaan dimensi
+  - Antarmuka upload fleksibel: opsi buka kamera langsung (`capture="environment"`) atau pilih file/galeri lokal
+  - Dukungan dokumen PDF (hingga 2MB) pada upload rekening koran bank BRI
+  - Menu ganti foto langsung via `DropdownMenu` ("Ambil Foto Baru" / "Pilih dari Galeri/Berkas")
 - **Unsaved Changes Guard**: Peringatan `beforeunload` jika user bernavigasi saat autosave sedang berlangsung
 
 ---
@@ -346,3 +366,22 @@
 - Filterable by: entity type, entity ID, action, actor, date range
 - Searchable by actor name
 - Paginated, sortable by date
+
+---
+
+## Module 9: Data Tables & Interactive Operational UX
+
+### FR-TBL-01: Universal Interactive Column Sorting
+- **Cakupan Modul**: Seluruh tabel operasional utama (`Voucher/Index`, `Voucher/Pending`, `BriFund/Postings`, `Opname/Index`, `Admin/Users`, `Admin/AuditLogs`).
+- **Fitur Interaksi**:
+  - Klik header memicu pengurutan bolak-balik: Ascending (A-Z / terkecil) &rarr; Descending (Z-A / terbesar).
+  - Indikator visual panah aktif (`ArrowUp` / `ArrowDown`) dan netral (`ArrowUpDown`).
+  - Terintegrasi penuh dengan URL query parameters (`sort` & `direction`) sehingga tautan tabel dapat dibagikan atau di-bookmark dengan urutan tetap tersimpan.
+  - Whitelist ketat di sisi backend mencegah SQL Injection / invalid column order.
+
+### FR-TBL-02: Floating Bulk Action Bar (Glassmorphic)
+- **Komponen**: `DataTableBulkBar`
+- **Fitur Interaksi**:
+  - Melayang di tengah bawah layar ketika ada satu atau lebih baris data yang dicentang.
+  - Menampilkan badge penghitung item terpilih dan kalkulasi akumulasi nominal Rupiah secara real-time.
+  - Memuat tombol aksi massal kontekstual (Bulk Approve, Bulk Export) dan tombol pembatalan pilihan.

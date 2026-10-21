@@ -117,10 +117,10 @@ These are used in flash messages and policy rejections:
 | GET | `/bri-funds` | `BriFundController@overview` | Balance overview |
 | GET | `/bri-funds/postings` | `BriFundController@postings` | Posting history |
 | GET | `/bri-funds/create` | `BriFundController@create` | Create form |
-| POST | `/bri-funds` | `BriFundController@store` | Save posting |
-| GET | `/bri-funds/pending` | `BriFundController@pending` | Pending outflows queue |
-| POST | `/bri-funds/{posting}/approve` | `BriFundController@approve` | Approve outflow (tier limit enforced: SS ≤ 500k, SM > 500k) |
-| POST | `/bri-funds/{posting}/reject` | `BriFundController@reject` | Reject outflow |
+| POST | `/bri-funds` | `BriFundController@store` | Save posting (INFLOW & OUTFLOW immediately APPROVED under SAC control; Zero-Deficit Guard enforced) |
+| GET | `/bri-funds/pending` | `BriFundController@pending` | Pending outflows queue (legacy approval) |
+| POST | `/bri-funds/{posting}/approve` | `BriFundController@approve` | Approve outflow (legacy pending queue; tier limit enforced: SS ≤ 500k, SM > 500k) |
+| POST | `/bri-funds/{posting}/reject` | `BriFundController@reject` | Reject outflow (legacy pending queue) |
 | GET | `/bri-funds/entity/{entityName}` | `BriFundController@entityDetail` | Entity detail drill-down |
 | GET | `/bri-funds/balances` | `BriFundController@balances` | JSON: current balances for opname form |
 | GET | `/bri-funds/export` | `BriFundController@export` | Export posting summary |
@@ -170,7 +170,7 @@ These are used in flash messages and policy rejections:
 | POST | `/notifications/read-all` | `NotificationController@markAllAsRead` | Mark all notifications as read |
 | DELETE | `/notifications/{notification}` | `NotificationController@destroy` | Delete notification |
 
-> **Catatan Media & File Upload**: Tidak ada rute umum `/upload`. Seluruh pengunggahan dokumen (foto nota struk, foto barang, scan rekening koran, foto struk Z-Report, dan scan BACO fisik) dikompresi di sisi klien (WebP $\le$ 250 KB) dan dikirim langsung sebagai *multipart form payload* ke rute entitas masing-masing.
+> **Catatan Media & File Upload**: Tidak ada rute umum `/upload`. Seluruh pengunggahan dokumen (foto nota struk, foto barang, scan rekening koran, foto struk Z-Report, dan scan BACO fisik) dikompresi di sisi klien (WebP $\le$ 250 KB; file PDF hingga 2 MB didukung pada rekening koran) dengan antarmuka ganda (Kamera Langsung & Pilih File / Galeri) dan dikirim langsung sebagai *multipart form payload* ke rute entitas masing-masing.
 
 > **Unread Notification Count**: Disediakan secara terpusat oleh server di setiap response Inertia melalui shared props `$page.props.auth.unreadNotificationsCount` via `HandleInertiaRequests` middleware.
 

@@ -1,6 +1,5 @@
 import React, { useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Banknote, Coins, Stamp, Gift, Layers } from 'lucide-react';
 import { OpnameItemCount } from '@/types/opname';
@@ -192,8 +191,15 @@ export function CountGrid({
 
                                             {/* Input & Condition Controls */}
                                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                                                <div className="relative flex-1 sm:w-36">
-                                                    <Input
+                                                <div
+                                                    onClick={() => inputRefs.current[currentIndex]?.focus()}
+                                                    className={cn(
+                                                        'group flex h-10 w-full sm:w-36 items-center rounded-md border border-input bg-background shadow-xs transition-[color,box-shadow] cursor-text',
+                                                        'focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]',
+                                                        disabled && 'opacity-50 pointer-events-none'
+                                                    )}
+                                                >
+                                                    <input
                                                         ref={(el) => {
                                                             inputRefs.current[currentIndex] = el;
                                                         }}
@@ -213,9 +219,9 @@ export function CountGrid({
                                                         }}
                                                         onFocus={(e) => e.target.select()}
                                                         onKeyDown={(e) => handleKeyDown(e, currentIndex)}
-                                                        className="text-right font-mono num font-bold text-base h-10 pr-12 bg-background border-input focus:bg-background"
+                                                        className="h-full w-full min-w-0 flex-1 bg-transparent pl-3 pr-1 text-right font-mono num font-bold text-base text-foreground placeholder:text-muted-foreground outline-none border-0"
                                                     />
-                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground select-none pointer-events-none">
+                                                    <span className="pr-3 pl-1 text-xs font-medium text-muted-foreground select-none pointer-events-none shrink-0">
                                                         {unit}
                                                     </span>
                                                 </div>

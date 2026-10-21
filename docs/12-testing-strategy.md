@@ -30,8 +30,8 @@
 | T-SOD-04 | SAC cannot reset PIN of SS, SM, or SYSTEM_ADMIN | Feature |
 | T-SAP-01 | SAC cannot approve own voucher (FORBIDDEN_SELF_APPROVAL) | Feature |
 | T-AMN-01 | Outflow rejected when amount > running balance (Zero-Deficit Guard) | Feature |
-| T-DC-01 | SAC cannot approve own BRI outflow | Feature |
-| T-DC-02 | Tiered Outflow: Outflow > Rp 500.000 requires SM approval (SS forbidden) | Feature |
+| T-DC-01 | Anti self-approval on legacy pending BRI outflow | Feature |
+| T-DC-02 | Tiered Outflow: Legacy Outflow > Rp 500.000 requires SM approval (SS forbidden) | Feature |
 | T-RES-01 | Tiered Write-Off: Write-off > Rp 1.000.000 requires SM approval (SS forbidden) | Feature |
 | T-LCK-01 | APPROVED session cannot be modified (items, references, snapshots immutable) | Feature |
 | T-VCH-01 | Mandatory receipt image guard on submit (HTTP 422 ValidationException) | Feature |
@@ -59,7 +59,7 @@
 | T-STM-07 | Opname: SS reject → back to DRAFT with reason | Feature |
 | T-STM-08 | Opname: SM reject → back to DRAFT with reason | Feature |
 | T-STM-09 | BRI: INFLOW immediately APPROVED | Feature |
-| T-STM-10 | BRI: OUTFLOW → PENDING_SS → APPROVED | Feature |
+| T-STM-10 | BRI: OUTFLOW immediately APPROVED under SAC operational control (Legacy: PENDING_SS → APPROVED) | Feature |
 | T-RES-02 | Variance resolution: Store resolution (REPLACED / WRITE_OFF / FOUND) | Feature |
 | T-RES-03 | Variance resolution: Reject resolution leaves variance unchanged | Feature |
 | T-RBAC-01 | SOA cannot open opname session | Feature |
@@ -72,7 +72,7 @@
 | T-DEN-03 | Auto-heal: missing items created with count 0 | Feature |
 | T-BRI-01 | Running balance = Σ INFLOW(approved) - Σ OUTFLOW(approved) | Unit |
 | T-BRI-02 | K_bri = mutation - Σ allocations | Unit |
-| T-BRI-03 | PENDING_SS outflow does NOT affect running balance | Feature |
+| T-BRI-03 | Legacy PENDING_SS outflow does NOT affect running balance until approved | Feature |
 
 ### 🟢 Medium Priority
 

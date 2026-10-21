@@ -3,6 +3,7 @@
 use App\Actions\BriFund\ApproveOutflowAction;
 use App\Actions\BriFund\CreatePostingAction;
 use App\Exceptions\DualControlException;
+use App\Models\BriFundPosting;
 use App\Models\Store;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -68,16 +69,23 @@ beforeEach(function () {
         'amount_cents' => 500000000, // Rp 5.000.000
         'purpose' => 'Deposit awal',
     ], $this->sacUser);
+
+    $this->createPendingOutflow = function (User $creator, int $amountCents = 100000000) {
+        return BriFundPosting::create([
+            'store_id' => $this->store->id,
+            'category' => 'B2B',
+            'entity_name' => 'SMA Negeri 1 Karawang',
+            'type' => 'OUTFLOW',
+            'amount_cents' => $amountCents,
+            'purpose' => 'Penarikan dana',
+            'status' => BriFundPosting::STATUS_PENDING_SS,
+            'created_by_id' => $creator->id,
+        ]);
+    };
 });
 
 test('T-DC-01: SAC cannot approve own BRI outflow (FORBIDDEN / DUAL_CONTROL_VIOLATION)', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000, // Rp 1.000.000
-        'purpose' => 'Penarikan dana oleh SAC',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)($this->sacUser);
 
     expect(function () use ($outflow) {
         $this->approveAction->execute($outflow, $this->sacUser);
@@ -85,13 +93,7 @@ test('T-DC-01: SAC cannot approve own BRI outflow (FORBIDDEN / DUAL_CONTROL_VIOL
 });
 
 test('T-DC-01 (HTTP): SAC receives 403 Forbidden when attempting to approve own BRI outflow', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Penarikan dana',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)($this->sacUser);
 
     $response = $this->actingAs($this->sacUser)
         ->post(route('bri-funds.approve', $outflow));
@@ -101,13 +103,7 @@ test('T-DC-01 (HTTP): SAC receives 403 Forbidden when attempting to approve own 
 });
 
 test('T-DC-02: SS can approve SAC\'s BRI outflow', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Penarikan dana oleh SAC',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)($this->sacUser);
 
     $approved = $this->approveAction->execute($outflow, $this->ssUser1);
 
@@ -117,13 +113,7 @@ test('T-DC-02: SS can approve SAC\'s BRI outflow', function () {
 });
 
 test('T-DC-02 (HTTP): SS can approve SAC\'s BRI outflow via HTTP route', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Penarikan dana oleh SAC',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)($this->sacUser);
 
     $response = $this->actingAs($this->ssUser1)
         ->post(route('bri-funds.approve', $outflow));
@@ -134,14 +124,7 @@ test('T-DC-02 (HTTP): SS can approve SAC\'s BRI outflow via HTTP route', functio
 });
 
 test('T-DC-03: SS cannot approve own BRI outflow (creator != approver invariant)', function () {
-    // SS1 creates an outflow posting
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 100000000,
-        'purpose' => 'Pengeluaran oleh SS1',
-    ], $this->ssUser1);
+    $outflow = ($this->createPendingOutflow)($this->ssUser1);
 
     // SS1 attempts to approve their own outflow -> must throw DualControlException
     expect(function () use ($outflow) {
@@ -155,13 +138,7 @@ test('T-DC-03: SS cannot approve own BRI outflow (creator != approver invariant)
 });
 
 test('T-DC-04: SM can also approve BRI outflow created by SAC or SS', function () {
-    $outflow = $this->createAction->execute([
-        'category' => 'B2B',
-        'entity_name' => 'SMA Negeri 1 Karawang',
-        'type' => 'OUTFLOW',
-        'amount_cents' => 150000000,
-        'purpose' => 'Pengeluaran proyek besar',
-    ], $this->sacUser);
+    $outflow = ($this->createPendingOutflow)($this->sacUser, 150000000);
 
     $approved = $this->approveAction->execute($outflow, $this->smUser);
 
