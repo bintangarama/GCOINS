@@ -7,7 +7,11 @@
 
 set -euo pipefail
 
-echo ">>> Starting G-COINS Deployment..."
+# Ensure working directory is project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}/.."
+
+echo ">>> Starting G-COINS Deployment in $(pwd)..."
 
 # 1. Activate Maintenance Mode
 php artisan down --render="errors::503" --secret="gcoins-deploy-bypass" || true
@@ -20,9 +24,10 @@ git pull origin main
 echo ">>> Installing Composer dependencies..."
 composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-# 4. Database Migrations
+# 4. Database Migrations & Storage Symlink
 echo ">>> Running database migrations..."
 php artisan migrate --force
+php artisan storage:link || true
 
 # 5. Build Front-end Assets (Smart Low-RAM Handling)
 if [ ! -d "public/build" ] && command -v npm &> /dev/null; then

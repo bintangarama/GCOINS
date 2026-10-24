@@ -159,6 +159,9 @@ touch database/database.sqlite
 # Migrasi tabel dan seed data awal
 php artisan migrate --force --seed
 
+# Buat symlink storage publik (untuk foto struk kas kecil)
+php artisan storage:link
+
 # Aktifkan WAL Mode & Timeout (Sangat penting untuk stabilitas konkurensi)
 sqlite3 database/database.sqlite "PRAGMA journal_mode=WAL;"
 sqlite3 database/database.sqlite "PRAGMA busy_timeout=5000;"
