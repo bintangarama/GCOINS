@@ -33,7 +33,11 @@ export default function SettlementDetailPage({
     const store = settlement.store;
     const storeName = store?.name || 'Gramedia World Karawang';
     const storeAddress = store?.address || 'Kavling Komersial blok V, Jl. Galuh Mas Raya';
-    const storeCode = store?.code || 'GAM435';
+    const rawStoreCode = store?.code || 'GAM435';
+    const storeCode =
+        rawStoreCode.startsWith('10') && rawStoreCode.length === 5
+            ? `GAM${rawStoreCode.slice(2)}`
+            : rawStoreCode;
     const vouchers: PettyCashVoucher[] = settlement.vouchers || [];
 
     // Calculate sum per category column

@@ -127,14 +127,17 @@ class DocumentNumberGenerator
         $month = $date->month;
         $year = $date->year;
         $romanMonth = self::toRomanMonth($month);
-        $storeCode = $store->code;
+        $storeCode = self::formatSettlementStoreCode($store->code);
 
         $prefixPattern = "/{$typeCode}/{$storeCode}/{$romanMonth}/{$year}";
 
-        return DB::transaction(function () use ($store, $prefixPattern) {
+        return DB::transaction(function () use ($store, $prefixPattern, $typeCode, $romanMonth, $year) {
             $latestSettlement = PettyCashSettlement::withoutGlobalScopes()
                 ->where('store_id', $store->id)
-                ->where('settlement_number', 'like', "%{$prefixPattern}")
+                ->where(function ($q) use ($prefixPattern, $store, $typeCode, $romanMonth, $year) {
+                    $q->where('settlement_number', 'like', "%{$prefixPattern}")
+                        ->orWhere('settlement_number', 'like', "%/{$typeCode}/{$store->code}/{$romanMonth}/{$year}");
+                })
                 ->orderByRaw('CAST(SUBSTR(settlement_number, 1, INSTR(settlement_number, "/") - 1) AS INTEGER) DESC')
                 ->first();
 
@@ -149,5 +152,18 @@ class DocumentNumberGenerator
 
             return "{$seqPadded}{$prefixPattern}";
         });
+    }
+
+    /**
+     * Format store code for settlement recap documents.
+     * In Gramedia operational documents, store code 10435 is formatted as GAM435.
+     */
+    public static function formatSettlementStoreCode(string $storeCode): string
+    {
+        if (preg_match('/^(?:10)?(\d{3})$/', $storeCode, $matches)) {
+            return 'GAM'.$matches[1];
+        }
+
+        return $storeCode;
     }
 }

@@ -168,15 +168,24 @@ sqlite3 database/database.sqlite "PRAGMA busy_timeout=5000;"
 ```
 
 ### 5. Atur Permission Direktori
-Pastikan Nginx & PHP-FPM (`www-data`) memiliki hak akses baca dan tulis:
+Tambahkan user Anda ke grup `www-data` dan berikan hak akses baca-tulis bersama agar perintah CLI (`deploy.sh`) dan web server (Nginx/PHP-FPM) dapat menulis ke direktori cache/log tanpa bentrok:
 ```bash
-sudo chown -R www-data:www-data /var/www/gcoins/storage
-sudo chown -R www-data:www-data /var/www/gcoins/bootstrap/cache
-sudo chown -R www-data:www-data /var/www/gcoins/database
-sudo chmod -R 775 /var/www/gcoins/storage
-sudo chmod -R 775 /var/www/gcoins/database
-sudo chmod 664 /var/www/gcoins/database/database.sqlite
+# 1. Masukkan user Anda ke grup web server (www-data)
+sudo usermod -aG www-data $USER
+
+# 2. Atur kepemilikan direktori penting ke user:www-data
+sudo chown -R $USER:www-data /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database
+
+# 3. Beri izin baca-tulis untuk user & grup (775)
+sudo chmod -R 775 /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database
+
+# 4. Aktifkan SGID agar file baru otomatis mewarisi grup www-data
+sudo chmod -R g+s /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache
+
+# 5. Atur izin file database SQLite (jika sudah dibuat)
+sudo chmod 664 /var/www/gcoins/database/database.sqlite* 2>/dev/null || true
 ```
+*(Catatan: Jika baru pertama kali memasukkan user ke grup `www-data`, jalankan perintah `newgrp www-data` di terminal atau login ulang SSH agar grup baru aktif).*
 
 ---
 

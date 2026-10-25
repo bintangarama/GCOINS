@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CashOpnameSession;
+use App\Models\PettyCashSettlement;
 use App\Models\PettyCashVoucher;
 use App\Models\Store;
 use App\Models\User;
@@ -150,4 +151,38 @@ test('generateOpnameNumber generates correct format and sequence', function () {
 
     $opnameNumber2 = $generator->generateOpnameNumber($store, 'KAS_KECIL', $date);
     expect($opnameNumber2)->toBe('002/KKCL/10435/IX/2026');
+});
+
+test('generateSettlementNumber converts 10435 store code to GAM435 format', function () {
+    $store = Store::create([
+        'code' => '10435',
+        'name' => 'Gramedia World Karawang',
+        'is_active' => true,
+    ]);
+
+    $generator = new DocumentNumberGenerator;
+    $date = Carbon::create(2026, 10, 15); // October 2026 -> X / 2026
+
+    $settlementNumber1 = $generator->generateSettlementNumber($store, $date);
+    expect($settlementNumber1)->toBe('001/KKCL/GAM435/X/2026');
+
+    $user = User::create([
+        'store_id' => $store->id,
+        'nik' => 'SAC123',
+        'name' => 'SAC Person',
+        'role' => 'SAC',
+        'pin_hash' => 'hash',
+        'is_active' => true,
+    ]);
+
+    PettyCashSettlement::create([
+        'store_id' => $store->id,
+        'settlement_number' => $settlementNumber1,
+        'total_amount_cents' => 15000000,
+        'status' => 'SETTLED',
+        'settled_by_id' => $user->id,
+    ]);
+
+    $settlementNumber2 = $generator->generateSettlementNumber($store, $date);
+    expect($settlementNumber2)->toBe('002/KKCL/GAM435/X/2026');
 });
