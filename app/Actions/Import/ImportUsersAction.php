@@ -7,16 +7,35 @@ use App\Models\Store;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportUsersAction
 {
     /**
+     * Get allowed roles that an actor can assign during user import.
+     *
+     * @return list<string>
+     */
+    protected function allowedRolesFor(?User $actor): array
+    {
+        if (! $actor) {
+            return ['SM', 'SAC', 'SS', 'SOA'];
+        }
+
+        return match ($actor->role) {
+            'SYSTEM_ADMIN', 'SM' => ['SM', 'SAC', 'SS', 'SOA'],
+            'SAC' => ['SAC', 'SOA'],
+            default => [],
+        };
+    }
+
+    /**
      * Parse and validate spreadsheet for preview.
      *
      * @return array{valid_rows: array, error_rows: array, total: int}
      */
-    public function preview(string $filePath, Store $store): array
+    public function preview(string $filePath, Store $store, ?User $actor = null): array
     {
         $spreadsheet = IOFactory::load($filePath);
         $sheet = $spreadsheet->getActiveSheet();
@@ -28,6 +47,7 @@ class ImportUsersAction
         $validRows = [];
         $errorRows = [];
         $seenNiks = [];
+        $allowedRoles = $this->allowedRolesFor($actor);
 
         foreach ($rows as $index => $row) {
             $rowNum = $index + 2; // 1-indexed Excel row
@@ -47,6 +67,8 @@ class ImportUsersAction
 
             if ($nik === '') {
                 $errors[] = 'NIK wajib diisi.';
+            } elseif (strlen($nik) > 20) {
+                $errors[] = 'NIK maksimal 20 karakter.';
             } elseif (in_array($nik, $seenNiks, true)) {
                 $errors[] = 'NIK duplikat di dalam file ini.';
             } elseif (User::where('nik', $nik)->exists()) {
@@ -55,15 +77,16 @@ class ImportUsersAction
 
             if ($name === '') {
                 $errors[] = 'Nama lengkap wajib diisi.';
+            } elseif (strlen($name) > 100) {
+                $errors[] = 'Nama lengkap maksimal 100 karakter.';
             }
 
-            $allowedRoles = ['SM', 'SAC', 'SS', 'SOA'];
             if (! in_array($role, $allowedRoles, true)) {
-                $errors[] = 'Role tidak valid. Pilihan: '.implode(', ', $allowedRoles);
+                $errors[] = 'Role tidak valid atau tidak diizinkan. Pilihan: '.implode(', ', $allowedRoles);
             }
 
-            if (strlen($pin) < 6) {
-                $errors[] = 'PIN awal minimal 6 karakter.';
+            if (strlen($pin) < 6 || strlen($pin) > 10) {
+                $errors[] = 'PIN awal harus 6 sampai 10 karakter.';
             }
 
             $rowData = [
@@ -96,34 +119,73 @@ class ImportUsersAction
      *
      * @param  array<array>  $validRows
      * @return int Number of users created
+     *
+     * @throws ValidationException
      */
     public function commit(array $validRows, Store $store, User $performedBy, ?string $ipAddress = null): int
     {
+        $allowedRoles = $this->allowedRolesFor($performedBy);
+
+        foreach ($validRows as $index => $row) {
+            $nik = trim((string) ($row['nik'] ?? ''));
+            $name = trim((string) ($row['name'] ?? ''));
+            $role = strtoupper(trim((string) ($row['role'] ?? '')));
+            $pin = (string) ($row['pin'] ?? '');
+
+            if ($nik === '' || strlen($nik) > 20) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.nik" => 'NIK pada data impor tidak valid.',
+                ]);
+            }
+
+            if ($name === '' || strlen($name) > 100) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.name" => 'Nama pengguna pada data impor tidak valid.',
+                ]);
+            }
+
+            if (! in_array($role, $allowedRoles, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.role" => "Anda tidak berwenang mengimpor pengguna dengan role {$role}.",
+                ]);
+            }
+
+            if (strlen($pin) < 6 || strlen($pin) > 10) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.pin" => 'PIN awal harus terdiri dari 6 hingga 10 karakter.',
+                ]);
+            }
+        }
+
         return DB::transaction(function () use ($validRows, $store, $performedBy, $ipAddress) {
             $createdCount = 0;
             $importedNiks = [];
 
             foreach ($validRows as $row) {
+                $nik = trim((string) $row['nik']);
+                $name = trim((string) $row['name']);
+                $role = strtoupper(trim((string) $row['role']));
+
                 // Ensure double-check NIK does not exist
-                if (User::where('nik', $row['nik'])->exists()) {
+                if (User::where('nik', $nik)->exists()) {
                     continue;
                 }
 
                 $user = User::create([
                     'store_id' => $store->id,
-                    'nik' => $row['nik'],
-                    'name' => $row['name'],
-                    'role' => $row['role'],
-                    'pin_hash' => Hash::make($row['pin']),
-                    'phone_number' => $row['phone_number'] ?? null,
+                    'nik' => $nik,
+                    'name' => $name,
+                    'role' => $role,
+                    'pin_hash' => Hash::make((string) $row['pin']),
+                    'phone_number' => ! empty($row['phone_number']) ? trim((string) $row['phone_number']) : null,
                     'is_active' => true,
                 ]);
 
                 if (method_exists($user, 'assignRole')) {
-                    $user->assignRole($row['role']);
+                    $user->assignRole($role);
                 }
 
-                $importedNiks[] = $row['nik'];
+                $importedNiks[] = $nik;
                 $createdCount++;
             }
 

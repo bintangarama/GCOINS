@@ -21,6 +21,10 @@ class PettyCashSettlementController extends Controller
     {
         $currentUser = $request->user();
 
+        if (! in_array($currentUser->role, ['SAC', 'SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, __('Anda tidak memiliki hak akses untuk melihat daftar rekap penyelesaian kas kecil.'));
+        }
+
         $query = PettyCashSettlement::with(['settledBy:id,name,nik'])
             ->withCount('vouchers')
             ->latest('created_at');
@@ -51,6 +55,16 @@ class PettyCashSettlementController extends Controller
      */
     public function show(Request $request, PettyCashSettlement $settlement): Response
     {
+        $currentUser = $request->user();
+
+        if (! in_array($currentUser->role, ['SAC', 'SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, __('Anda tidak memiliki hak akses untuk melihat detail rekap kas kecil.'));
+        }
+
+        if ($currentUser->role !== 'SYSTEM_ADMIN' && $currentUser->store_id !== $settlement->store_id) {
+            abort(403);
+        }
+
         $settlement->load([
             'store',
             'settledBy',
@@ -102,6 +116,16 @@ class PettyCashSettlementController extends Controller
      */
     public function exportExcel(Request $request, PettyCashSettlement $settlement): BinaryFileResponse
     {
+        $currentUser = $request->user();
+
+        if (! in_array($currentUser->role, ['SAC', 'SS', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, __('Anda tidak memiliki hak akses untuk mengekspor rekap kas kecil.'));
+        }
+
+        if ($currentUser->role !== 'SYSTEM_ADMIN' && $currentUser->store_id !== $settlement->store_id) {
+            abort(403);
+        }
+
         $cleanNumber = str_replace(['/', '\\'], '-', $settlement->settlement_number);
         $filename = "Rekap-Kas-Kecil-{$cleanNumber}.xlsx";
 

@@ -283,16 +283,14 @@ class OpnameController extends Controller
      */
     public function storeReferenceLine(Request $request, CashOpnameSession $session): RedirectResponse
     {
-        if ($session->status !== CashOpnameSession::STATUS_DRAFT) {
-            abort(403, 'Sesi opname hanya dapat diedit saat berstatus DRAFT.');
-        }
+        Gate::authorize('updateDenominations', $session);
 
         $validated = $request->validate([
             'line_type' => ['required', 'string', 'max:50'],
             'reference_number' => ['required', 'string', 'max:100'],
             'quantity' => ['nullable', 'integer', 'min:0'],
             'amount_cents' => ['required', 'integer'],
-            'proof_attachment_url' => ['nullable', 'string'],
+            'proof_attachment_url' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -321,9 +319,7 @@ class OpnameController extends Controller
      */
     public function destroyReferenceLine(CashOpnameSession $session, OpnameReferenceLine $referenceLine): RedirectResponse
     {
-        if ($session->status !== CashOpnameSession::STATUS_DRAFT) {
-            abort(403, 'Sesi opname hanya dapat diedit saat berstatus DRAFT.');
-        }
+        Gate::authorize('updateDenominations', $session);
 
         if ($referenceLine->session_id !== $session->id) {
             abort(404);

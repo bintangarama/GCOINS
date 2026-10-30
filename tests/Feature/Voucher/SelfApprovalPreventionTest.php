@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Voucher\ApproveVoucherAction;
+use App\Actions\Voucher\RejectVoucherAction;
 use App\Exceptions\ForbiddenSelfApprovalException;
 use App\Models\PettyCashVoucher;
 use App\Models\Store;
@@ -48,6 +49,7 @@ beforeEach(function () {
     $this->soaUser->syncRoles(['SOA']);
 
     $this->approveAction = app(ApproveVoucherAction::class);
+    $this->rejectAction = app(RejectVoucherAction::class);
 });
 
 test('T-SAP-01: SAC cannot approve own voucher at Action layer (FORBIDDEN_SELF_APPROVAL exception)', function () {
@@ -135,4 +137,71 @@ test('T-SAP-03: SS can approve SAC own voucher', function () {
     $voucher->refresh();
     expect($voucher->status)->toBe(PettyCashVoucher::STATUS_APPROVED_SS)
         ->and($voucher->approved_by_id)->toBe($this->ssUser->id);
+});
+
+test('T-SAP-04: SS cannot approve own voucher at Action layer or HTTP route (Universal Anti Self-Approval)', function () {
+    $voucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '004/KKCL/10435/IX/2026',
+        'requester_id' => $this->ssUser->id,
+        'amount_cents' => 18000000,
+        'purpose' => 'Konsumsi briefing tim toko',
+        'category' => 'KONSUMSI',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test.webp',
+    ]);
+
+    expect(fn () => $this->approveAction->execute($voucher, $this->ssUser))
+        ->toThrow(ForbiddenSelfApprovalException::class, 'FORBIDDEN_SELF_APPROVAL');
+
+    $this->actingAs($this->ssUser)
+        ->post("/vouchers/{$voucher->id}/approve")
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('petty_cash_vouchers', [
+        'id' => $voucher->id,
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'approved_by_id' => null,
+    ]);
+});
+
+test('T-SAP-05: SS and SAC cannot reject their own voucher', function () {
+    $ssVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '005/KKCL/10435/IX/2026',
+        'requester_id' => $this->ssUser->id,
+        'amount_cents' => 12000000,
+        'purpose' => 'Lampu gudang',
+        'category' => 'MAINTENANCE',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test.webp',
+    ]);
+
+    expect(fn () => $this->rejectAction->execute($ssVoucher, 'Salah nominal', $this->ssUser))
+        ->toThrow(ForbiddenSelfApprovalException::class, 'FORBIDDEN_SELF_APPROVAL');
+
+    $this->actingAs($this->ssUser)
+        ->post("/vouchers/{$ssVoucher->id}/reject", ['reason' => 'Salah nominal'])
+        ->assertForbidden();
+});
+
+test('T-SAP-06: SAC can approve voucher requested by SS', function () {
+    $ssVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '006/KKCL/10435/IX/2026',
+        'requester_id' => $this->ssUser->id,
+        'amount_cents' => 12000000,
+        'purpose' => 'Lampu area kasir',
+        'category' => 'MAINTENANCE',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test.webp',
+    ]);
+
+    $this->actingAs($this->sacUser)
+        ->post("/vouchers/{$ssVoucher->id}/approve")
+        ->assertRedirect("/vouchers/{$ssVoucher->id}");
+
+    $ssVoucher->refresh();
+    expect($ssVoucher->status)->toBe(PettyCashVoucher::STATUS_APPROVED_SS)
+        ->and($ssVoucher->approved_by_id)->toBe($this->sacUser->id);
 });

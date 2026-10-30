@@ -32,8 +32,8 @@ class CreateVoucherAction
      *     receipt_date?: string|null,
      *     purpose: string,
      *     category: string,
-     *     receipt_image?: UploadedFile|string|null,
-     *     item_photo?: UploadedFile|string|null,
+     *     receipt_image?: UploadedFile|null,
+     *     item_photo?: UploadedFile|null,
      *     is_submit?: bool
      * }  $data
      */
@@ -82,8 +82,14 @@ class CreateVoucherAction
                 'item_photo_url' => null,
             ]);
 
-            // Handle receipt image upload / string
+            // Handle receipt image upload
             if (! empty($data['receipt_image'])) {
+                if (! $data['receipt_image'] instanceof UploadedFile) {
+                    throw ValidationException::withMessages([
+                        'receipt_image' => 'Lampiran kuitansi harus berupa berkas unggahan yang valid.',
+                    ]);
+                }
+
                 $receiptImageUrl = $this->storeAttachment(
                     $data['receipt_image'],
                     $voucher,
@@ -93,8 +99,14 @@ class CreateVoucherAction
                 $voucher->update(['receipt_image_url' => $receiptImageUrl]);
             }
 
-            // Handle item photo upload / string
+            // Handle item photo upload
             if (! empty($data['item_photo'])) {
+                if (! $data['item_photo'] instanceof UploadedFile) {
+                    throw ValidationException::withMessages([
+                        'item_photo' => 'Lampiran foto barang harus berupa berkas unggahan yang valid.',
+                    ]);
+                }
+
                 $itemPhotoUrl = $this->storeAttachment(
                     $data['item_photo'],
                     $voucher,
@@ -149,29 +161,11 @@ class CreateVoucherAction
     }
 
     protected function storeAttachment(
-        UploadedFile|string $file,
+        UploadedFile $file,
         PettyCashVoucher $voucher,
         string $category,
         User $actor
     ): string {
-        if (is_string($file)) {
-            // Already uploaded path
-            Attachment::create([
-                'store_id' => $voucher->store_id,
-                'entity_type' => 'VOUCHER',
-                'entity_id' => $voucher->id,
-                'category' => $category,
-                'file_name' => basename($file),
-                'file_path' => $file,
-                'file_size_bytes' => 0,
-                'mime_type' => 'image/webp',
-                'uploaded_by_id' => $actor->id,
-                'created_at' => now(),
-            ]);
-
-            return $file;
-        }
-
         $path = $file->store('vouchers', 'public');
         $url = Storage::url($path);
 
@@ -183,7 +177,7 @@ class CreateVoucherAction
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $url,
             'file_size_bytes' => $file->getSize() ?: 0,
-            'mime_type' => $file->getMimeType() ?: 'image/webp',
+            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
             'uploaded_by_id' => $actor->id,
             'created_at' => now(),
         ]);

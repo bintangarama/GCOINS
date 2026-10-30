@@ -20,6 +20,10 @@ class PettyCashCategoryController extends Controller
     {
         $currentUser = $request->user();
 
+        if (! in_array($currentUser->role, ['SAC', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, __('Anda tidak memiliki hak akses ke halaman kategori kas kecil.'));
+        }
+
         $query = PettyCashCategory::with('store:id,name,code')->orderBy('sort_order')->orderBy('name');
 
         if ($currentUser->role !== 'SYSTEM_ADMIN') {

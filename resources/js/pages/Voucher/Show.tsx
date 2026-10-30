@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     CheckCircle,
@@ -13,6 +13,9 @@ import {
     RotateCcw,
     ShieldAlert,
     AlertCircle,
+    Pencil,
+    Undo2,
+    Tags,
     User as UserIcon,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -32,15 +35,20 @@ import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ReclassifyCategoryDialog } from '@/components/shared/ReclassifyCategoryDialog';
 import { formatMoney } from '@/lib/money';
-import { PettyCashVoucher } from '@/types/voucher';
+import { PageProps } from '@/types/auth';
+import { PettyCashCategoryItem, PettyCashVoucher } from '@/types/voucher';
 
 interface VoucherShowProps {
     voucher: PettyCashVoucher;
+    categories?: (string | PettyCashCategoryItem)[];
     can: {
         update: boolean;
         delete: boolean;
         submit: boolean;
+        recall?: boolean;
+        reclassifyCategory?: boolean;
         approve: boolean;
         reject: boolean;
         disburse: boolean;
@@ -50,7 +58,13 @@ interface VoucherShowProps {
     };
 }
 
-export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
+export default function VoucherShowPage({ voucher, categories = [], can }: VoucherShowProps) {
+    const { auth } = usePage<PageProps>().props;
+    const currentUser = auth.user;
+    const isOwnSubmittedVoucher =
+        voucher.status === 'SUBMITTED' &&
+        Boolean(currentUser && currentUser.id === voucher.requester_id && ['SS', 'SAC', 'SM'].includes(currentUser.role));
+
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -73,6 +87,8 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
     };
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showRecallConfirm, setShowRecallConfirm] = useState(false);
+    const [reclassifyDialogOpen, setReclassifyDialogOpen] = useState(false);
 
     const handleDelete = () => {
         setShowDeleteConfirm(true);
@@ -110,6 +126,20 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                     badge={<StatusBadge status={voucher.status} />}
                 >
                     <div className="flex flex-wrap items-center gap-2">
+                        {can.update && (
+                            <Button
+                                asChild
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-8 gap-1.5"
+                            >
+                                <Link href={`/vouchers/${voucher.id}/edit`}>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    Edit Draft
+                                </Link>
+                            </Button>
+                        )}
+
                         {can.delete && (
                             <Button
                                 variant="destructive"
@@ -131,6 +161,32 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                             >
                                 <Send className="w-3.5 h-3.5" />
                                 Ajukan Voucher
+                            </Button>
+                        )}
+
+                        {can.recall && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isSubmitting}
+                                onClick={() => setShowRecallConfirm(true)}
+                                className="text-xs h-8 gap-1.5"
+                            >
+                                <Undo2 className="size-3.5" />
+                                Tarik ke Draft
+                            </Button>
+                        )}
+
+                        {can.reclassifyCategory && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isSubmitting}
+                                onClick={() => setReclassifyDialogOpen(true)}
+                                className="text-xs h-8 gap-1.5"
+                            >
+                                <Tags className="size-3.5" />
+                                Ubah Kategori
                             </Button>
                         )}
 
@@ -196,6 +252,17 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                     </div>
                 </PageHeader>
 
+                {/* Anti Self-Approval notice when an approver views their own submitted voucher */}
+                {isOwnSubmittedVoucher && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                        <div>
+                            <span className="font-semibold">Aturan Anti Self-Approval: </span>
+                            Anda tidak dapat menyetujui atau menolak pengajuan bon yang Anda buat sendiri. Bon ini harus diverifikasi oleh approver lain ({currentUser?.role === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}). Jika perlu merevisi data, klik <b>Tarik ke Draft</b>.
+                        </div>
+                    </div>
+                )}
+
                 {/* Rejection / Cancellation alerts if any */}
                 {voucher.rejection_reason && (
                     <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3.5 text-xs text-destructive flex items-start gap-2.5">
@@ -240,7 +307,20 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground">Kategori</span>
-                                        <p className="font-mono font-medium mt-0.5">{voucher.category}</p>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <p className="font-mono font-medium">{voucher.category}</p>
+                                            {can.reclassifyCategory && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReclassifyDialogOpen(true)}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline cursor-pointer"
+                                                    title="Ubah / reklasifikasi kategori biaya"
+                                                >
+                                                    <Pencil className="size-3" />
+                                                    Ubah
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-muted-foreground">Pemohon</span>
@@ -268,34 +348,46 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Receipt Photo */}
+                                {/* Receipt Photo / PDF */}
                                 <div className="space-y-2">
                                     <span className="text-xs font-semibold text-foreground">
                                         Kuitansi / Struk Pembayaran
                                     </span>
                                     {voucher.receipt_image_url ? (
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <div className="relative group cursor-pointer border rounded-lg overflow-hidden bg-muted/20 aspect-video flex items-center justify-center">
+                                        voucher.receipt_image_url.toLowerCase().endsWith('.pdf') ? (
+                                            <a
+                                                href={voucher.receipt_image_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="border rounded-lg p-6 bg-red-50/40 dark:bg-red-950/20 hover:bg-red-50/80 transition-colors aspect-video flex flex-col items-center justify-center gap-2 text-red-600 dark:text-red-400"
+                                            >
+                                                <FileText className="w-8 h-8" />
+                                                <span className="text-xs font-semibold">Buka Dokumen Kuitansi (PDF)</span>
+                                            </a>
+                                        ) : (
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <div className="relative group cursor-pointer border rounded-lg overflow-hidden bg-muted/20 aspect-video flex items-center justify-center">
+                                                        <img
+                                                            src={voucher.receipt_image_url}
+                                                            alt="Receipt"
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium">
+                                                            <ZoomIn className="w-4 h-4" />
+                                                            Perbesar
+                                                        </div>
+                                                    </div>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-3xl p-2 bg-background/95">
                                                     <img
                                                         src={voucher.receipt_image_url}
-                                                        alt="Receipt"
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                        alt="Enlarged Receipt"
+                                                        className="w-full max-h-[80vh] object-contain rounded-md"
                                                     />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium">
-                                                        <ZoomIn className="w-4 h-4" />
-                                                        Perbesar
-                                                    </div>
-                                                </div>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-3xl p-2 bg-background/95">
-                                                <img
-                                                    src={voucher.receipt_image_url}
-                                                    alt="Enlarged Receipt"
-                                                    className="w-full max-h-[80vh] object-contain rounded-md"
-                                                />
-                                            </DialogContent>
-                                        </Dialog>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )
                                     ) : (
                                         <div className="border border-dashed rounded-lg p-6 text-center text-xs text-muted-foreground aspect-video flex items-center justify-center">
                                             Tidak ada bukti struk
@@ -303,34 +395,46 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                                     )}
                                 </div>
 
-                                {/* Item Photo */}
+                                {/* Item Photo / PDF */}
                                 <div className="space-y-2">
                                     <span className="text-xs font-semibold text-foreground">
                                         Foto Barang / Pengiriman
                                     </span>
                                     {voucher.item_photo_url ? (
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <div className="relative group cursor-pointer border rounded-lg overflow-hidden bg-muted/20 aspect-video flex items-center justify-center">
+                                        voucher.item_photo_url.toLowerCase().endsWith('.pdf') ? (
+                                            <a
+                                                href={voucher.item_photo_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="border rounded-lg p-6 bg-red-50/40 dark:bg-red-950/20 hover:bg-red-50/80 transition-colors aspect-video flex flex-col items-center justify-center gap-2 text-red-600 dark:text-red-400"
+                                            >
+                                                <FileText className="w-8 h-8" />
+                                                <span className="text-xs font-semibold">Buka Dokumen Lampiran (PDF)</span>
+                                            </a>
+                                        ) : (
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <div className="relative group cursor-pointer border rounded-lg overflow-hidden bg-muted/20 aspect-video flex items-center justify-center">
+                                                        <img
+                                                            src={voucher.item_photo_url}
+                                                            alt="Item"
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium">
+                                                            <ZoomIn className="w-4 h-4" />
+                                                            Perbesar
+                                                        </div>
+                                                    </div>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-3xl p-2 bg-background/95">
                                                     <img
                                                         src={voucher.item_photo_url}
-                                                        alt="Item"
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                                        alt="Enlarged Item"
+                                                        className="w-full max-h-[80vh] object-contain rounded-md"
                                                     />
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium">
-                                                        <ZoomIn className="w-4 h-4" />
-                                                        Perbesar
-                                                    </div>
-                                                </div>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-3xl p-2 bg-background/95">
-                                                <img
-                                                    src={voucher.item_photo_url}
-                                                    alt="Enlarged Item"
-                                                    className="w-full max-h-[80vh] object-contain rounded-md"
-                                                />
-                                            </DialogContent>
-                                        </Dialog>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )
                                     ) : (
                                         <div className="border border-dashed rounded-lg p-6 text-center text-xs text-muted-foreground aspect-video flex items-center justify-center">
                                             Tidak ada foto barang
@@ -540,6 +644,25 @@ export default function VoucherShowPage({ voucher, can }: VoucherShowProps) {
                 confirmText="Hapus Draft"
                 variant="destructive"
                 onConfirm={confirmDelete}
+            />
+
+            <ConfirmDialog
+                open={showRecallConfirm}
+                onOpenChange={setShowRecallConfirm}
+                title="Tarik Pengajuan Kembali ke Draft?"
+                description={`Pengajuan bon ${voucher.voucher_number} akan dikembalikan ke status DRAFT agar Anda dapat merevisi kategori, nominal, maupun lampiran bukti, lalu mengajukannya kembali.`}
+                confirmText="Ya, Tarik ke Draft"
+                isLoading={isSubmitting}
+                onConfirm={() =>
+                    handleAction('recall', undefined, () => setShowRecallConfirm(false))
+                }
+            />
+
+            <ReclassifyCategoryDialog
+                open={reclassifyDialogOpen}
+                onOpenChange={setReclassifyDialogOpen}
+                voucher={voucher}
+                categories={categories}
             />
         </AppLayout>
     );

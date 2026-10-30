@@ -5,6 +5,8 @@ namespace App\Actions\User;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class DeactivateUserAction
@@ -27,7 +29,14 @@ class DeactivateUserAction
         $oldStatus = $targetUser->is_active;
         $updatedStatus = $newStatus ?? ! $oldStatus;
 
-        $targetUser->update(['is_active' => $updatedStatus]);
+        $targetUser->forceFill([
+            'is_active' => $updatedStatus,
+            'remember_token' => $updatedStatus ? $targetUser->remember_token : null,
+        ])->save();
+
+        if (! $updatedStatus && Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $targetUser->id)->delete();
+        }
 
         if ($actor) {
             AuditLog::create([

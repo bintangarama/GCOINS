@@ -58,8 +58,12 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::get('settlements/{settlement}/export-excel', [PettyCashSettlementController::class, 'exportExcel'])->name('settlements.export-excel');
         Route::get('export', [VoucherController::class, 'export'])->name('export');
         Route::get('{voucher}', [VoucherController::class, 'show'])->name('show');
+        Route::get('{voucher}/edit', [VoucherController::class, 'edit'])->name('edit');
+        Route::put('{voucher}', [VoucherController::class, 'update'])->name('update');
         Route::delete('{voucher}', [VoucherController::class, 'destroy'])->name('destroy');
         Route::post('{voucher}/submit', [VoucherController::class, 'submit'])->name('submit');
+        Route::post('{voucher}/recall', [VoucherController::class, 'recall'])->name('recall');
+        Route::put('{voucher}/category', [VoucherController::class, 'reclassifyCategory'])->name('reclassify-category');
         Route::post('{voucher}/approve', [VoucherController::class, 'approve'])->name('approve');
         Route::post('{voucher}/reject', [VoucherController::class, 'reject'])->name('reject');
         Route::post('{voucher}/disburse', [VoucherController::class, 'disburse'])->name('disburse');

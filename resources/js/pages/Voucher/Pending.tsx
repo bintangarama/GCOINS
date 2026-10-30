@@ -64,10 +64,11 @@ export default function PendingApprovalsPage({
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-    // Eligible vouchers for approval (excluding self-vouchers for SAC)
+    // Eligible vouchers for approval (Rule 5: universal anti self-approval across all roles)
     const eligibleVouchers = vouchers.data.filter(
-        (v) => !(currentUserRole === 'SAC' && v.requester_id === currentUserId)
+        (v) => v.requester_id !== currentUserId
     );
+    const hasOwnPendingVoucher = vouchers.data.some((v) => v.requester_id === currentUserId);
 
     const isAllEligibleSelected =
         eligibleVouchers.length > 0 &&
@@ -163,12 +164,12 @@ export default function PendingApprovalsPage({
                     </span>
                 </PageHeader>
 
-                {/* Anti self-approval alert reminder if SAC */}
-                {currentUserRole === 'SAC' && (
+                {/* Anti self-approval alert reminder */}
+                {(currentUserRole === 'SAC' || currentUserRole === 'SS' || hasOwnPendingVoucher) && (
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2.5">
                         <AlertCircle className="w-4 h-4 shrink-0 text-blue-600" />
                         <span>
-                            <b>Aturan Anti Self-Approval:</b> Sebagai SAC, Anda tidak dapat menyetujui pengajuan voucher yang Anda buat sendiri. Voucher milik Anda harus disetujui oleh Supervisor (SS) atau Store Manager (SM).
+                            <b>Aturan Anti Self-Approval:</b> Pembuat bon tidak dapat menyetujui atau menolak pengajuan miliknya sendiri. Bon yang Anda ajukan harus diverifikasi oleh approver lain ({currentUserRole === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}).
                         </span>
                     </div>
                 )}
@@ -248,8 +249,7 @@ export default function PendingApprovalsPage({
                                     />
                                 ) : (
                                     vouchers.data.map((v) => {
-                                        const isSelfApprovalBlocked =
-                                            currentUserRole === 'SAC' && v.requester_id === currentUserId;
+                                        const isSelfApprovalBlocked = v.requester_id === currentUserId;
                                         const isSelected = selectedIds.includes(v.id);
 
                                         return (
@@ -297,7 +297,9 @@ export default function PendingApprovalsPage({
                                                     {isSelfApprovalBlocked ? (
                                                         <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                             <ShieldAlert className="w-3 h-3" />
-                                                            Milik Sendiri (Perlu SS/SM)
+                                                            {currentUserRole === 'SAC'
+                                                                ? 'Milik Sendiri (Perlu SS/SM)'
+                                                                : 'Milik Sendiri (Perlu Approver Lain)'}
                                                         </span>
                                                     ) : (
                                                         <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
@@ -365,8 +367,7 @@ export default function PendingApprovalsPage({
                         ) : (
                             <DataTableMobileList>
                                 {vouchers.data.map((v) => {
-                                    const isSelfApprovalBlocked =
-                                        currentUserRole === 'SAC' && v.requester_id === currentUserId;
+                                    const isSelfApprovalBlocked = v.requester_id === currentUserId;
                                     const isSelected = selectedIds.includes(v.id);
 
                                     return (
@@ -389,7 +390,7 @@ export default function PendingApprovalsPage({
                                                 {isSelfApprovalBlocked ? (
                                                     <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                                         <ShieldAlert className="w-3 h-3" />
-                                                        Perlu SS/SM
+                                                        {currentUserRole === 'SAC' ? 'Perlu SS/SM' : 'Milik Sendiri'}
                                                     </span>
                                                 ) : (
                                                     <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">

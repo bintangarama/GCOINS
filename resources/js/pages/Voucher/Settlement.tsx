@@ -9,6 +9,7 @@ import {
     FileSpreadsheet,
     History,
     ArrowRight,
+    Pencil,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -27,16 +28,21 @@ import {
 } from '@/components/shared/DataTable';
 import { formatMoney } from '@/lib/money';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { PettyCashVoucher } from '@/types/voucher';
+import { ReclassifyCategoryDialog } from '@/components/shared/ReclassifyCategoryDialog';
+import { PageProps } from '@/types/auth';
+import { PettyCashCategoryItem, PettyCashVoucher } from '@/types/voucher';
 
 interface SettlementProps {
     vouchers: PettyCashVoucher[];
+    categories?: (string | PettyCashCategoryItem)[];
 }
 
-export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
-    const { flash } = usePage<{ flash: { settlement_id?: string; settlement_number?: string } }>().props;
+export default function VoucherSettlementPage({ vouchers, categories = [] }: SettlementProps) {
+    const { auth, flash } = usePage<PageProps & { flash: { settlement_id?: string; settlement_number?: string } }>().props;
+    const canReclassify = auth.user?.role === 'SAC';
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [reclassifyTarget, setReclassifyTarget] = useState<PettyCashVoucher | null>(null);
 
     const toggleSelectAll = () => {
         if (selectedIds.length === vouchers.length) {
@@ -257,10 +263,22 @@ export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
                                                     {v.requester?.nik}
                                                 </div>
                                             </DataTableCell>
-                                            <DataTableCell>
-                                                <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
-                                                    {v.category}
-                                                </span>
+                                            <DataTableCell onClick={(e: React.MouseEvent) => e?.stopPropagation()}>
+                                                {canReclassify ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReclassifyTarget(v)}
+                                                        className="inline-flex items-center gap-1.5 font-mono text-[11px] bg-muted hover:bg-primary/10 hover:text-primary px-2 py-0.5 rounded transition-colors cursor-pointer"
+                                                        title="Klik untuk koreksi kategori biaya sebelum settlement"
+                                                    >
+                                                        <span>{v.category}</span>
+                                                        <Pencil className="size-2.5 opacity-70" />
+                                                    </button>
+                                                ) : (
+                                                    <span className="font-mono text-[11px] bg-muted px-2 py-0.5 rounded">
+                                                        {v.category}
+                                                    </span>
+                                                )}
                                             </DataTableCell>
                                             <DataTableCell className="max-w-xs truncate text-muted-foreground" title={v.purpose}>
                                                 {v.purpose}
@@ -296,6 +314,15 @@ export default function VoucherSettlementPage({ vouchers }: SettlementProps) {
                 confirmText="Selesaikan Voucher"
                 isLoading={isSubmitting}
                 onConfirm={confirmBatchSettle}
+            />
+
+            <ReclassifyCategoryDialog
+                open={Boolean(reclassifyTarget)}
+                onOpenChange={(open) => {
+                    if (!open) setReclassifyTarget(null);
+                }}
+                voucher={reclassifyTarget}
+                categories={categories}
             />
         </AppLayout>
     );

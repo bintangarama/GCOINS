@@ -7,6 +7,7 @@
 # ==============================================================================
 
 set -euo pipefail
+umask 077
 
 APP_DIR="/var/www/gcoins"
 BACKUP_DIR="/var/backups/gcoins"
@@ -19,7 +20,9 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting G-COINS Backup..."
 echo "=========================================================="
 
 mkdir -p "${BACKUP_DIR}"
+chmod 700 "${BACKUP_DIR}"
 mkdir -p "${TEMP_DIR}"
+chmod 700 "${TEMP_DIR}"
 
 DB_FILE="${APP_DIR}/database/database.sqlite"
 STORAGE_DIR="${APP_DIR}/storage/app/public"
@@ -49,6 +52,7 @@ fi
 # 3. Create Compressed Archive
 echo "Creating compressed tar.gz archive..."
 tar -czf "${BACKUP_FILE}" -C "${TEMP_DIR}" .
+chmod 600 "${BACKUP_FILE}"
 
 # Remove Temporary Directory
 rm -rf "${TEMP_DIR}"

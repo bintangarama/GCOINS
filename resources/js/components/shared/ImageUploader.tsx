@@ -29,6 +29,7 @@ export interface ImageUploaderProps {
     initialUrl?: string | null;
     value?: string | null;
     allowPdf?: boolean;
+    maxPdfSizeMb?: number;
     onChange: (file: File | null) => void;
 }
 
@@ -40,6 +41,7 @@ export function ImageUploader({
     initialUrl = null,
     value = null,
     allowPdf = false,
+    maxPdfSizeMb = 5,
     onChange,
 }: ImageUploaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,8 +74,8 @@ export function ImageUploader({
     const processFile = async (file: File) => {
         // Handle PDF if allowed
         if (allowPdf && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
-            if (file.size > 2 * 1024 * 1024) {
-                toast.error('Ukuran berkas PDF tidak boleh melebihi 2MB.');
+            if (file.size > maxPdfSizeMb * 1024 * 1024) {
+                toast.error(`Ukuran berkas PDF tidak boleh melebihi ${maxPdfSizeMb}MB.`);
                 return;
             }
 
@@ -238,7 +240,7 @@ export function ImageUploader({
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
                                     {allowPdf
-                                        ? 'Pilih dari galeri/penyimpanan atau buka kamera (JPG, PNG, WebP ≤250KB, PDF ≤2MB)'
+                                        ? `Pilih dari galeri/penyimpanan atau buka kamera (JPG, PNG, WebP ≤250KB, PDF ≤${maxPdfSizeMb}MB)`
                                         : 'Pilih dari galeri foto atau buka kamera (otomatis dikompresi WebP ≤250KB)'}
                                 </p>
                             </div>

@@ -19,7 +19,7 @@ class ApproveVoucherAction
 
     /**
      * Approve a submitted voucher.
-     * Enforces Anti Self-Approval invariant: SAC cannot approve their own voucher.
+     * Enforces Anti Self-Approval invariant (Rule 5): No user can approve their own voucher.
      */
     public function execute(PettyCashVoucher $voucher, User $actor, ?string $ipAddress = null): PettyCashVoucher
     {
@@ -27,8 +27,8 @@ class ApproveVoucherAction
             Auth::setUser($actor);
         }
 
-        // Rule 5: Anti Self-Approval
-        if ($actor->role === 'SAC' && $voucher->requester_id === $actor->id) {
+        // Rule 5: Anti Self-Approval (applies universally to all roles)
+        if ($voucher->requester_id === $actor->id) {
             throw new ForbiddenSelfApprovalException('FORBIDDEN_SELF_APPROVAL: Anda tidak dapat menyetujui pengajuan milik sendiri.');
         }
 

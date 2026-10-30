@@ -170,6 +170,10 @@ class ImportExportController extends Controller
     public function downloadTemplate(string $type, Request $request): BinaryFileResponse
     {
         $user = $request->user();
+        if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, __('Anda tidak memiliki hak akses untuk mengunduh template impor.'));
+        }
+
         $storeId = $user?->store_id;
 
         return match ($type) {
@@ -192,7 +196,7 @@ class ImportExportController extends Controller
         ImportCategoriesAction $categoriesAction
     ): JsonResponse {
         $user = $request->user();
-        if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'])) {
+        if (! in_array($user->role, ['SAC', 'SM', 'SYSTEM_ADMIN'], true)) {
             abort(403);
         }
 
@@ -212,7 +216,7 @@ class ImportExportController extends Controller
         $store = $user->store ?? Store::first();
 
         $result = match ($type) {
-            'users' => $usersAction->preview($filePath, $store),
+            'users' => $usersAction->preview($filePath, $store, $user),
             'vouchers' => $vouchersAction->preview($filePath, $store),
             'bri-postings' => $briAction->preview($filePath, $store),
             'categories' => $categoriesAction->preview($filePath, $store, $user),

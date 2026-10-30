@@ -70,10 +70,12 @@ SOA (Per-store, basic)
 
 | Action | SOA | SS | SAC | SM | SYSADMIN |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Create draft & upload photos | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Create & edit own draft, upload photos/PDF | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Delete own draft (soft delete) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Submit for review (foto struk wajib) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Approve voucher | ❌ | ✅ | ✅* | ✅ | ❌ |
+| Submit for review (foto/PDF struk wajib) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Recall own `SUBMITTED` voucher back to `DRAFT` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Reclassify voucher category (before `SETTLED`) | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Approve voucher (Anti Self-Approval for all roles) | ❌ | ✅* | ✅* | ✅* | ❌ |
 | Reject voucher (reason required) | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Disburse cash (DISBURSED) | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Generate & Settle Rekap KKCL (SETTLED) | ❌ | ❌ | ✅ | ❌ | ❌ |

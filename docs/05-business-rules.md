@@ -64,11 +64,10 @@ When SM executes sign-off (status → `APPROVED`):
 
 ```
 IF voucher.requester_id == current_user.id
-   AND current_user.role == 'SAC'
 THEN REJECT with error code FORBIDDEN_SELF_APPROVAL
 ```
 
-SAC can approve vouchers from others. SAC cannot approve their own vouchers. This rule prevents embezzlement.
+Approvers (`SS`, `SAC`, `SM`) can approve or reject vouchers from others, but **no user may approve or reject their own voucher** (`requester_id == current_user.id`), regardless of role. For example, a voucher created by `SAC` must be approved by `SS` or `SM`, and a voucher created by `SS` must be approved by another approver (`SAC`, another `SS`, or `SM`). This rule prevents embezzlement across all roles.
 
 ## Rule 6: SAC Operational Control & Instant Outflow Approval
 
@@ -102,10 +101,13 @@ Every opname session MUST have count records for ALL items defined for that opna
 
 ### Voucher State Machine
 ```
-DRAFT → SUBMITTED → APPROVED_SS → DISBURSED → SETTLED
+DRAFT ⇄ SUBMITTED → APPROVED_SS → DISBURSED → SETTLED
                                   ↘ REJECTED_REFUND_PENDING → REFUNDED
        ↘ REJECTED
 ```
+
+- `SUBMITTED → DRAFT` (*Recall / Withdraw*): Diizinkan **hanya oleh pemohon asli (`requester_id == current_user.id`)** selama bon masih berstatus `SUBMITTED` (belum disetujui atau ditolak approver), dan wajib mencatat `RECALL_VOUCHER` pada `audit_logs`.
+- **Reklasifikasi Kategori Sebelum Settlement**: Perubahan kolom `category` (tanpa mengubah `amount_cents`, `status`, maupun lampiran bukti) diizinkan oleh `SS`, `SAC`, atau `SM` pada status `SUBMITTED`, `APPROVED_SS`, atau `DISBURSED` dengan pencatatan wajib `RECLASSIFY_CATEGORY` di `audit_logs`. Setelah berstatus `SETTLED`, `REJECTED`, atau `REFUNDED`, kategori terkunci permanen (*immutable*).
 
 Any transition not shown above must be **rejected** with error `VOUCHER_INVALID_STATE`.
 
@@ -218,9 +220,9 @@ Fitur aksi massal (*bulk actions*) diatur secara ketat berdasarkan risiko finans
 
 1. **OPERASI YANG DIIZINKAN (*Permitted Bulk Actions*)**:
    - **Persetujuan Massal Bon Kas Kecil (`POST /vouchers/bulk-approve`)**:
-     - Diizinkan bagi `SS`, `SAC`, dan `SM`.
-     - **Wajib Menegakkan Rule 5 (Anti Self-Approval)**: SAC dilarang menyetujui bon miliknya sendiri. Jika dalam satu batch terdapat 1 saja bon milik SAC yang login, transaksi DIBATALKAN SELURUHNYA secara atomik (`DB::transaction`) dan melempar HTTP 403 `ForbiddenSelfApprovalException`.
-     - UI wajib menonaktifkan checkbox seleksi untuk bon milik sendiri dan menampilkan badge `Milik Sendiri (Perlu SS/SM)`.
+     - Diizinkan bagi `SS`, `SAC`, dan `SM` (baik dari halaman Antrean Persetujuan `/vouchers/pending` maupun Daftar Bon `/vouchers`).
+     - **Wajib Menegakkan Rule 5 (Anti Self-Approval)**: Pembuat bon dilarang menyetujui bon miliknya sendiri (berlaku untuk seluruh role approver: `SS`, `SAC`, maupun `SM`). Jika dalam satu batch terdapat 1 saja bon milik user yang sedang login, transaksi DIBATALKAN SELURUHNYA secara atomik (`DB::transaction`) dan melempar HTTP 403 `ForbiddenSelfApprovalException`.
+     - UI wajib mencegah persetujuan untuk bon milik sendiri dan menampilkan badge penanda `Milik Sendiri`.
    - **Ekspor Excel Selektif (`GET /vouchers/export?voucher_ids=...`)**:
      - Diizinkan pada seluruh role toko yang memiliki izin ekspor.
      - Operasi pembacaan non-mutasi untuk kemudahan pencetakan laporan selektif.

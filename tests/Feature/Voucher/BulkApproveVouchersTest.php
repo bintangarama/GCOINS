@@ -164,3 +164,74 @@ test('T-BAP-04: Unauthorized roles (SOA) cannot bulk approve vouchers', function
 
     $response->assertForbidden();
 });
+
+test('T-BAP-05: SS cannot bulk approve batch containing their own voucher (Universal Anti Self-Approval atomicity)', function () {
+    $soaVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '007/KKCL/10435/X/2026',
+        'requester_id' => $this->soaUser->id,
+        'amount_cents' => 10000000,
+        'purpose' => 'Buku folio logistik',
+        'category' => 'OPERASIONAL',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test7.webp',
+    ]);
+
+    $ssOwnVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '008/KKCL/10435/X/2026',
+        'requester_id' => $this->ssUser->id,
+        'amount_cents' => 25000000,
+        'purpose' => 'Keperluan supervisor',
+        'category' => 'OPERASIONAL',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test8.webp',
+    ]);
+
+    $response = $this->actingAs($this->ssUser)
+        ->post(route('vouchers.bulk-approve'), [
+            'voucher_ids' => [$soaVoucher->id, $ssOwnVoucher->id],
+        ]);
+
+    $response->assertForbidden();
+
+    expect($soaVoucher->fresh()->status)->toBe(PettyCashVoucher::STATUS_SUBMITTED)
+        ->and($ssOwnVoucher->fresh()->status)->toBe(PettyCashVoucher::STATUS_SUBMITTED);
+});
+
+test('T-BAP-06: SAC can bulk approve batch containing SS and SOA vouchers', function () {
+    $soaVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '009/KKCL/10435/X/2026',
+        'requester_id' => $this->soaUser->id,
+        'amount_cents' => 10000000,
+        'purpose' => 'Kertas label',
+        'category' => 'OPERASIONAL',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test9.webp',
+    ]);
+
+    $ssVoucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'voucher_number' => '010/KKCL/10435/X/2026',
+        'requester_id' => $this->ssUser->id,
+        'amount_cents' => 15000000,
+        'purpose' => 'Tinta printer',
+        'category' => 'OPERASIONAL',
+        'status' => PettyCashVoucher::STATUS_SUBMITTED,
+        'receipt_image_url' => '/storage/vouchers/test10.webp',
+    ]);
+
+    $response = $this->actingAs($this->sacUser)
+        ->post(route('vouchers.bulk-approve'), [
+            'voucher_ids' => [$soaVoucher->id, $ssVoucher->id],
+        ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    expect($soaVoucher->fresh()->status)->toBe(PettyCashVoucher::STATUS_APPROVED_SS)
+        ->and($soaVoucher->fresh()->approved_by_id)->toBe($this->sacUser->id)
+        ->and($ssVoucher->fresh()->status)->toBe(PettyCashVoucher::STATUS_APPROVED_SS)
+        ->and($ssVoucher->fresh()->approved_by_id)->toBe($this->sacUser->id);
+});

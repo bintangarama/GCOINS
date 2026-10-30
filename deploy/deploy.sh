@@ -14,7 +14,11 @@ cd "${SCRIPT_DIR}/.."
 echo ">>> Starting G-COINS Deployment in $(pwd)..."
 
 # 1. Activate Maintenance Mode
-php artisan down --render="errors::503" --secret="gcoins-deploy-bypass" || true
+if [ -n "${DEPLOY_BYPASS_SECRET:-}" ]; then
+    php artisan down --render="errors::503" --secret="${DEPLOY_BYPASS_SECRET}" || true
+else
+    php artisan down --render="errors::503" || true
+fi
 
 # 2. Pull Latest Code
 echo ">>> Pulling latest code from Git..."

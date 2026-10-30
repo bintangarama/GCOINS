@@ -7,6 +7,7 @@ use App\Models\PettyCashCategory;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportCategoriesAction
@@ -110,23 +111,70 @@ class ImportCategoriesAction
      * Commit validated rows to the database.
      *
      * @param  array<array>  $validRows
+     *
+     * @throws ValidationException
      */
     public function commit(array $validRows, Store $store, User $performedBy, ?string $ipAddress = null): int
     {
-        return DB::transaction(function () use ($validRows, $store, $performedBy, $ipAddress) {
+        $existingCodes = PettyCashCategory::where(function ($q) use ($store) {
+            $q->whereNull('store_id')->orWhere('store_id', $store->id);
+        })->pluck('code')->map(fn ($c) => strtoupper((string) $c))->toArray();
+
+        $seenCodes = [];
+        $validatedRows = [];
+
+        foreach ($validRows as $index => $row) {
+            $code = strtoupper(trim((string) ($row['code'] ?? '')));
+            $name = trim((string) ($row['name'] ?? ''));
+            $description = isset($row['description']) ? trim((string) $row['description']) : null;
+            $scope = strtoupper(trim((string) ($row['scope'] ?? 'TOKO')));
+            $sortOrder = (int) ($row['sort_order'] ?? $row['order'] ?? 0);
+
+            if ($code === '' || strlen($code) > 50 || ! preg_match('/^[A-Z0-9_]+$/', $code)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.code" => 'Kode kategori pada data impor tidak valid.',
+                ]);
+            }
+
+            if (in_array($code, $seenCodes, true) || in_array($code, $existingCodes, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.code" => "Kode kategori '{$code}' duplikat atau sudah terdaftar.",
+                ]);
+            }
+
+            if ($name === '' || strlen($name) > 100) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.name" => 'Nama kategori wajib diisi (maksimal 100 karakter).',
+                ]);
+            }
+
+            if ($scope === 'GLOBAL' && $performedBy->role !== 'SYSTEM_ADMIN') {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.scope" => 'Hanya SYSTEM_ADMIN yang berwenang mengimpor kategori Global.',
+                ]);
+            }
+
+            $seenCodes[] = $code;
+            $validatedRows[] = [
+                'store_id' => ($scope === 'GLOBAL' && $performedBy->role === 'SYSTEM_ADMIN') ? null : $store->id,
+                'code' => $code,
+                'name' => $name,
+                'description' => $description !== '' ? $description : null,
+                'sort_order' => max(0, $sortOrder),
+            ];
+        }
+
+        return DB::transaction(function () use ($validatedRows, $store, $performedBy, $ipAddress) {
             $createdCount = 0;
             $categoryCodes = [];
 
-            foreach ($validRows as $row) {
-                $isGlobal = ($row['scope'] === 'GLOBAL' && $performedBy->role === 'SYSTEM_ADMIN');
-                $storeId = $isGlobal ? null : $store->id;
-
+            foreach ($validatedRows as $row) {
                 PettyCashCategory::create([
-                    'store_id' => $storeId,
+                    'store_id' => $row['store_id'],
                     'code' => $row['code'],
                     'name' => $row['name'],
-                    'description' => $row['description'] ?? null,
-                    'order' => $row['order'],
+                    'description' => $row['description'],
+                    'sort_order' => $row['sort_order'],
                     'is_active' => true,
                 ]);
 

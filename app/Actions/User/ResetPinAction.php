@@ -5,6 +5,7 @@ namespace App\Actions\User;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
@@ -23,13 +24,18 @@ class ResetPinAction
 
         $updateData = [
             'pin_hash' => Hash::make($newPin),
+            'remember_token' => null,
         ];
 
         if (Schema::hasColumn('users', 'must_change_pin')) {
             $updateData['must_change_pin'] = true;
         }
 
-        $targetUser->update($updateData);
+        $targetUser->forceFill($updateData)->save();
+
+        if (Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $targetUser->id)->delete();
+        }
 
         if ($actor) {
             AuditLog::create([

@@ -176,14 +176,15 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                     Lampiran Foto & Bukti
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Foto otomatis dikompresi di browser menjadi format WebP (&le; 250KB)
+                                    Mendukung foto (otomatis dikompresi ke WebP &le; 250KB) atau dokumen PDF (&le; 5MB)
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <ImageUploader
-                                    label="Foto Kuitansi / Struk Resmi"
-                                    description="Wajib untuk pengajuan langsung ke verifikator (opsional untuk draft)"
+                                    label="Foto / Dokumen Kuitansi Resmi"
+                                    description="Wajib untuk pengajuan langsung ke verifikator (JPG, PNG, WebP, atau PDF)"
                                     required={true}
+                                    allowPdf={true}
                                     error={errors.receipt_image}
                                     onChange={(file) => setData('receipt_image', file)}
                                 />
@@ -191,7 +192,8 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                 <div className="border-t pt-4">
                                     <ImageUploader
                                         label="Foto Barang / Dokumentasi Fisik"
-                                        description="Opsional: bukti fisik barang yang dibeli atau pekerjaan selesai"
+                                        description="Opsional: bukti fisik barang yang dibeli atau dokumen pendukung (Foto / PDF)"
+                                        allowPdf={true}
                                         error={errors.item_photo}
                                         onChange={(file) => setData('item_photo', file)}
                                     />
@@ -217,7 +219,11 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                                     <div className="flex justify-between text-xs">
                                         <span className="text-muted-foreground">Bukti Struk</span>
                                         <span className={data.receipt_image ? 'text-emerald-600 font-medium' : 'text-amber-600'}>
-                                            {data.receipt_image ? 'Terlampir (WebP)' : 'Belum ada'}
+                                            {data.receipt_image
+                                                ? data.receipt_image.type === 'application/pdf' || data.receipt_image.name.toLowerCase().endsWith('.pdf')
+                                                    ? 'Terlampir (PDF)'
+                                                    : 'Terlampir (WebP)'
+                                                : 'Belum ada'}
                                         </span>
                                     </div>
                                 </div>

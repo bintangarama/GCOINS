@@ -37,8 +37,8 @@ class RejectVoucherAction
             throw new InvalidArgumentException('Alasan penolakan wajib diisi.');
         }
 
-        // SAC cannot review their own voucher
-        if ($actor->role === 'SAC' && $voucher->requester_id === $actor->id) {
+        // Rule 5: Anti Self-Approval (applies universally to all roles)
+        if ($voucher->requester_id === $actor->id) {
             throw new ForbiddenSelfApprovalException('FORBIDDEN_SELF_APPROVAL: Anda tidak dapat memproses penolakan pengajuan milik sendiri.');
         }
 

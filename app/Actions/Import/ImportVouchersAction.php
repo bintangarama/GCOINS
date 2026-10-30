@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\DocumentNumberGenerator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportVouchersAction
@@ -150,24 +151,99 @@ class ImportVouchersAction
      *
      * @param  array<array>  $validRows
      * @return int Number of vouchers created
+     *
+     * @throws ValidationException
      */
     public function commit(array $validRows, Store $store, User $performedBy, ?string $ipAddress = null): int
     {
-        return DB::transaction(function () use ($validRows, $store, $performedBy, $ipAddress) {
+        $allowedStatuses = ['SETTLED', 'DISBURSED'];
+        $validCategories = PettyCashCategory::forStore($store->id)
+            ->active()
+            ->pluck('code')
+            ->merge(PettyCashVoucher::CATEGORIES)
+            ->map(fn ($c) => strtoupper((string) $c))
+            ->unique()
+            ->all();
+
+        $validatedRows = [];
+
+        foreach ($validRows as $index => $row) {
+            $userId = $row['user_id'] ?? null;
+            $nik = trim((string) ($row['nik'] ?? ''));
+
+            $requester = User::where('store_id', $store->id)
+                ->when($userId, fn ($q) => $q->where('id', $userId))
+                ->when(! $userId && $nik !== '', fn ($q) => $q->where('nik', $nik))
+                ->first();
+
+            if (! $requester) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.user_id" => 'Pemohon voucher tidak ditemukan di toko ini.',
+                ]);
+            }
+
+            $amountCents = filter_var($row['amount_cents'] ?? null, FILTER_VALIDATE_INT);
+            if ($amountCents === false || $amountCents <= 0) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.amount_cents" => 'Nominal voucher harus berupa bilangan bulat lebih dari 0.',
+                ]);
+            }
+
+            $purpose = trim((string) ($row['purpose'] ?? ''));
+            if ($purpose === '' || strlen($purpose) > 255) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.purpose" => 'Keperluan voucher wajib diisi (maksimal 255 karakter).',
+                ]);
+            }
+
+            $category = strtoupper(trim((string) ($row['category'] ?? '')));
+            if (! in_array($category, $validCategories, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.category" => "Kategori voucher '{$category}' tidak valid.",
+                ]);
+            }
+
+            $status = strtoupper(trim((string) ($row['status'] ?? '')));
+            if (! in_array($status, $allowedStatuses, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.status" => 'Status voucher impor hanya boleh SETTLED atau DISBURSED.',
+                ]);
+            }
+
+            try {
+                $date = Carbon::parse((string) ($row['date'] ?? ''));
+            } catch (\Exception) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.date" => 'Format tanggal voucher tidak valid.',
+                ]);
+            }
+
+            $validatedRows[] = [
+                'requester_id' => $requester->id,
+                'amount_cents' => $amountCents,
+                'purpose' => $purpose,
+                'category' => $category,
+                'status' => $status,
+                'date' => $date,
+            ];
+        }
+
+        return DB::transaction(function () use ($validatedRows, $store, $performedBy, $ipAddress) {
             $createdCount = 0;
             $voucherNumbers = [];
 
-            foreach ($validRows as $row) {
-                $date = Carbon::parse($row['date']);
+            foreach ($validatedRows as $row) {
+                /** @var Carbon $date */
+                $date = $row['date'];
                 $voucherNumber = $this->numberGenerator->generateVoucherNumber($store, $date);
 
                 $status = $row['status'];
                 $isSettled = $status === 'SETTLED';
 
-                $voucher = PettyCashVoucher::create([
+                PettyCashVoucher::create([
                     'store_id' => $store->id,
                     'voucher_number' => $voucherNumber,
-                    'requester_id' => $row['user_id'],
+                    'requester_id' => $row['requester_id'],
                     'amount_cents' => $row['amount_cents'],
                     'receipt_date' => $date->toDateString(),
                     'purpose' => $row['purpose'],

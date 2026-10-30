@@ -41,8 +41,18 @@ class StoreVoucherRequest extends FormRequest
             'receipt_date' => ['nullable', 'date'],
             'purpose' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', Rule::in($validCategories)],
-            'receipt_image' => [$isSubmit ? 'required' : 'nullable'],
-            'item_photo' => ['nullable'],
+            'receipt_image' => [
+                $isSubmit ? 'required' : 'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,webp,pdf',
+                'max:5120',
+            ],
+            'item_photo' => [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,webp,pdf',
+                'max:5120',
+            ],
             'is_submit' => ['nullable', 'boolean'],
         ];
     }
@@ -59,6 +69,12 @@ class StoreVoucherRequest extends FormRequest
             'category.required' => 'Kategori pengeluaran wajib dipilih.',
             'category.in' => 'Kategori pengeluaran tidak valid.',
             'receipt_image.required' => 'Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.',
+            'receipt_image.file' => 'Lampiran kuitansi harus berupa berkas yang valid.',
+            'receipt_image.mimes' => 'Format lampiran kuitansi harus berupa JPG, JPEG, PNG, WebP, atau PDF.',
+            'receipt_image.max' => 'Ukuran berkas kuitansi maksimal adalah 5 MB.',
+            'item_photo.file' => 'Lampiran foto barang harus berupa berkas yang valid.',
+            'item_photo.mimes' => 'Format lampiran foto barang harus berupa JPG, JPEG, PNG, WebP, atau PDF.',
+            'item_photo.max' => 'Ukuran berkas foto barang maksimal adalah 5 MB.',
         ];
     }
 }

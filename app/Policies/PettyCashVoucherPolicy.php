@@ -42,7 +42,8 @@ class PettyCashVoucherPolicy
     public function update(User $user, PettyCashVoucher $voucher): bool
     {
         return $voucher->status === PettyCashVoucher::STATUS_DRAFT
-            && $voucher->requester_id === $user->id;
+            && $voucher->requester_id === $user->id
+            && $voucher->store_id === $user->store_id;
     }
 
     /**
@@ -63,17 +64,50 @@ class PettyCashVoucherPolicy
     public function submit(User $user, PettyCashVoucher $voucher): bool
     {
         return $voucher->status === PettyCashVoucher::STATUS_DRAFT
-            && $voucher->requester_id === $user->id;
+            && $voucher->requester_id === $user->id
+            && $voucher->store_id === $user->store_id;
+    }
+
+    /**
+     * Determine whether the original requester can recall a SUBMITTED voucher back to DRAFT.
+     */
+    public function recall(User $user, PettyCashVoucher $voucher): bool
+    {
+        return $voucher->status === PettyCashVoucher::STATUS_SUBMITTED
+            && $voucher->requester_id === $user->id
+            && $voucher->store_id === $user->store_id;
+    }
+
+    /**
+     * Determine whether the user can reclassify a voucher's expense category prior to settlement.
+     * Roles: SS, SAC, SM (within the same store).
+     * Allowed statuses: SUBMITTED, APPROVED_SS, DISBURSED (locked once SETTLED/REJECTED/REFUNDED).
+     */
+    public function reclassifyCategory(User $user, PettyCashVoucher $voucher): bool
+    {
+        if (! in_array($user->role, ['SS', 'SAC', 'SM'], true)) {
+            return false;
+        }
+
+        if ($user->store_id !== $voucher->store_id) {
+            return false;
+        }
+
+        return in_array($voucher->status, [
+            PettyCashVoucher::STATUS_SUBMITTED,
+            PettyCashVoucher::STATUS_APPROVED_SS,
+            PettyCashVoucher::STATUS_DISBURSED,
+        ], true);
     }
 
     /**
      * Determine whether the user can approve the voucher.
      * Roles: SS, SAC, SM.
-     * Anti Self-Approval: SAC cannot approve their own voucher!
+     * Anti Self-Approval (Rule 5): No user may approve their own voucher.
      */
     public function approve(User $user, PettyCashVoucher $voucher): bool
     {
-        if ($user->role === 'SAC' && $voucher->requester_id === $user->id) {
+        if ($voucher->requester_id === $user->id) {
             return false;
         }
 
@@ -90,10 +124,11 @@ class PettyCashVoucherPolicy
 
     /**
      * Determine whether the user can reject the voucher.
+     * Anti Self-Approval (Rule 5): No user may reject their own voucher.
      */
     public function reject(User $user, PettyCashVoucher $voucher): bool
     {
-        if ($user->role === 'SAC' && $voucher->requester_id === $user->id) {
+        if ($voucher->requester_id === $user->id) {
             return false;
         }
 

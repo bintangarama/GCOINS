@@ -9,20 +9,26 @@ use App\Actions\Voucher\CancelVoucherAction;
 use App\Actions\Voucher\CreateVoucherAction;
 use App\Actions\Voucher\DeleteVoucherAction;
 use App\Actions\Voucher\DisburseVoucherAction;
+use App\Actions\Voucher\RecallVoucherAction;
+use App\Actions\Voucher\ReclassifyVoucherCategoryAction;
 use App\Actions\Voucher\RefundVoucherAction;
 use App\Actions\Voucher\RejectVoucherAction;
 use App\Actions\Voucher\SubmitVoucherAction;
+use App\Actions\Voucher\UpdateVoucherAction;
 use App\Exceptions\ForbiddenSelfApprovalException;
 use App\Exports\VoucherRecapExport;
 use App\Http\Requests\Voucher\BatchSettleVoucherRequest;
+use App\Http\Requests\Voucher\ReclassifyVoucherCategoryRequest;
 use App\Http\Requests\Voucher\RejectVoucherRequest;
 use App\Http\Requests\Voucher\StoreVoucherRequest;
+use App\Http\Requests\Voucher\UpdateVoucherRequest;
 use App\Models\PettyCashCategory;
 use App\Models\PettyCashVoucher;
 use App\Models\StoreOpnameConfig;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -205,6 +211,71 @@ class VoucherController extends Controller
     }
 
     /**
+     * Show the form for editing an existing DRAFT voucher.
+     */
+    public function edit(Request $request, PettyCashVoucher $voucher): Response
+    {
+        Gate::authorize('update', $voucher);
+
+        $currentUser = $request->user();
+        $imprestFundCents = 500000000;
+
+        if ($currentUser->store_id) {
+            $config = StoreOpnameConfig::where('store_id', $currentUser->store_id)
+                ->where('opname_type', 'KAS_KECIL')
+                ->first();
+            if ($config) {
+                $imprestFundCents = $config->imprest_fund_cents;
+            }
+        }
+
+        $categories = PettyCashCategory::forStore($currentUser->store_id)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        if ($categories->isEmpty()) {
+            $categories = collect(PettyCashVoucher::CATEGORIES)->map(fn ($c) => [
+                'id' => $c,
+                'code' => $c,
+                'name' => $c,
+            ]);
+        }
+
+        return Inertia::render('Voucher/Edit', [
+            'voucher' => $voucher,
+            'categories' => $categories,
+            'imprestFundCents' => $imprestFundCents,
+        ]);
+    }
+
+    /**
+     * Update an existing DRAFT voucher (and optionally submit it).
+     */
+    public function update(
+        UpdateVoucherRequest $request,
+        PettyCashVoucher $voucher,
+        UpdateVoucherAction $action
+    ): RedirectResponse {
+        $data = $request->validated();
+        if ($request->hasFile('receipt_image')) {
+            $data['receipt_image'] = $request->file('receipt_image');
+        }
+        if ($request->hasFile('item_photo')) {
+            $data['item_photo'] = $request->file('item_photo');
+        }
+
+        $updated = $action->execute($voucher, $data, $request->user(), $request->ip());
+
+        $message = $updated->status === PettyCashVoucher::STATUS_SUBMITTED
+            ? "Voucher {$updated->voucher_number} berhasil diperbarui dan diajukan untuk ditinjau."
+            : "Perubahan draft voucher {$updated->voucher_number} berhasil disimpan.";
+
+        return redirect()->route('vouchers.show', $updated)->with('success', $message);
+    }
+
+    /**
      * Display the specified voucher with relations, timeline, and capabilities.
      */
     public function show(Request $request, PettyCashVoucher $voucher): Response
@@ -224,10 +295,13 @@ class VoucherController extends Controller
 
         return Inertia::render('Voucher/Show', [
             'voucher' => $voucher,
+            'categories' => $this->resolveStoreCategories($voucher->store_id),
             'can' => [
                 'update' => $currentUser->can('update', $voucher),
                 'delete' => $currentUser->can('delete', $voucher),
                 'submit' => $currentUser->can('submit', $voucher),
+                'recall' => $currentUser->can('recall', $voucher),
+                'reclassifyCategory' => $currentUser->can('reclassifyCategory', $voucher),
                 'approve' => $currentUser->can('approve', $voucher),
                 'reject' => $currentUser->can('reject', $voucher),
                 'disburse' => $currentUser->can('disburse', $voucher),
@@ -260,6 +334,46 @@ class VoucherController extends Controller
         $action->execute($voucher, $request->user(), $request->ip());
 
         return redirect()->route('vouchers.show', $voucher)->with('success', 'Voucher berhasil diajukan untuk ditinjau.');
+    }
+
+    /**
+     * Recall (withdraw) a submitted voucher back to DRAFT by its original requester.
+     */
+    public function recall(Request $request, PettyCashVoucher $voucher, RecallVoucherAction $action): RedirectResponse
+    {
+        Gate::authorize('recall', $voucher);
+
+        $action->execute($voucher, $request->user(), $request->ip());
+
+        return redirect()
+            ->route('vouchers.show', $voucher)
+            ->with('success', 'Pengajuan voucher berhasil ditarik kembali ke Draft. Anda sekarang dapat mengedit atau menghapus draft ini.');
+    }
+
+    /**
+     * Reclassify a voucher's expense category prior to settlement.
+     */
+    public function reclassifyCategory(
+        ReclassifyVoucherCategoryRequest $request,
+        PettyCashVoucher $voucher,
+        ReclassifyVoucherCategoryAction $action
+    ): RedirectResponse {
+        $oldCategory = $voucher->category;
+        $updated = $action->execute(
+            $voucher,
+            $request->validated('category'),
+            $request->user(),
+            $request->ip(),
+            $request->validated('reason')
+        );
+
+        if ($oldCategory === $updated->category) {
+            return redirect()->back()->with('info', 'Kategori voucher tidak berubah.');
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', "Kategori voucher {$updated->voucher_number} berhasil diubah dari {$oldCategory} menjadi {$updated->category}.");
     }
 
     /**
@@ -328,6 +442,10 @@ class VoucherController extends Controller
     public function pending(Request $request): Response
     {
         $currentUser = $request->user();
+
+        if (! in_array($currentUser->role, ['SS', 'SAC', 'SM', 'SYSTEM_ADMIN'], true)) {
+            abort(403, 'Anda tidak memiliki hak akses ke antrean persetujuan voucher.');
+        }
 
         $query = PettyCashVoucher::with('requester')
             ->where('status', PettyCashVoucher::STATUS_SUBMITTED);
@@ -409,6 +527,7 @@ class VoucherController extends Controller
 
         return Inertia::render('Voucher/Settlement', [
             'vouchers' => $vouchers,
+            'categories' => $this->resolveStoreCategories($currentUser->store_id),
         ]);
     }
 
@@ -436,5 +555,29 @@ class VoucherController extends Controller
             'settlement_id' => $settlement?->id,
             'settlement_number' => $settlementNumber,
         ]);
+    }
+
+    /**
+     * Resolve active petty cash categories for the given store with fallback defaults.
+     *
+     * @return Collection<int, mixed>
+     */
+    private function resolveStoreCategories(?string $storeId): Collection
+    {
+        $categories = PettyCashCategory::forStore($storeId)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        if ($categories->isEmpty()) {
+            return collect(PettyCashVoucher::CATEGORIES)->map(fn ($c) => [
+                'id' => $c,
+                'code' => $c,
+                'name' => $c,
+            ]);
+        }
+
+        return $categories;
     }
 }

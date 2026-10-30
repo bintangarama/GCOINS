@@ -17,7 +17,7 @@ class BulkApproveVouchersAction
 
     /**
      * Bulk approve multiple submitted vouchers.
-     * Enforces Anti Self-Approval invariant: SAC cannot approve their own vouchers.
+     * Enforces Anti Self-Approval invariant (Rule 5): No user can approve their own vouchers.
      *
      * @param  array<string>  $voucherIds
      * @return Collection<int, PettyCashVoucher>
@@ -29,6 +29,7 @@ class BulkApproveVouchersAction
         }
 
         $vouchers = PettyCashVoucher::with('requester')
+            ->where('store_id', $actor->store_id)
             ->whereIn('id', $voucherIds)
             ->where('status', PettyCashVoucher::STATUS_SUBMITTED)
             ->get();
@@ -37,12 +38,10 @@ class BulkApproveVouchersAction
             return collect();
         }
 
-        // Rule 5: Anti Self-Approval
-        if ($actor->role === 'SAC') {
-            $hasSelf = $vouchers->contains(fn ($v) => $v->requester_id === $actor->id);
-            if ($hasSelf) {
-                throw new ForbiddenSelfApprovalException('FORBIDDEN_SELF_APPROVAL: Anda tidak dapat menyetujui pengajuan milik sendiri.');
-            }
+        // Rule 5: Anti Self-Approval (applies universally to all roles)
+        $hasSelf = $vouchers->contains(fn ($v) => $v->requester_id === $actor->id);
+        if ($hasSelf) {
+            throw new ForbiddenSelfApprovalException('FORBIDDEN_SELF_APPROVAL: Anda tidak dapat menyetujui pengajuan milik sendiri.');
         }
 
         return DB::transaction(function () use ($vouchers, $actor, $ipAddress) {

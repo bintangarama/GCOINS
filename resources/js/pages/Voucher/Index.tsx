@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Plus,
     Search,
@@ -11,6 +11,9 @@ import {
     ChevronRight,
     RefreshCw,
     FileSpreadsheet,
+    CheckCircle,
+    ShieldAlert,
+    Pencil,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -26,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import {
     DataTable,
     DataTableHead,
@@ -41,7 +45,7 @@ import {
 import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
 import { PaginatedVouchers, PettyCashCategoryItem, VoucherStatus } from '@/types/voucher';
-import { User } from '@/types/auth';
+import { PageProps, User } from '@/types/auth';
 
 interface VoucherIndexProps {
     vouchers: PaginatedVouchers;
@@ -65,6 +69,11 @@ export default function VoucherIndexPage({
     categories,
     requesters,
 }: VoucherIndexProps) {
+    const { auth } = usePage<PageProps>().props;
+    const currentUser = auth.user;
+    const canApproveRole = Boolean(currentUser && ['SS', 'SAC', 'SM'].includes(currentUser.role));
+    const canExportRole = Boolean(currentUser && ['SAC', 'SS', 'SM', 'SYSTEM_ADMIN'].includes(currentUser.role));
+
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'ALL');
     const [category, setCategory] = useState(filters.category || 'ALL');
@@ -72,14 +81,62 @@ export default function VoucherIndexPage({
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+    const [isBulkApproving, setIsBulkApproving] = useState(false);
+
+    useEffect(() => {
+        setSelectedIds([]);
+    }, [
+        vouchers.current_page,
+        filters.status,
+        filters.category,
+        filters.requester_id,
+        filters.search,
+        filters.date_from,
+        filters.date_to,
+    ]);
 
     const isAllSelected =
         vouchers.data.length > 0 &&
         vouchers.data.every((v) => selectedIds.includes(v.id));
 
-    const selectedTotalAmount = vouchers.data
-        .filter((v) => selectedIds.includes(v.id))
-        .reduce((sum, v) => sum + v.amount_cents, 0);
+    const selectedVouchers = vouchers.data.filter((v) => selectedIds.includes(v.id));
+
+    const selectedTotalAmount = selectedVouchers.reduce((sum, v) => sum + v.amount_cents, 0);
+
+    const approvableSelected = canApproveRole
+        ? selectedVouchers.filter(
+              (v) => v.status === 'SUBMITTED' && v.requester_id !== currentUser?.id
+          )
+        : [];
+
+    const approvableTotalAmount = approvableSelected.reduce((sum, v) => sum + v.amount_cents, 0);
+
+    const selfSubmittedSelectedCount = canApproveRole
+        ? selectedVouchers.filter(
+              (v) => v.status === 'SUBMITTED' && v.requester_id === currentUser?.id
+          ).length
+        : 0;
+
+    const skippedApprovalCount = selectedVouchers.length - approvableSelected.length;
+
+    const handleBulkApprove = () => {
+        if (approvableSelected.length === 0) return;
+
+        setIsBulkApproving(true);
+        router.post(
+            '/vouchers/bulk-approve',
+            { voucher_ids: approvableSelected.map((v) => v.id) },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSelectedIds([]);
+                    setBulkConfirmOpen(false);
+                },
+                onFinish: () => setIsBulkApproving(false),
+            }
+        );
+    };
 
     const handleSelectAll = () => {
         if (isAllSelected) {
@@ -166,22 +223,24 @@ export default function VoucherIndexPage({
                     icon={Receipt}
                     description="Kelola riwayat pengeluaran kas kecil, status persetujuan, dan pencairan"
                 >
-                    <Button asChild variant="outline" size="sm" className="gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-semibold shadow-xs">
-                        <a
-                            href={`/vouchers/export?${new URLSearchParams({
-                                status: status !== 'ALL' ? status : '',
-                                category: category !== 'ALL' ? category : '',
-                                requester_id: requesterId !== 'ALL' ? requesterId : '',
-                                date_from: dateFrom,
-                                date_to: dateTo,
-                                search: search,
-                            }).toString()}`}
-                            download
-                        >
-                            <FileSpreadsheet className="size-4" />
-                            Export Excel
-                        </a>
-                    </Button>
+                    {canExportRole && (
+                        <Button asChild variant="outline" size="sm" className="gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-semibold shadow-xs">
+                            <a
+                                href={`/vouchers/export?${new URLSearchParams({
+                                    status: status !== 'ALL' ? status : '',
+                                    category: category !== 'ALL' ? category : '',
+                                    requester_id: requesterId !== 'ALL' ? requesterId : '',
+                                    date_from: dateFrom,
+                                    date_to: dateTo,
+                                    search: search,
+                                }).toString()}`}
+                                download
+                            >
+                                <FileSpreadsheet className="size-4" />
+                                Export Excel
+                            </a>
+                        </Button>
+                    )}
                     <Button asChild size="sm" className="gap-2 shadow-xs">
                         <Link href="/vouchers/create">
                             <Plus className="size-4" />
@@ -429,12 +488,22 @@ export default function VoucherIndexPage({
                                                     <StatusBadge status={v.status} />
                                                 </DataTableCell>
                                                 <DataTableCell align="center" className="whitespace-nowrap">
-                                                    <Link href={`/vouchers/${v.id}`}>
-                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
-                                                            <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                                                            Detail
-                                                        </Button>
-                                                    </Link>
+                                                    <div className="inline-flex items-center justify-center gap-1">
+                                                        {v.status === 'DRAFT' && currentUser?.id === v.requester_id && (
+                                                            <Link href={`/vouchers/${v.id}/edit`}>
+                                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                                    <Pencil className="size-3.5 text-muted-foreground" />
+                                                                    Edit
+                                                                </Button>
+                                                            </Link>
+                                                        )}
+                                                        <Link href={`/vouchers/${v.id}`}>
+                                                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                                                                <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                                                Detail
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
                                                 </DataTableCell>
                                             </DataTableRow>
                                         );
@@ -498,12 +567,22 @@ export default function VoucherIndexPage({
                                                 <span className="font-mono num font-bold text-sm text-foreground">
                                                     {formatMoney(v.amount_cents)}
                                                 </span>
-                                                <Link href={`/vouchers/${v.id}`}>
-                                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                        Detail
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex items-center gap-1.5">
+                                                    {v.status === 'DRAFT' && currentUser?.id === v.requester_id && (
+                                                        <Link href={`/vouchers/${v.id}/edit`}>
+                                                            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                                                                <Pencil className="size-3.5" />
+                                                                Edit
+                                                            </Button>
+                                                        </Link>
+                                                    )}
+                                                    <Link href={`/vouchers/${v.id}`}>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                            Detail
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </DataTableMobileCard>
                                     );
@@ -529,22 +608,70 @@ export default function VoucherIndexPage({
                     totalAmountCents={selectedTotalAmount}
                     onClearSelection={() => setSelectedIds([])}
                 >
-                    <Button
-                        asChild
-                        size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm"
-                    >
-                        <a
-                            href={`/vouchers/export?${new URLSearchParams({
-                                voucher_ids: selectedIds.join(','),
-                            }).toString()}`}
-                            download
+                    {canApproveRole && approvableSelected.length > 0 && (
+                        <Button
+                            size="sm"
+                            disabled={isBulkApproving}
+                            onClick={() => setBulkConfirmOpen(true)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm"
                         >
-                            <FileSpreadsheet className="size-3.5" />
-                            Export Excel Terpilih ({selectedIds.length})
-                        </a>
-                    </Button>
+                            <CheckCircle className="size-3.5" />
+                            Setujui Bon Terpilih ({approvableSelected.length})
+                        </Button>
+                    )}
+
+                    {canApproveRole && approvableSelected.length === 0 && selfSubmittedSelectedCount > 0 && (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled
+                            className="bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold text-xs h-8 gap-1.5 opacity-95"
+                            title="Anda tidak dapat menyetujui bon milik sendiri"
+                        >
+                            <ShieldAlert className="size-3.5" />
+                            Milik Sendiri (Anti Self-Approve)
+                        </Button>
+                    )}
+
+                    {canExportRole && (
+                        <Button
+                            asChild
+                            size="sm"
+                            variant={canApproveRole && approvableSelected.length > 0 ? 'outline' : 'default'}
+                            className={
+                                canApproveRole && approvableSelected.length > 0
+                                    ? 'border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs h-8 gap-1.5 shadow-sm'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8 gap-1.5 shadow-sm'
+                            }
+                        >
+                            <a
+                                href={`/vouchers/export?${new URLSearchParams({
+                                    voucher_ids: selectedIds.join(','),
+                                }).toString()}`}
+                                download
+                            >
+                                <FileSpreadsheet className="size-3.5" />
+                                Export Excel Terpilih ({selectedIds.length})
+                            </a>
+                        </Button>
+                    )}
                 </DataTableBulkBar>
+
+                {/* Bulk Approve Confirmation Dialog */}
+                <ConfirmDialog
+                    open={bulkConfirmOpen}
+                    onOpenChange={setBulkConfirmOpen}
+                    title="Persetujuan Massal Bon Kas Kecil"
+                    description={
+                        skippedApprovalCount > 0
+                            ? `Apakah Anda yakin ingin menyetujui ${approvableSelected.length} bon berstatus SUBMITTED yang memenuhi syarat dengan total nominal ${formatMoney(approvableTotalAmount)}? (${skippedApprovalCount} bon lain dalam pilihan Anda dilewati otomatis karena bukan berstatus SUBMITTED atau merupakan bon milik sendiri).`
+                            : `Apakah Anda yakin ingin menyetujui ${approvableSelected.length} voucher bon kas kecil terpilih dengan total nominal ${formatMoney(approvableTotalAmount)}?`
+                    }
+                    confirmText={`Ya, Setujui (${approvableSelected.length})`}
+                    cancelText="Batal"
+                    isLoading={isBulkApproving}
+                    onConfirm={handleBulkApprove}
+                />
             </div>
         </AppLayout>
     );

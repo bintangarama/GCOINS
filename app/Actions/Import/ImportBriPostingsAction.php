@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportBriPostingsAction
@@ -106,14 +107,75 @@ class ImportBriPostingsAction
      *
      * @param  array<array>  $validRows
      * @return int Number of postings created
+     *
+     * @throws ValidationException
      */
     public function commit(array $validRows, Store $store, User $performedBy, ?string $ipAddress = null): int
     {
-        return DB::transaction(function () use ($validRows, $store, $performedBy, $ipAddress) {
+        $allowedCategories = BriFundPosting::CATEGORIES;
+        $allowedTypes = BriFundPosting::TYPES;
+        $validatedRows = [];
+
+        foreach ($validRows as $index => $row) {
+            $category = strtoupper(trim((string) ($row['category'] ?? '')));
+            if (! in_array($category, $allowedCategories, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.category" => 'Kategori mutasi BRI tidak valid.',
+                ]);
+            }
+
+            $entityName = trim((string) ($row['entity_name'] ?? ''));
+            if ($entityName === '' || strlen($entityName) > 100) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.entity_name" => 'Nama entitas/mitra wajib diisi (maksimal 100 karakter).',
+                ]);
+            }
+
+            $type = strtoupper(trim((string) ($row['type'] ?? '')));
+            if (! in_array($type, $allowedTypes, true)) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.type" => 'Tipe mutasi BRI harus INFLOW atau OUTFLOW.',
+                ]);
+            }
+
+            $amountCents = filter_var($row['amount_cents'] ?? null, FILTER_VALIDATE_INT);
+            if ($amountCents === false || $amountCents <= 0) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.amount_cents" => 'Nominal mutasi BRI harus lebih dari 0.',
+                ]);
+            }
+
+            $purpose = trim((string) ($row['purpose'] ?? ''));
+            if ($purpose === '' || strlen($purpose) > 255) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.purpose" => 'Keperluan posting wajib diisi (maksimal 255 karakter).',
+                ]);
+            }
+
+            try {
+                $date = Carbon::parse((string) ($row['date'] ?? ''));
+            } catch (\Exception) {
+                throw ValidationException::withMessages([
+                    "valid_rows.{$index}.date" => 'Format tanggal mutasi BRI tidak valid.',
+                ]);
+            }
+
+            $validatedRows[] = [
+                'category' => $category,
+                'entity_name' => $entityName,
+                'type' => $type,
+                'amount_cents' => $amountCents,
+                'purpose' => $purpose,
+                'date' => $date,
+            ];
+        }
+
+        return DB::transaction(function () use ($validatedRows, $store, $performedBy, $ipAddress) {
             $createdCount = 0;
 
-            foreach ($validRows as $row) {
-                $date = Carbon::parse($row['date']);
+            foreach ($validatedRows as $row) {
+                /** @var Carbon $date */
+                $date = $row['date'];
 
                 BriFundPosting::create([
                     'store_id' => $store->id,
