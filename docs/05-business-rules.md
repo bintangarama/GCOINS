@@ -181,13 +181,13 @@ No financial state change may occur without an audit log entry.
 ## Rule 15: Mandatory Receipt Evidence Guard on Voucher Submission
 
 1. **Submission Guard (HTTP 422)**:
-   - Saat mengajukan voucher untuk ditinjau (`is_submit: true` atau transisi ke `SUBMITTED`), **foto bukti fisik struk/kuitansi (`receipt_image`) WAJIB dilampirkan**.
-   - Validasi sisi server (`CreateVoucherRequest` & Action layer) wajib mengembalikan HTTP 422 `ValidationException` dengan pesan jelas: *"Foto bukti fisik bon/kuitansi wajib dilampirkan sebelum voucher diajukan."*
+   - Saat mengajukan voucher untuk ditinjau (`is_submit: true` atau transisi `DRAFT → SUBMITTED`), **berkas bukti fisik struk/kuitansi (`receipt_image` berupa foto terkompresi WebP/JPG/PNG atau dokumen `.pdf` $\le$ 5 MB) WAJIB dilampirkan**.
+   - Validasi sisi server (`StoreVoucherRequest`, `UpdateVoucherRequest`, & Action layer) wajib mengembalikan HTTP 422 `ValidationException` dengan pesan jelas: *"Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan."*
    - Dilarang melempar `InvalidArgumentException` tanpa penanganan yang memicu HTTP 500 Unhandled Exception.
 2. **Client-Side Submit Disabled**:
-   - Tombol "Ajukan Bon" pada formulir wajib otomatis dinonaktifkan (`disabled`) jika berkas foto struk belum dipilih/diunggah.
-3. **Draft Exemption**:
-   - Penyimpanan draf awal (`is_submit: false` / status `DRAFT`) diperbolehkan tanpa foto struk untuk memfasilitasi pencatatan cepat di lantai toko sebelum nota difoto.
+   - Tombol "Ajukan Bon" (maupun "Simpan & Ajukan Sekarang" pada halaman Edit Draft) otomatis dinonaktifkan (`disabled`) jika berkas struk/kuitansi belum tersedia.
+3. **Draft Exemption & Editable Draft**:
+   - Penyimpanan draf awal (`is_submit: false` / status `DRAFT`) diperbolehkan tanpa berkas struk untuk memfasilitasi pencatatan cepat di lantai toko, dan pemohon asli dapat mengedit draf tersebut kapan saja selama masih berstatus `DRAFT`.
 4. **Historical Import Exemption & Approval Attribution**:
    - Impor voucher massal melalui spreadsheet (.xlsx) diizinkan tanpa berkas foto struk (`receipt_image_url = null`) guna mendukung migrasi data lampau/tutup buku toko. Bukti fisik kertas tetap diarsipkan secara fisik di ordner toko sesuai kaidah audit.
    - Pilihan status pada berkas impor terbatas pada `SETTLED` (tutup buku rekapitulasi, keluar dari $K_{bon}$) dan `DISBURSED` (bon cair gantung, masuk $K_{bon}$ kas opname).

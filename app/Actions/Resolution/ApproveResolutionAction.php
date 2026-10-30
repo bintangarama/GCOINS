@@ -51,7 +51,7 @@ class ApproveResolutionAction
                 }
             } else {
                 if (! in_array($actor->role, ['SS', 'SM'], true)) {
-                    throw new AuthorizationException('Hanya Store Supervisor (SS) atau Store Manager (SM) yang berwenang menyetujui resolusi selisih.');
+                    throw new AuthorizationException('Hanya Sales Superintendent (SS) atau Store Manager (SM) yang berwenang menyetujui resolusi selisih.');
                 }
             }
         }

@@ -38,7 +38,7 @@ class RejectOutflowAction
 
         // Must be SS or SM
         if (! in_array($actor->role, ['SS', 'SM'], true)) {
-            throw new DomainException('Hanya Store Supervisor (SS) atau Store Manager (SM) yang dapat menolak pengeluaran dana BRI.');
+            throw new DomainException('Hanya Sales Superintendent (SS) atau Store Manager (SM) yang dapat menolak pengeluaran dana BRI.');
         }
 
         $trimmedReason = trim($rejectionReason);

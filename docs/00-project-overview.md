@@ -29,7 +29,7 @@ G-COINS automates the daily cash reconciliation (*cash opname*) process for Gram
 | Role | User Type | Device |
 |---|---|---|
 | SOA (Store Operation Associate) | Store floor staff | Mobile phone |
-| SS (Store Supervisor) | Operations supervisor | Mobile / Desktop |
+| SS (Sales Superintendent) | Operations supervisor | Mobile / Desktop |
 | SAC (Staff Administrative Clerk) | Cashier / Admin | Desktop PC (numpad) |
 | SM (Store Manager) | Store leader | Desktop / Mobile |
 | SYSTEM_ADMIN | IT / System administrator | Desktop |

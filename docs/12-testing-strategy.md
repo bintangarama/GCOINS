@@ -28,7 +28,11 @@
 | T-SOD-02 | SAC cannot edit user to role >= SS (403 Forbidden) | Feature |
 | T-SOD-03 | User cannot change their own role (anti-privilege escalation) | Feature |
 | T-SOD-04 | SAC cannot reset PIN of SS, SM, or SYSTEM_ADMIN | Feature |
-| T-SAP-01 | SAC cannot approve own voucher (FORBIDDEN_SELF_APPROVAL) | Feature |
+| T-SAP-01 | Universal Anti Self-Approval: SAC, SS, or SM cannot approve/reject own voucher (`FORBIDDEN_SELF_APPROVAL`) | Feature |
+| T-BAP-01 | Bulk Approve atomically rolls back entire batch if any voucher belongs to current approver (SAC/SS/SM) | Feature |
+| T-SEC-01 | Import commit re-validates tampered JSON rows server-side & enforces SoD role hierarchy | Feature |
+| T-SEC-02 | Deactivating user or resetting PIN immediately revokes active database sessions | Feature |
+| T-SEC-03 | Voucher file upload allows compressed images & `.pdf` (≤ 5 MB) while blocking non-whitelisted MIME/scripts | Feature |
 | T-AMN-01 | Outflow rejected when amount > running balance (Zero-Deficit Guard) | Feature |
 | T-DC-01 | Anti self-approval on legacy pending BRI outflow | Feature |
 | T-DC-02 | Tiered Outflow: Legacy Outflow > Rp 500.000 requires SM approval (SS forbidden) | Feature |
@@ -47,6 +51,10 @@
 | T-STM-03 | Voucher: APPROVED_SS → DISBURSED valid | Feature |
 | T-STM-04 | Voucher: DISBURSED → SETTLED valid (KKCL settlement recap) | Feature |
 | T-STM-05 | Voucher: invalid transition rejected | Feature |
+| T-UDV-01 | Draft owner can edit `DRAFT` voucher fields/attachments & save or immediately submit (`UPDATE_VOUCHER` / `SUBMIT_VOUCHER`) | Feature |
+| T-UDV-02 | Non-owner or non-`DRAFT` voucher edit attempt is blocked (403 / `VOUCHER_INVALID_STATE`) | Feature |
+| T-RRC-01 | Requester can recall own `SUBMITTED` voucher back to `DRAFT` (`RECALL_VOUCHER`), blocked for non-owner or post-approval | Feature |
+| T-RRC-02 | `SS`/`SAC`/`SM` can reclassify expense category on `SUBMITTED`/`APPROVED_SS`/`DISBURSED` (`RECLASSIFY_CATEGORY`), locked on `SETTLED` | Feature |
 | T-VCH-01 | Voucher stores explicit receipt_date or defaults to today | Feature |
 | T-VCH-02 | Legacy localhost storage URLs normalized to relative paths | Feature |
 | T-SET-02 | Sequential numbering `{SEQ}/KKCL/{STORE}/{ROMAN_MONTH}/{YEAR}` | Feature |
@@ -116,9 +124,14 @@ tests/
 │   ├── User/
 │   │   ├── UserManagementTest.php
 │   │   └── UserSodSecurityTest.php
+│   ├── Security/
+│   │   └── SecurityHardeningTest.php
 │   ├── Voucher/
 │   │   ├── CreateVoucherTest.php
+│   │   ├── UpdateDraftVoucherTest.php
+│   │   ├── RecallAndReclassifyVoucherTest.php
 │   │   ├── ApproveVoucherTest.php
+│   │   ├── BulkApproveVouchersTest.php
 │   │   ├── DisburseAndSettleVoucherTest.php
 │   │   ├── SettlementRecapTest.php
 │   │   ├── SelfApprovalPreventionTest.php
@@ -182,7 +195,7 @@ VarianceResolutionFactory::class  // REPLACED, WRITE_OFF, FOUND variants
 ## 5. Running Tests
 
 ```bash
-# Run all tests (Current suite: 207 tests, 779 assertions)
+# Run all tests (Current suite: 242 tests, 931 assertions)
 php artisan test --compact
 
 # Run specific test file

@@ -24,14 +24,6 @@ export default function Login() {
         });
     };
 
-    const fillDemo = (nik: string, pin: string) => {
-        setData({
-            ...data,
-            nik,
-            pin,
-        });
-    };
-
     return (
         <div className="min-h-screen flex flex-col justify-center items-center bg-muted/40 p-4 sm:p-6 lg:p-8">
             <Head title="Masuk - G-COINS" />
@@ -70,7 +62,7 @@ export default function Login() {
                                         name="nik"
                                         value={data.nik}
                                         onChange={(e) => setData('nik', e.target.value.toUpperCase())}
-                                        placeholder="Contoh: SAC001"
+                                        placeholder="Masukkan NIK"
                                         autoFocus
                                         required
                                         className="h-10 text-sm font-mono tracking-wide pl-3"
@@ -113,69 +105,10 @@ export default function Login() {
                             </div>
                         </CardContent>
 
-                        <CardFooter className="flex flex-col gap-4">
+                        <CardFooter className="pt-2">
                             <Button type="submit" disabled={processing} className="w-full h-10 font-semibold">
                                 {processing ? 'Memproses...' : 'Masuk (Login)'}
                             </Button>
-
-                            {/* Demo Quick-fill Buttons */}
-                            <div className="w-full pt-3 border-t border-border">
-                                <p className="text-[11px] text-center font-medium text-muted-foreground mb-2">
-                                    Pilih Akun Demo (Development):
-                                </p>
-                                <div className="grid grid-cols-5 gap-1.5">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fillDemo('ADMIN001', '123456')}
-                                        className="text-[11px] px-1 py-1 h-7 border-border text-foreground hover:bg-muted"
-                                        title="SYSTEM_ADMIN"
-                                    >
-                                        ADMIN
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fillDemo('SM001', '123456')}
-                                        className="text-[11px] px-1 py-1 h-7 border-border text-foreground hover:bg-muted"
-                                        title="Store Manager"
-                                    >
-                                        SM
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fillDemo('SAC001', '123456')}
-                                        className="text-[11px] px-1 py-1 h-7 border-border text-primary font-bold hover:bg-muted"
-                                        title="Staff Admin Clerk"
-                                    >
-                                        SAC
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fillDemo('SS001', '123456')}
-                                        className="text-[11px] px-1 py-1 h-7 border-border text-foreground hover:bg-muted"
-                                        title="Store Supervisor"
-                                    >
-                                        SS
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fillDemo('SOA001', '123456')}
-                                        className="text-[11px] px-1 py-1 h-7 border-border text-foreground hover:bg-muted"
-                                        title="Store Associate"
-                                    >
-                                        SOA
-                                    </Button>
-                                </div>
-                            </div>
                         </CardFooter>
                     </form>
                 </Card>

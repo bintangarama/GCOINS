@@ -117,6 +117,9 @@ sudo chown -R $USER:www-data /var/www/gcoins
 # Clone repository dari GitHub
 git clone https://github.com/<username>/<nama-repo>.git /var/www/gcoins
 cd /var/www/gcoins
+
+# Abaikan perbedaan permission chmod (+x) antara Windows lokal dan Linux VPS saat git pull
+git config core.fileMode false
 ```
 
 ### 2. Setup File Environment (`.env`)
@@ -168,7 +171,7 @@ sqlite3 database/database.sqlite "PRAGMA busy_timeout=5000;"
 ```
 
 ### 5. Atur Permission Direktori
-Tambahkan user Anda ke grup `www-data` dan berikan hak akses baca-tulis bersama agar perintah CLI (`deploy.sh`) dan web server (Nginx/PHP-FPM) dapat menulis ke direktori cache/log tanpa bentrok:
+Tambahkan user Anda ke grup `www-data` dan berikan hak akses baca-tulis bersama (`ug+rwX` + SGID `g+s`) agar perintah CLI (`./deploy/deploy.sh`) dan web server (Nginx/PHP-FPM) tidak pernah mengalami `Permission denied` pada `storage/logs/laravel.log`, `storage/framework/down`, maupun file WAL SQLite:
 ```bash
 # 1. Masukkan user Anda ke grup web server (www-data)
 sudo usermod -aG www-data $USER
@@ -176,14 +179,11 @@ sudo usermod -aG www-data $USER
 # 2. Atur kepemilikan direktori penting ke user:www-data
 sudo chown -R $USER:www-data /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database
 
-# 3. Beri izin baca-tulis untuk user & grup (775)
-sudo chmod -R 775 /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database
+# 3. Beri izin baca-tulis penuh bagi user & grup www-data (file 664, folder 775)
+sudo chmod -R ug+rwX /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database
 
-# 4. Aktifkan SGID agar file baru otomatis mewarisi grup www-data
-sudo chmod -R g+s /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache
-
-# 5. Atur izin file database SQLite (jika sudah dibuat)
-sudo chmod 664 /var/www/gcoins/database/database.sqlite* 2>/dev/null || true
+# 4. Aktifkan SGID pada seluruh sub-folder agar file baru otomatis mewarisi grup www-data
+sudo find /var/www/gcoins/storage /var/www/gcoins/bootstrap/cache /var/www/gcoins/database -type d -exec chmod g+s {} +
 ```
 *(Catatan: Jika baru pertama kali memasukkan user ke grup `www-data`, jalankan perintah `newgrp www-data` di terminal atau login ulang SSH agar grup baru aktif).*
 
@@ -290,12 +290,27 @@ Cukup jalankan satu perintah ini:
 cd /var/www/gcoins
 ./deploy/deploy.sh
 ```
+*(Opsional: Jika Anda ingin menetapkan token bypass selama beberapa detik maintenance mode berlangsung, jalankan `DEPLOY_BYPASS_SECRET="token-rahasia-anda" ./deploy/deploy.sh` — demi keamanan, script tidak menyimpan hardcoded secret di dalam Git).*
+
 Script `deploy.sh` akan otomatis:
 - Menyalakan maintenance mode sementara.
 - Mengambil kode terbaru via `git pull`.
 - Menjalankan `composer install` jika ada pustaka baru.
 - Menjalankan migrasi database baru (`php artisan migrate --force`).
-- Menggunakan build frontend dari lokal tanpa membebani RAM VPS.
-- Memperbarui cache Laravel (`config`, `route`, `view`).
-- Merestart queue worker & reload PHP-FPM.
-- Membuka kembali aplikasi.
+- Menggunakan build frontend dari lokal (`public/build`) tanpa membebani RAM VPS.
+- Memperbarui cache Laravel (`config`, `route`, `view`, `event`).
+- Merestart queue worker (jika grup `gcoins-worker` terdaftar di Supervisor) & reload PHP-FPM.
+- Membuka kembali aplikasi (`Application is now live`).
+
+### Troubleshooting Umum Saat Deploy di VPS
+1. **`error: Your local changes to the following files would be overwritten by merge: deploy/*.sh`**
+   Terjadi akibat perubahan permission `chmod +x` di Linux dibandingkan file dari Windows. Solusi:
+   ```bash
+   git config core.fileMode false
+   git checkout -- deploy/cron-backup.sh deploy/deploy.sh
+   chmod +x deploy/deploy.sh deploy/cron-backup.sh
+   ```
+2. **`Failed to open stream: Permission denied` pada `storage/logs/laravel.log` atau `storage/framework/down`**
+   File log/cache dimiliki oleh `www-data` tanpa izin tulis grup untuk user SSH Anda. Jalankan kembali perintah pada **Bagian 3 Langkah 5** (`chown -R $USER:www-data` + `chmod -R ug+rwX` + `g+s`).
+3. **`ERROR The [public/storage] link already exists` atau `gcoins-worker: ERROR (no such group)`**
+   Kedua pesan ini bersifat non-fatal (aman diabaikan): symlink `public/storage` memang sudah aktif sejak deploy pertama, dan `gcoins-worker` hanya diperlukan bila Supervisor didaftarkan sesuai **Bagian 4 Langkah 2**.

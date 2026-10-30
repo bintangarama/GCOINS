@@ -150,48 +150,58 @@ Untuk memberikan area kerja vertikal yang lebih luas bagi data tabel keuangan da
 
 ### 4.3. Voucher List (`/vouchers`)
 - **Tabel Data Interaktif**:
-  - Kolom: Checkbox Pilihan, No. Voucher, Tanggal Struk, Pemohon, Kategori, Keperluan, Nominal, Status, Aksi.
+  - Kolom: Checkbox Pilihan, No. Voucher, Tanggal Struk, Pemohon, Kategori, Keperluan, Nominal, Status, Aksi (`Detail`, serta tombol cepat `Edit` bagi pemilik bon berstatus `DRAFT`).
   - **Sorting Kolom Interaktif**: Pengurutan instan *ascending* / *descending* pada kolom No. Voucher, Tanggal, Kategori, Nominal, dan Status.
   - Filter: Status, Rentang Tanggal, Kategori, Pemohon.
   - Pencarian Real-Time: Nomor voucher dan keperluan.
   - Pagination: 20 data per halaman dengan link navigasi responsif.
-  - **Bulk Export Excel**: Kemampuan memilih baris tertentu via checkbox untuk mengunduh rekap Excel selektif via `DataTableBulkBar`.
+  - **Dual Bulk Action Bar (`DataTableBulkBar`)**:
+    - **Bulk Approve (`Setujui Bon Terpilih (N)`)**: Tampil bagi role approver (`SS`, `SAC`, `SM`) ketika baris terpilih mencakup bon berstatus `SUBMITTED` milik pengguna lain. Jika baris `SUBMITTED` yang dicentang seluruhnya milik pengguna sendiri, tampil indikator nonaktif `Milik Sendiri (Anti Self-Approve)`.
+    - **Bulk Export Excel (`Export Excel Terpilih (N)`)**: Tampil berdampingan bagi role yang memiliki wewenang ekspor (`SAC`, `SS`, `SM`, `SYSTEM_ADMIN`; disembunyikan untuk `SOA`).
 
 ### 4.3.1. Voucher Pending Approval Queue (`/vouchers/pending`)
-- Antrean khusus bagi supervisor/kasir untuk meninjau bon yang menunggu persetujuan.
+- Antrean khusus bagi supervisor/kasir/manager untuk meninjau bon yang menunggu persetujuan.
 - **Bulk Approve (Persetujuan Massal)**:
   - Checkbox multi-select di header dan setiap baris bon yang berhak disetujui.
-  - **Anti Self-Approval Enforcement (Rule 5)**:
-    - Jika pengguna login adalah kasir (SAC), baris bon yang diajukan oleh dirinya sendiri otomatis dinonaktifkan (`disabled`) dengan badge penanda `"Milik Sendiri (Perlu SS/SM)"`.
-    - Checkbox "Pilih Semua" hanya mencentang bon yang berhak disetujui (mengecualikan bon sendiri).
+  - **Universal Anti Self-Approval Enforcement (Rule 5)**:
+    - Berlaku untuk **seluruh role approver (`SAC`, `SS`, `SM`)**: baris bon yang diajukan oleh pengguna yang sedang login otomatis dinonaktifkan (`disabled`) dengan badge penanda `"Milik Sendiri (Perlu Approver Lain)"`.
+    - Checkbox "Pilih Semua" hanya mencentang bon yang berhak disetujui (mengecualikan bon milik sendiri).
   - **Floating Bulk Action Bar (`DataTableBulkBar`)**:
     - Bar melayang di bagian bawah layar menampilkan: Jumlah item terpilih, Akumulasi nominal (Rp), Tombol "Setujui X Voucher Sekaligus", dan Tombol Batalkan Pilihan.
     - Konfirmasi tindakan massal melalui `ConfirmDialog` sebelum mutasi dieksekusi secara atomik (`DB::transaction`).
 
-### 4.4. Create Voucher (`/vouchers/create`)
+### 4.4. Create & Edit Draft Voucher (`/vouchers/create` & `/vouchers/:id/edit`)
 - Form fields:
   - Nominal (Rupiah formatted input, auto-convert to cents)
   - Tanggal Bon / Struk (Date input, defaults to today `YYYY-MM-DD`, allows setting back-dated physical receipt date)
   - Keperluan (text)
   - Kategori (dynamic select dropdown from `PettyCashCategory::forStore()`)
-  - Foto Struk (upload with client-side WebP compression, preview)
-  - Foto Barang (upload with client-side WebP compression, preview)
+  - Bukti Struk / Kuitansi (`ImageUploader` dengan kompresi WebP $\le$ 250KB untuk foto **atau** unggah dokumen `.pdf` hingga 5 MB, dilengkapi pratinjau)
+  - Foto / Dokumen Barang (`ImageUploader` opsional, mendukung foto WebP $\le$ 250KB atau `.pdf` hingga 5 MB)
+- **Edit Draft (`/vouchers/:id/edit`)**:
+  - Hanya dapat diakses oleh pemohon asli selama status bon masih `DRAFT`.
+  - Memuat data awal bon serta pratinjau lampiran yang sudah tersimpan (mendukung pertahankan berkas lama, ganti berkas baru, atau hapus berkas).
+  - Pilihan simpan: `"Simpan Perubahan Draft"` (tetap `DRAFT`, log `UPDATE_VOUCHER`) atau `"Simpan & Ajukan Sekarang"` (transisi ke `SUBMITTED`, log `SUBMIT_VOUCHER`).
 - **Mandatory Receipt Evidence Guard**:
-  - Tombol "Ajukan" otomatis disabled jika Foto Struk belum dipilih.
-  - Server-side validation via `FormRequest` returns 422 error jika diajukan tanpa foto struk.
-- Submit options: "Ajukan" (creates as `SUBMITTED`) or "Simpan Draft" (creates as `DRAFT`, foto struk opsional).
+  - Tombol `"Ajukan"` / `"Simpan & Ajukan Sekarang"` otomatis disabled jika Bukti Struk belum tersedia.
+  - Server-side validation via `StoreVoucherRequest` & `UpdateVoucherRequest` mengembalikan error HTTP 422 jika diajukan tanpa bukti struk.
+- Submit options (Create): `"Ajukan"` (creates as `SUBMITTED`) or `"Simpan Draft"` (creates as `DRAFT`, bukti struk opsional).
 - Cancel: navigate back
 
 ### 4.5. Voucher Detail (`/vouchers/:id`)
 - Header: voucher number, status badge, dates
-- Content: amount, purpose, category, requester info
-- Photos: receipt and item photos (clickable to zoom/lightbox)
-- Timeline: status history with timestamps and actor names
+- Content: amount, purpose, category (dengan tombol koreksi `Ubah Kategori` sebelum `SETTLED`), requester info
+- Attachments: receipt and item evidence (zoomable photo lightbox atau kartu pratinjau `Buka Dokumen PDF` di tab baru untuk berkas `.pdf`)
+- Banner Peringatan Anti Self-Approval: ditampilkan secara informatif apabila approver (`SAC`/`SS`/`SM`) membuka bon `SUBMITTED` miliknya sendiri
+- Timeline: status & audit history with timestamps and actor names (`CREATE`, `UPDATE_VOUCHER`, `SUBMIT`, `RECALL_VOUCHER`, `RECLASSIFY_CATEGORY`, `APPROVE`, `DISBURSE`, `SETTLE`)
 - Action buttons (contextual per role and status):
-  - Approve / Reject (SS/SAC/SM, when SUBMITTED)
-  - Disburse (SAC, when APPROVED_SS)
-  - Cancel (SAC/SM, when DISBURSED)
-  - Confirm Refund (SAC, when REJECTED_REFUND_PENDING)
+  - `Edit Draft` / `Ajukan` / `Hapus Draft` (Owner, when `DRAFT`)
+  - `Tarik ke Draft` (Owner, when `SUBMITTED` — mengembalikan status ke `DRAFT` via dialog konfirmasi untuk revisi sebelum diproses approver)
+  - `Approve` / `Reject` (`SS`/`SAC`/`SM`, when `SUBMITTED` dan **bukan** pemohon sendiri)
+  - `Ubah Kategori` (`SS`/`SAC`/`SM`, when `SUBMITTED`, `APPROVED_SS`, atau `DISBURSED` — membuka `ReclassifyCategoryDialog` tanpa mengubah nominal/status; juga tersedia inline pada halaman `/vouchers/settlement` sebelum membuat Rekap KKCL)
+  - `Disburse` (`SAC`, when `APPROVED_SS`)
+  - `Cancel` (`SAC`/`SM`, when `DISBURSED`)
+  - `Confirm Refund` (`SAC`, when `REJECTED_REFUND_PENDING`)
 
 ### 4.5.1. Petty Cash Settlement Matrix Workspace (`/vouchers/settlements/:id`)
 - Rekapitulasi Pengeluaran Kas Kecil (KKCL) berbasis **Matriks Akuntansi Kolom Kolom (Columnar Matrix)** sesuai standar fisik Toko Gramedia Karawang:
@@ -291,8 +301,8 @@ Seluruh modul operasional (`Voucher`, `Opname`, `BriFund`, `Users`, `AuditLogs`)
      - Slot tombol aksi kontekstual (misal: "Setujui Bon", "Export Excel Terpilih").
      - Tombol batal / bersihkan pilihan (`X Batal`).
 4. **Selective Bulk Action vs Non-Bulk Financial Invariant Matrix**:
-   - **Persetujuan Massal (Bulk Approve)**: HANYA diizinkan pada antrean bon kas kecil (`/vouchers/pending`), dilindungi oleh **Rule 5 Anti Self-Approval** (SAC tidak dapat menyetujui bon miliknya sendiri, checkbox dinonaktifkan di UI, dan ditolak di Action layer).
-   - **Ekspor Massal (Bulk Export)**: Diizinkan pada daftar bon kas kecil (`/vouchers`) untuk mengunduh rekap Excel berdasarkan seleksi checkbox.
+   - **Persetujuan Massal (Bulk Approve)**: Diizinkan pada antrean bon kas kecil (`/vouchers/pending`) maupun daftar bon (`/vouchers`) bagi `SS`, `SAC`, dan `SM`, dilindungi penuh oleh **Rule 5 Universal Anti Self-Approval** (tidak ada role yang dapat menyetujui bon miliknya sendiri; diblokir di UI dan ditolak atomik di Action layer).
+   - **Ekspor Massal (Bulk Export)**: Diizinkan pada daftar bon kas kecil (`/vouchers`) bagi role berewenang (`SAC`, `SS`, `SM`, `SYSTEM_ADMIN`) berdampingan dengan tombol Bulk Approve untuk mengunduh rekap Excel berdasarkan seleksi checkbox.
    - **DILARANG UNTUK BULK ACTION**:
      - *Cash Opname (`/opname`)*: Setiap sesi fisik wajib diverifikasi dan disetujui satu per satu (Rule 2, 3, 4).
      - *Mutasi Outflow BRI (`/bri-funds/pending`)*: Setiap pengeluaran bank pada antrean pending (legacy) wajib diverifikasi maker-checker secara terpisah dengan pengecekan running balance (Rule 6, 7).
@@ -312,8 +322,9 @@ Seluruh modul operasional (`Voucher`, `Opname`, `BriFund`, `Users`, `AuditLogs`)
    - Mengetuk area kartu atau *drag & drop* mengarahkan ke pemilih berkas secara aman.
 2. **Menu Ganti Berkas (`DropdownMenu`)**:
    - Saat foto/berkas telah terunggah, pengguna dapat mengganti foto langsung via menu dropdown ("Ambil Foto Baru" atau "Pilih dari Galeri/Berkas") tanpa harus menghapus terlebih dahulu.
-3. **Dukungan Dokumen PDF Opsional (`allowPdf?: boolean`)**:
-   - Untuk berkas rekening koran bank BRI (`/opname/active`), uploader menerima berkas PDF (maksimal 2MB) dengan kartu pratinjau dokumen khusus dan tautan untuk membuka PDF di tab baru.
+3. **Dukungan Dokumen PDF Opsional (`allowPdf?: boolean`, `maxPdfSizeMB?: number`)**:
+   - Pada formulir Bon Kas Kecil (`/vouchers/create` & `/vouchers/:id/edit`), uploader menerima berkas PDF (maksimal 5 MB) selain foto terkompresi untuk mengakomodasi invoice/nota elektronik berformat PDF.
+   - Untuk berkas rekening koran bank BRI (`/opname/active`), uploader menerima berkas PDF (maksimal 2 MB) dengan kartu pratinjau dokumen khusus dan tautan untuk membuka PDF di tab baru.
 4. **Hardened Client-Side Image Compression**:
    - Dimensi dibatasi maksimal proporsional $1280 \times 1920\text{ px}$.
    - Strict Size Guard ($\le 250\text{ KB}$):

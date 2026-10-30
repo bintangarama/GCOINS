@@ -26,9 +26,11 @@ All specifications are in the [`/docs`](./docs/README.md) folder:
 | [Project Overview](./docs/00-project-overview.md) | Goals, scope, tech stack |
 | [Business Process](./docs/01-business-process.md) | Three Pockets Model, variance engine |
 | [Functional Requirements](./docs/02-functional-requirements.md) | Features per module |
+| [Business Rules](./docs/05-business-rules.md) | Non-negotiable financial & security invariants |
 | [Database Design](./docs/07-database-design.md) | Full schema (INTEGER cents) |
 | [System Architecture](./docs/09-system-architecture.md) | Deployment, file structure |
-| [Development Roadmap](./docs/14-development-roadmap.md) | Phased plan |
+| [Development Roadmap](./docs/14-development-roadmap.md) | Phased plan & test status (242 tests) |
+| [VPS Deployment Guide](./deploy/README.md) | Low-RAM Ubuntu VPS & GitHub deployment guide |
 
 ## Quick Start
 

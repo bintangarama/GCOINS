@@ -15,7 +15,7 @@
 - **Scope**: Per-store
 - **Purpose**: Cashier and financial administrator. Holds safe keys, disburses cash, records BRI mutations, inputs opname data.
 
-### SS — Store Supervisor
+### SS — Sales Superintendent
 - **Scope**: Per-store
 - **Purpose**: Operations supervisor. Approves vouchers, witnesses physical cash counting, approves legacy BRI outflows.
 
@@ -76,7 +76,7 @@ SOA (Per-store, basic)
 | Recall own `SUBMITTED` voucher back to `DRAFT` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Reclassify voucher category (before `SETTLED`) | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Approve voucher (Anti Self-Approval for all roles) | ❌ | ✅* | ✅* | ✅* | ❌ |
-| Reject voucher (reason required) | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Reject voucher (reason required, Anti Self-Approval) | ❌ | ✅* | ✅* | ✅* | ❌ |
 | Disburse cash (DISBURSED) | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Generate & Settle Rekap KKCL (SETTLED) | ❌ | ❌ | ✅ | ❌ | ❌ |
 | View Settlement Matrix & Archive | ❌ | ✅ | ✅ | ✅ | ❌ |
@@ -135,8 +135,8 @@ SOA (Per-store, basic)
 
 ## 4. Integrity & Security Rules (SoD)
 
-### Rule 1: Anti Self-Approval (*)
-SAC can approve vouchers submitted by **other** users (SOA/SS). However, if SAC submits a voucher for themselves (`requester_id == current_user.id && current_user.role == SAC`), the system **strictly prohibits self-approval**. That voucher must be approved by SS or SM.
+### Rule 1: Universal Anti Self-Approval (*)
+Approvers (`SS`, `SAC`, `SM`) can approve or reject vouchers submitted by **other** users. However, if any user submits a voucher for themselves (`requester_id == current_user.id`), the system **strictly prohibits self-approval or self-rejection across all roles** (both single and bulk approval). For example, a voucher created by `SAC` must be approved by `SS` or `SM`, and a voucher created by `SS` must be approved by `SAC`, another `SS`, or `SM`.
 
 ### Rule 2: SAC Operational Control & Tiered Dual Control on Legacy Outflows (**)
 Sesuai kebutuhan operasional kasir toko (analogi dengan Rule 16 pada *Voucher Settlement*), SAC memegang kendali operasional penuh atas fisik kasir dan rekening pooling BRI toko. Mutasi penarikan dana (OUTFLOW) langsung berstatus `APPROVED` seketika saat dicatat oleh SAC dengan penegakan ketat **Rule 7 (Zero-Deficit Guard)** guna mencegah saldo negatif.
@@ -152,10 +152,11 @@ Untuk mutasi berstatus `PENDING_SS` (legacy/riwayat lampau), persetujuan tetap t
    - Hanya Store Manager (SM) dan `SYSTEM_ADMIN` yang berwenang menugaskan role $\ge \text{SS}$.
 2. **Anti Self-Role Escalation**:
    - User DILARANG mengubah role-nya sendiri pada permintaan update profile/user.
-3. **Pembatasan Reset PIN**:
+3. **Pembatasan Reset PIN & Pencabutan Sesi Instan**:
    - SAC DILARANG me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
    - User tidak diperbolehkan me-reset PIN akunnya sendiri melalui endpoint reset (wajib menggunakan alur ubah PIN dengan verifikasi PIN lama).
    - Panjang PIN minimal 6 digit numerik.
+   - Saat user dinonaktifkan (`is_active = false`) atau PIN-nya di-reset oleh admin, seluruh sesi login aktif user tersebut di tabel `sessions` dicabut seketika.
 
 ### Rule 4: Store Isolation & Multi-Tenancy Binding
 - Users belong to exactly **one** store (`users.store_id` → `stores.id`).

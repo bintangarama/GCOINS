@@ -12,11 +12,11 @@
 │  │  ├── SSL termination (Let's Encrypt)                    │  │
 │  │  ├── gcoins.example.com → unix:/run/php-fpm.sock        │  │
 │  │  ├── /storage/app/public → static file serve            │  │
-│  │  └── client_max_body_size 2M                            │  │
+│  │  └── client_max_body_size 10M                           │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                         │                                    │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │  PHP-FPM 8.3 (3 workers, ~60MB each)                    │  │
+│  │  PHP-FPM 8.4 (ondemand low-RAM pool)                    │  │
 │  │  └── Laravel 13 Application                             │  │
 │  │      ├── Inertia.js (server adapter)                    │  │
 │  │      ├── Eloquent ORM                                   │  │
@@ -70,8 +70,12 @@ app/
 │   │   └── ChangePinAction.php
 │   ├── Voucher/
 │   │   ├── CreateVoucherAction.php
+│   │   ├── UpdateVoucherAction.php
 │   │   ├── SubmitVoucherAction.php
+│   │   ├── RecallVoucherAction.php
+│   │   ├── ReclassifyVoucherCategoryAction.php
 │   │   ├── ApproveVoucherAction.php
+│   │   ├── BulkApproveVouchersAction.php
 │   │   ├── RejectVoucherAction.php
 │   │   ├── DisburseVoucherAction.php
 │   │   ├── BatchSettleVouchersAction.php
@@ -216,11 +220,12 @@ storage/
 - **Storage URL Strategy**: Disks `public` menggunakan URL relatif `env('STORAGE_URL', '/storage')`. Ini memastikan bahwa file gambar/lampiran dapat diakses oleh browser dari origin/domain/IP mana pun tanpa dependensi pada nilai `APP_URL=http://localhost` di file `.env`.
 - **Legacy URL Sanitizer**: Model `PettyCashVoucher` memiliki accessor `receiptImageUrl` dan `itemPhotoUrl` yang otomatis menormalisasi URL lawas berawalan `http://localhost...` atau `http://127.0.0.1...` menjadi path relatif `/storage/...`.
 - **VPS Deployment Checklist**:
-  1. Buat symbolic link storage: `php artisan storage:link`
-  2. Kepemilikan folder web server: `sudo chown -R www-data:www-data storage bootstrap/cache`
-  3. Izin tulis/baca folder: `sudo chmod -R 775 storage bootstrap/cache`
-  4. Build aset frontend: `npm run build`
-  5. Cache & migrasi: `php artisan migrate --force && php artisan optimize:clear && php artisan optimize`
+  1. Konfigurasi Git filemode lintas OS: `git config core.fileMode false`
+  2. Buat symbolic link storage: `php artisan storage:link`
+  3. Kepemilikan bersama CLI & web server: `sudo chown -R $USER:www-data storage bootstrap/cache database`
+  4. Izin tulis/baca grup & SGID inheritance: `sudo chmod -R ug+rwX storage bootstrap/cache database && sudo find storage bootstrap/cache database -type d -exec chmod g+s {} +`
+  5. Build aset frontend di lokal (`npm run build`, ter-commit di `public/build`) atau di CI
+  6. Jalankan `./deploy/deploy.sh` (`migrate --force`, `optimize:clear`, `optimize`, reload PHP-FPM)
 
 ## 5. Frontend Architecture (React + Inertia)
 
@@ -250,8 +255,10 @@ resources/
 │   │   │   ├── DailyClosingSwitcher.tsx   # 5 opname types indicator switcher
 │   │   │   ├── KasBesarForm.tsx          # POS Z-Report & deposit sub-panel
 │   │   │   └── MobileApprovalCard.tsx    # Compact 1-column mobile approval card
-│   │   └── bri/
-│   │       └── BreakdownModal.tsx # Category allocation breakdown
+│   │   ├── bri/
+│   │   │   └── BreakdownModal.tsx # Category allocation breakdown
+│   │   └── voucher/
+│   │       └── ReclassifyCategoryDialog.tsx # Pre-settlement category correction modal
 │   ├── pages/
 │   │   ├── Auth/
 │   │   │   └── Login.tsx
@@ -259,8 +266,9 @@ resources/
 │   │   ├── Voucher/
 │   │   │   ├── Index.tsx
 │   │   │   ├── Create.tsx
+│   │   │   ├── Edit.tsx
 │   │   │   ├── Show.tsx
-│   │   │   ├── PendingApprovals.tsx
+│   │   │   ├── Pending.tsx
 │   │   │   └── Settlement.tsx
 │   │   ├── Opname/
 │   │   │   ├── Index.tsx

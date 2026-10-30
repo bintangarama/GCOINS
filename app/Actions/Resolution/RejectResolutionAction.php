@@ -34,7 +34,7 @@ class RejectResolutionAction
         }
 
         if (! in_array($actor->role, ['SS', 'SM', 'SYSTEM_ADMIN'], true)) {
-            throw new AuthorizationException('Hanya Store Supervisor (SS) atau Store Manager (SM) yang berwenang menolak resolusi selisih.');
+            throw new AuthorizationException('Hanya Sales Superintendent (SS) atau Store Manager (SM) yang berwenang menolak resolusi selisih.');
         }
 
         $reason = trim($rejectionReason);

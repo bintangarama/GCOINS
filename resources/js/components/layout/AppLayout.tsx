@@ -13,7 +13,6 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
-    Store as StoreIcon,
     Shield,
     Layers,
     History,
@@ -34,7 +33,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -257,12 +255,6 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                 {!isCollapsed && (
                     <div className="min-w-0 flex-1 overflow-hidden animate-in fade-in duration-200">
                         <h1 className="font-bold text-base leading-tight tracking-tight text-white">G-COINS</h1>
-                        <p
-                            className="text-xs text-slate-400 truncate"
-                            title={user?.store ? user.store.name : 'Cash Opname System'}
-                        >
-                            {user?.store ? user.store.name.replace(/^Toko\s+/i, '') : 'Cash Opname System'}
-                        </p>
                     </div>
                 )}
             </div>
@@ -448,24 +440,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                                     <ChevronDown className="size-4 text-muted-foreground" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-60">
-                                <DropdownMenuLabel>
-                                    <div className="space-y-0.5">
-                                        <p className="font-semibold text-sm leading-tight">{user?.name}</p>
-                                        <p className="text-xs text-muted-foreground font-mono">NIK: {user?.nik || '—'}</p>
-                                        {user?.store ? (
-                                            <p className="text-xs text-muted-foreground pt-1 flex items-center gap-1.5 font-normal truncate">
-                                                <StoreIcon className="size-3 text-primary shrink-0" />
-                                                <span className="truncate">{user.store.name.replace(/^Toko\s+/i, '')}</span>
-                                            </p>
-                                        ) : (
-                                            <p className="text-[11px] text-muted-foreground pt-1 font-normal">
-                                                Sistem Pusat (Global)
-                                            </p>
-                                        )}
-                                    </div>
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator />
+                            <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuItem asChild>
                                     <Link href="/profile" className="flex items-center cursor-pointer">
                                         <KeyRound className="size-4 mr-2 text-muted-foreground" />

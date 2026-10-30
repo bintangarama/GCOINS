@@ -39,7 +39,7 @@ class VerifySessionAction
 
         // Role check: SS only and same store
         if ($actor->role !== 'SS' || $actor->store_id !== $session->store_id) {
-            throw new AuthorizationException('Hanya Store Supervisor (SS) yang dapat memverifikasi cash opname sebagai saksi.');
+            throw new AuthorizationException('Hanya Sales Superintendent (SS) yang dapat memverifikasi cash opname sebagai saksi.');
         }
 
         return DB::transaction(function () use ($session, $actor, $ipAddress) {

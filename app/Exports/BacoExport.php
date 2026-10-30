@@ -456,7 +456,7 @@ class BacoExport implements Export, WithEvents, WithTitle
         // Signature column headers
         $sheet->setCellValue("A{$row}", "Dibuat Oleh,\n(Kasir / SAC)");
         $sheet->mergeCells("A{$row}:B{$row}");
-        $sheet->setCellValue("C{$row}", "Diverifikasi Saksi,\n(Store Supervisor / SS)");
+        $sheet->setCellValue("C{$row}", "Diverifikasi Saksi,\n(Sales Superintendent / SS)");
         $sheet->setCellValue("D{$row}", "Disetujui Final,\n(Store Manager / SM)");
         $sheet->mergeCells("D{$row}:E{$row}");
 

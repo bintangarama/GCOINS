@@ -6,11 +6,13 @@
 stateDiagram-v2
     [*] --> DRAFT: SOA/SS/SAC creates voucher
 
-    DRAFT --> SUBMITTED: Owner uploads receipt & submits
+    DRAFT --> DRAFT: Owner edits draft\n(UPDATE_VOUCHER)
+    DRAFT --> SUBMITTED: Owner attaches receipt (photo/PDF) & submits
     DRAFT --> [*]: Owner deletes draft (soft delete)
 
-    SUBMITTED --> APPROVED_SS: SS/SAC/SM approves\n(Anti self-approval enforced)
-    SUBMITTED --> REJECTED: SS/SAC/SM rejects\n(reason mandatory)
+    SUBMITTED --> DRAFT: Owner recalls before approval\n(RECALL_VOUCHER)
+    SUBMITTED --> APPROVED_SS: SS/SAC/SM approves\n(Universal Anti Self-Approval enforced)
+    SUBMITTED --> REJECTED: SS/SAC/SM rejects\n(reason mandatory, Anti Self-Approval enforced)
 
     APPROVED_SS --> DISBURSED: SAC hands physical cash\n(enters K_bon)
     APPROVED_SS --> REJECTED: Cancelled before disbursement
@@ -20,23 +22,28 @@ stateDiagram-v2
 
     REJECTED_REFUND_PENDING --> REFUNDED: Staff returns cash to cashier\n(exits K_bon)
 
-    REJECTED --> [*]: Terminal state
-    SETTLED --> [*]: Terminal state
-    REFUNDED --> [*]: Terminal state
+    REJECTED --> [*]: Terminal state (category locked)
+    SETTLED --> [*]: Terminal state (category locked)
+    REFUNDED --> [*]: Terminal state (category locked)
 ```
+
+> **In-Place Category Reclassification (`RECLASSIFY_CATEGORY`)**: Selama voucher berstatus `SUBMITTED`, `APPROVED_SS`, atau `DISBURSED` (sebelum masuk ke `SETTLED`), `SS`, `SAC`, atau `SM` dapat mengoreksi `category` pos beban tanpa mengubah `status` maupun `amount_cents`, dengan pencatatan audit wajib `RECLASSIFY_CATEGORY`.
 
 ### Transition Table
 
 | From | To | Actor | Conditions | Side Effects |
 |---|---|---|---|---|
 | - | DRAFT | SOA/SS/SAC | — | Generate voucher number |
-| DRAFT | SUBMITTED | Owner | Foto struk wajib (`receipt_image` != null) | Notify SS/SAC |
+| DRAFT | DRAFT | Owner | Only own drafts (`status == DRAFT`) | Update fields/attachments, log `UPDATE_VOUCHER` |
+| DRAFT | SUBMITTED | Owner | Bukti struk wajib (`receipt_image` foto/PDF != null) | Log `SUBMIT_VOUCHER`, notify SS/SAC |
 | DRAFT | (deleted) | Owner | Only own drafts | Soft delete |
-| SUBMITTED | APPROVED_SS | SS/SAC/SM | Anti self-approval check | Notify SAC |
-| SUBMITTED | REJECTED | SS/SAC/SM | Reason text required | Notify requester |
+| SUBMITTED | DRAFT | Owner | Only own submitted voucher before approval/rejection | Clear `submitted_at`, log `RECALL_VOUCHER` |
+| SUBMITTED | APPROVED_SS | SS/SAC/SM | Universal Anti Self-Approval (`requester_id != user.id`, single or bulk) | Log `APPROVE_VOUCHER`, notify SAC |
+| SUBMITTED | REJECTED | SS/SAC/SM | Universal Anti Self-Approval + Reason text required | Log `REJECT_VOUCHER`, notify requester |
+| SUBMITTED / APPROVED_SS / DISBURSED | *(same status)* | SS/SAC/SM | Reclassify active expense `category` only | Update `category`, log `RECLASSIFY_CATEGORY` |
 | APPROVED_SS | DISBURSED | SAC | — | Set disbursed_at, enters K_bon |
 | APPROVED_SS | REJECTED | SAC/SM | — | Notify requester |
-| DISBURSED | SETTLED | SAC | Grouped into `PettyCashSettlement` | Set `settled_at`, set `settlement_id`, exits K_bon |
+| DISBURSED | SETTLED | SAC | Grouped into `PettyCashSettlement` | Set `settled_at`, set `settlement_id`, exits K_bon, locks category |
 | DISBURSED | REJECTED_REFUND_PENDING | SAC/SM | — | Staff must return cash |
 | REJECTED_REFUND_PENDING | REFUNDED | SAC | Cash returned confirmed | Exits K_bon |
 | (import) | SETTLED | SM/SAC | Excel commit with status `SETTLED` | `approved_by` & `disbursed_by` set to actor; backdated; exits K_bon |

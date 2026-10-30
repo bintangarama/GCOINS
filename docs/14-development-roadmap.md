@@ -12,9 +12,10 @@
 | Phase 6 | Polish & Production Baseline | Week 6-7 | Complete ✅ |
 | Phase 7 | Full 5 Item Engine, Precision Ledger & UX | Week 8 | Complete ✅ |
 | Phase 8 | Operational Ergonomics, Dark Mode & Table UX | Week 9 | Complete ✅ |
-| Phase 9 | Analytics & Mobile Enhancements | Future | Planned ⏳ |
+| Phase 9 | Security Hardening & Complete Voucher Lifecycle | Week 10 | Complete ✅ |
+| Phase 10 | Analytics & Mobile Enhancements | Future | Planned ⏳ |
 
-**Scope Status**: Scope Penuh 5 Item Cash Count Engine, SoD Hardening, Precision Accounting, Deep Midnight Slate Dark Mode, Layout Ergonomics, dan Selective Bulk Actions selesai diimplementasikan dengan 214 pengujian unit & fitur lulus 100% (799 assertions).
+**Scope Status**: Scope Penuh 5 Item Cash Count Engine, Comprehensive Security Hardening, Universal Anti Self-Approval, Complete Voucher Lifecycle (Draft Edit, Recall `SUBMITTED → DRAFT`, Pre-Settlement Category Reclassification, PDF Attachment Support), Deep Midnight Slate Dark Mode, Layout Ergonomics, dan Dual Selective Bulk Actions selesai diimplementasikan dengan 242 pengujian unit & fitur lulus 100% (931 assertions).
 
 ---
 
@@ -456,7 +457,43 @@
 
 ---
 
-## Phase 9 — Analytics & Mobile Enhancements (Future / Post-MVP)
+## Phase 9 — Security Hardening & Complete Voucher Lifecycle (Week 10) — Complete ✅
+
+### Objectives
+- Penutupan celah keamanan menyeluruh (Import Commit Re-Validation, Strict File/PDF MIME Validation, RBAC Authorization Audit, Immediate Session Revocation, Deployment Script Hardening)
+- Penegakan **Universal Anti Self-Approval (Rule 5)** untuk seluruh role approver (`SAC`, `SS`, `SM`) pada persetujuan tunggal maupun massal
+- Dual Bulk Action Bar pada `/vouchers` (Bulk Approve berdampingan dengan Bulk Export Excel)
+- Fleksibilitas siklus hidup Bon Kas Kecil yang patuh audit: **Edit Draft**, **Recall `SUBMITTED → DRAFT`**, dan **Reklasifikasi Kategori Sebelum `SETTLED`**
+
+### Tasks
+
+#### 9.1 Comprehensive Security Hardening & PDF Support
+- [x] Server-side row re-validation & role hierarchy enforcement pada `/admin/import-export/commit` (`ImportUsersAction`, `ImportVouchersAction`, `ImportBriPostingsAction`, `ImportCategoriesAction`)
+- [x] Hardening validasi unggah berkas bon kas kecil (`'file'`, `'mimes:jpg,jpeg,png,webp,pdf'`, `'max:5120'`) beserta dukungan upload & pratinjau dokumen `.pdf` (hingga 5 MB)
+- [x] Penambahan `Gate::authorize` pada titik endpoint yang belum terlindungi (`OpnameController::storeReferenceLine`/`destroyReferenceLine`, `PettyCashCategoryController::index`, `VoucherController::pending`, `PettyCashSettlementController`)
+- [x] Pencabutan sesi aktif seketika (`sessions` purge + `EnsureStoreScope` active user guard) saat akun dinonaktifkan (`DeactivateUserAction`) atau PIN di-reset (`ResetPinAction`)
+- [x] Hardening script produksi VPS: `deploy/cron-backup.sh` (`umask 077`, `chmod 700/600`), `deploy/deploy.sh` (opsional `DEPLOY_BYPASS_SECRET` tanpa hardcoded secret), dan panduan permission `ug+rwX` + SGID + `git config core.fileMode false`
+
+#### 9.2 Universal Anti Self-Approval & Dual Bulk Actions
+- [x] Ekspansi Rule 5 Anti Self-Approval ke seluruh role (`SAC`, `SS`, `SM`) pada `PettyCashVoucherPolicy`, `ApproveVoucherAction`, `BulkApproveVouchersAction`, dan `RejectVoucherAction`
+- [x] Proteksi UI universal pada `/vouchers/pending`, `/vouchers`, dan `/vouchers/{voucher}` (checkbox disabled / indikator `Milik Sendiri`)
+- [x] Integrasi tombol `Setujui Bon Terpilih` berdampingan dengan `Export Excel Terpilih` pada `DataTableBulkBar` halaman `/vouchers`
+
+#### 9.3 Editable Draft, Voucher Recall & Pre-Settlement Category Reclassification
+- [x] Fitur **Edit Draft** (`GET /vouchers/{voucher}/edit`, `PUT /vouchers/{voucher}`, `UpdateVoucherRequest`, `UpdateVoucherAction`, `Voucher/Edit.tsx`) dengan opsi pertahankan/ganti/hapus berkas bukti dan log `UPDATE_VOUCHER` / `SUBMIT_VOUCHER`
+- [x] Fitur **Tarik Kembali ke Draft (`SUBMITTED → DRAFT`)** (`POST /vouchers/{voucher}/recall`, `RecallVoucherAction`) khusus pemohon asli sebelum diproses approver dengan log `RECALL_VOUCHER`
+- [x] Fitur **Ubah Kategori Pos Beban Sebelum `SETTLED`** (`PUT /vouchers/{voucher}/category`, `ReclassifyVoucherCategoryAction`, `ReclassifyCategoryDialog.tsx`) pada halaman Detail Bon & persiapan Rekap KKCL `/vouchers/settlement` dengan log `RECLASSIFY_CATEGORY` tanpa menyentuh nominal/status
+- [x] Penambahan suite pengujian lengkap (`SecurityHardeningTest`, `UpdateDraftVoucherTest`, `RecallAndReclassifyVoucherTest`, ekspansi `SelfApprovalPreventionTest` & `BulkApproveVouchersTest` — total **242 tests, 931 assertions, 100% lulus**)
+
+### Acceptance Criteria
+- ✅ Seluruh celah keamanan (import tampering, MIME bypass, session zombie, self-approval lintas role) tertutup dan teruji otomatis
+- ✅ Dokumen nota/invoice berformat `.pdf` (≤ 5 MB) dapat diunggah dan dipratinjau pada bon kas kecil
+- ✅ Pemohon dapat mengedit bon `DRAFT` atau menarik bon `SUBMITTED` kembali ke `DRAFT` sebelum disetujui
+- ✅ `SS`/`SAC`/`SM` dapat mereklasifikasi kategori bon yang salah pilih hingga sebelum dikunci ke Rekap KKCL (`SETTLED`) dengan jejak audit lengkap
+
+---
+
+## Phase 10 — Analytics & Mobile Enhancements (Future / Post-MVP)
 
 ### Planned Enhancements
 - [ ] Dashboard analytics (grafik tren variansi per tipe, velocity rekonsiliasi kasir)

@@ -56,7 +56,7 @@ export const STATUS_META: Record<string, StatusMeta> = {
     SYSTEM_ADMIN: { label: 'Admin Sistem', tone: 'danger', icon: Shield },
     SM: { label: 'Store Manager', tone: 'warning', icon: Shield },
     SAC: { label: 'Kasir Utama (SAC)', tone: 'info', icon: UserCheck },
-    SS: { label: 'Supervisor (SS)', tone: 'progress', icon: UserCheck },
+    SS: { label: 'Sales Superintendent (SS)', tone: 'progress', icon: UserCheck },
     SOA: { label: 'Officer (SOA)', tone: 'neutral', icon: UserCheck },
 };
 

@@ -905,7 +905,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                 {/* ==================================================================================== */}
                 {/* 4. ACTIONS & RECENT ACTIVITY                                                         */}
                 {/* ==================================================================================== */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className={cn('grid grid-cols-1 gap-6', !isSOA && 'lg:grid-cols-2')}>
                     {/* Quick Actions Panel */}
                     <Card>
                         <CardHeader>
@@ -1053,56 +1053,58 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                     </Card>
 
                     {/* Recent Activity Feed */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Activity className="w-4 h-4 text-primary" />
-                                    <CardTitle className="text-base font-bold text-foreground">Aktivitas Terbaru</CardTitle>
+                    {!isSOA && (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-primary" />
+                                        <CardTitle className="text-base font-bold text-foreground">Aktivitas Terbaru</CardTitle>
+                                    </div>
+                                    {['SAC', 'SM', 'SYSTEM_ADMIN'].includes(user?.role || '') && (
+                                        <Link
+                                            href="/admin/audit-logs"
+                                            className="text-xs font-medium text-primary hover:underline"
+                                        >
+                                            Lihat Semua
+                                        </Link>
+                                    )}
                                 </div>
-                                {['SAC', 'SM', 'SYSTEM_ADMIN'].includes(user?.role || '') && (
-                                    <Link
-                                        href="/admin/audit-logs"
-                                        className="text-xs font-medium text-primary hover:underline"
-                                    >
-                                        Lihat Semua
-                                    </Link>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {data.recent_activity.length === 0 ? (
-                                <div className="py-6 text-center">
-                                    <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-                                    <p className="text-xs text-muted-foreground font-medium">Belum ada aktivitas tercatat</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-0 -mt-1">
-                                    {data.recent_activity.map((item) => (
-                                        <div key={item.id} className="flex items-start gap-3 py-2.5 border-b border-border last:border-0">
-                                            <div className="p-1.5 rounded-md bg-muted/60 shrink-0 mt-0.5">
-                                                {getActivityIcon(item.entity_name)}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-medium text-foreground leading-snug">
-                                                    <span className="font-semibold">{item.performer}</span>
-                                                    {' — '}
-                                                    <span className="text-muted-foreground">{item.action}</span>
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
-                                                    {item.entity_name}
-                                                </p>
-                                                <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground/80">
-                                                    <Clock className="w-3 h-3" />
-                                                    <span>{formatRelativeTime(item.created_at)}</span>
+                            </CardHeader>
+                            <CardContent>
+                                {data.recent_activity.length === 0 ? (
+                                    <div className="py-6 text-center">
+                                        <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                                        <p className="text-xs text-muted-foreground font-medium">Belum ada aktivitas tercatat</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-0 -mt-1">
+                                        {data.recent_activity.map((item) => (
+                                            <div key={item.id} className="flex items-start gap-3 py-2.5 border-b border-border last:border-0">
+                                                <div className="p-1.5 rounded-md bg-muted/60 shrink-0 mt-0.5">
+                                                    {getActivityIcon(item.entity_name)}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-medium text-foreground leading-snug">
+                                                        <span className="font-semibold">{item.performer}</span>
+                                                        {' — '}
+                                                        <span className="text-muted-foreground">{item.action}</span>
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 font-mono truncate">
+                                                        {item.entity_name}
+                                                    </p>
+                                                    <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground/80">
+                                                        <Clock className="w-3 h-3" />
+                                                        <span>{formatRelativeTime(item.created_at)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </AppLayout>

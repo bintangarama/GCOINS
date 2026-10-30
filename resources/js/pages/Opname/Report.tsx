@@ -583,7 +583,7 @@ export default function OpnameReportPage({
                             <div className="flex flex-col justify-between p-3">
                                 <div>
                                     <div className="font-bold text-slate-800">Diverifikasi Saksi,</div>
-                                    <div className="text-[10px] text-slate-500 font-semibold">(Store Supervisor / SS)</div>
+                                    <div className="text-[10px] text-slate-500 font-semibold">(Sales Superintendent / SS)</div>
                                 </div>
                                 <div className="h-20 flex items-center justify-center text-slate-300 italic text-[11px] border-b border-dashed border-slate-300 my-2">
                                     (Tanda Tangan Basah)

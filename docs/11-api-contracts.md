@@ -67,25 +67,30 @@ These are used in flash messages and policy rejections:
 ### Vouchers & Settlement Rekap (KKCL)
 | Method | URI | Controller | Action |
 |---|---|---|---|
-| GET | `/vouchers` | `VoucherController@index` | List with filters |
+| GET | `/vouchers` | `VoucherController@index` | List with filters, sorting & dual bulk actions |
 | GET | `/vouchers/create` | `VoucherController@create` | Create form (loads active categories) |
-| POST | `/vouchers` | `VoucherController@store` | Save draft/submit (receipt_date support, receipt guard enforced) |
-| GET | `/vouchers/{voucher}` | `VoucherController@show` | Detail view |
-| DELETE | `/vouchers/{voucher}` | `VoucherController@destroy` | Soft delete draft |
-| POST | `/vouchers/{voucher}/submit` | `VoucherController@submit` | Submit for review |
-| POST | `/vouchers/{voucher}/approve` | `VoucherController@approve` | Approve (Anti self-approval enforced) |
-| POST | `/vouchers/{voucher}/reject` | `VoucherController@reject` | Reject (reason mandatory) |
+| POST | `/vouchers` | `VoucherController@store` | Save draft/submit (`receipt_date`, photo/PDF ≤ 5 MB, receipt guard enforced) |
+| GET | `/vouchers/{voucher}` | `VoucherController@show` | Detail view & timeline |
+| GET | `/vouchers/{voucher}/edit` | `VoucherController@edit` | Edit draft form (draft owner only) |
+| PUT | `/vouchers/{voucher}` | `VoucherController@update` | Update draft or save & submit (draft owner only) |
+| DELETE | `/vouchers/{voucher}` | `VoucherController@destroy` | Soft delete draft (draft owner only) |
+| POST | `/vouchers/{voucher}/submit` | `VoucherController@submit` | Submit draft for review |
+| POST | `/vouchers/{voucher}/recall` | `VoucherController@recall` | Recall own `SUBMITTED` voucher back to `DRAFT` |
+| PUT | `/vouchers/{voucher}/category` | `VoucherController@reclassifyCategory` | Reclassify expense category prior to `SETTLED` (`SS`/`SAC`/`SM`) |
+| POST | `/vouchers/{voucher}/approve` | `VoucherController@approve` | Approve (Universal Anti Self-Approval enforced for all roles) |
+| POST | `/vouchers/bulk-approve` | `VoucherController@bulkApprove` | Atomic bulk approval (Universal Anti Self-Approval enforced) |
+| POST | `/vouchers/{voucher}/reject` | `VoucherController@reject` | Reject (reason mandatory, Universal Anti Self-Approval enforced) |
 | POST | `/vouchers/{voucher}/disburse` | `VoucherController@disburse` | Disburse cash (SAC only) |
 | POST | `/vouchers/{voucher}/cancel` | `VoucherController@cancel` | Cancel post-disburse |
 | POST | `/vouchers/{voucher}/refund` | `VoucherController@refund` | Confirm refund (SAC only) |
-| GET | `/vouchers/pending` | `VoucherController@pending` | Approval queue |
+| GET | `/vouchers/pending` | `VoucherController@pending` | Approval queue (`Gate::authorize` protected) |
 | GET | `/vouchers/settlements` | `PettyCashSettlementController@index` | Settlement archive list |
 | POST | `/vouchers/settlements` | `PettyCashSettlementController@store` | Generate KKCL & instant settle |
 | GET | `/vouchers/settlements/{settlement}` | `PettyCashSettlementController@show` | Columnar matrix workspace (A4 print) |
-| GET | `/vouchers/settlements/{settlement}/export` | `PettyCashSettlementController@export` | Export matrix spreadsheet (.xlsx) |
-| GET | `/vouchers/settlement` | `VoucherController@settlement` | Legacy settlement page |
+| GET | `/vouchers/settlements/{settlement}/export` | `PettyCashSettlementController@exportExcel` | Export matrix spreadsheet (.xlsx) |
+| GET | `/vouchers/settlement` | `VoucherController@settlement` | Pending `DISBURSED` settlement workspace (supports inline category reclassification) |
 | POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Legacy batch settle |
-| GET | `/vouchers/export` | `VoucherController@export` | Export filtered vouchers (.xlsx/.csv, col C Tanggal Bon, col N KKCL) |
+| GET | `/vouchers/export` | `VoucherController@export` | Export filtered/selected vouchers (.xlsx/.csv, authorized via `export` policy) |
 
 ### Cash Opname, Reference Lines & Resolutions
 | Method | URI | Controller | Action |
@@ -160,7 +165,7 @@ These are used in flash messages and policy rejections:
 | POST | `/admin/import-export/preview` | `ImportExportController@preview` | Validate uploaded Excel (dynamic categories) |
 | POST | `/admin/import-export/commit` | `ImportExportController@commit` | Commit validated rows to database |
 
-> **Catatan Proteksi CSRF Import**: Request AJAX `/admin/import-export/preview` dan `/commit` memvalidasi CSRF token melalui header `X-CSRF-TOKEN` (dari tag `<meta name="csrf-token">`) atau header `X-XSRF-TOKEN` (dari cookie terenkripsi browser `XSRF-TOKEN`).
+> **Catatan Proteksi CSRF & Re-Validasi Server Import**: Request AJAX `/admin/import-export/preview` dan `/commit` memvalidasi CSRF token melalui header `X-CSRF-TOKEN` atau `X-XSRF-TOKEN`. Saat `/commit`, server wajib memvalidasi ulang seluruh struktur dan aturan bisnis setiap baris (anti-tampering) serta menegakkan hierarki SoD (misal `SAC` ditolak mengimpor akun dengan role $\ge$ `SS`).
 
 ### Notifications
 | Method | URI | Controller | Action |
@@ -170,35 +175,37 @@ These are used in flash messages and policy rejections:
 | POST | `/notifications/read-all` | `NotificationController@markAllAsRead` | Mark all notifications as read |
 | DELETE | `/notifications/{notification}` | `NotificationController@destroy` | Delete notification |
 
-> **Catatan Media & File Upload**: Tidak ada rute umum `/upload`. Seluruh pengunggahan dokumen (foto nota struk, foto barang, scan rekening koran, foto struk Z-Report, dan scan BACO fisik) dikompresi di sisi klien (WebP $\le$ 250 KB; file PDF hingga 2 MB didukung pada rekening koran) dengan antarmuka ganda (Kamera Langsung & Pilih File / Galeri) dan dikirim langsung sebagai *multipart form payload* ke rute entitas masing-masing.
+> **Catatan Media & File Upload**: Tidak ada rute umum `/upload`. Seluruh pengunggahan dokumen (foto/PDF nota struk, foto/PDF barang, scan rekening koran, foto struk Z-Report, dan scan BACO fisik) dikompresi di sisi klien untuk gambar (WebP $\le$ 250 KB) serta mendukung dokumen `.pdf` (hingga 5 MB pada Bon Kas Kecil dan 2 MB pada rekening koran BRI) dengan antarmuka ganda (Kamera Langsung & Pilih File / Galeri) dan dikirim langsung sebagai *multipart form payload* ke rute entitas masing-masing.
 
 > **Unread Notification Count**: Disediakan secara terpusat oleh server di setiap response Inertia melalui shared props `$page.props.auth.unreadNotificationsCount` via `HandleInertiaRequests` middleware.
 
 ## 4. Validation Rules (Form Requests)
 
-### CreateVoucherRequest
+### StoreVoucherRequest & UpdateVoucherRequest
 ```php
 [
-    'amount' => 'required|integer|min:1|max:' . $imprestFundCents,
-    'purpose' => 'required|string|max:255',
-    'category' => [
-        'required',
-        'string',
-        'max:50',
-        Rule::exists('petty_cash_categories', 'code')->where(function ($query) {
-            $query->where('is_active', true)
-                ->where(fn ($q) => $q->whereNull('store_id')->orWhere('store_id', auth()->user()->store_id));
-        }),
-    ],
-    'is_submit' => 'nullable|boolean',
+    'amount_cents' => ['required', 'integer', 'min:1', "max:{$imprestFundCents}"],
+    'receipt_date' => ['nullable', 'date'],
+    'purpose' => ['required', 'string', 'max:255'],
+    'category' => ['required', 'string', Rule::in($validCategories)],
     'receipt_image' => [
-        Rule::requiredIf(fn () => (bool) request('is_submit')),
-        'nullable',
+        ($isSubmit && ! $hasExistingReceipt) ? 'required' : 'nullable',
         'file',
-        'mimes:webp,jpg,jpeg,png',
-        'max:2048',
+        'mimes:jpg,jpeg,png,webp,pdf',
+        'max:5120', // 5 MB
     ],
-    'item_photo' => 'nullable|file|mimes:webp,jpg,jpeg,png|max:2048',
+    'item_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+    'remove_receipt_image' => ['nullable', 'boolean'], // UpdateVoucherRequest only
+    'remove_item_photo' => ['nullable', 'boolean'],    // UpdateVoucherRequest only
+    'is_submit' => ['nullable', 'boolean'],
+]
+```
+
+### ReclassifyVoucherCategoryRequest
+```php
+[
+    'category' => ['required', 'string', Rule::in($validCategories)],
+    'reason' => ['nullable', 'string', 'max:255'],
 ]
 ```
 

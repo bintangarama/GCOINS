@@ -1479,7 +1479,7 @@ export default function Active({
                             Ajukan Verifikasi Saksi
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground text-sm">
-                            Sesi Cash Opname akan diteruskan ke Store Supervisor (SS) untuk menyaksikan dan memverifikasi fisik uang di brankas toko.
+                            Sesi Cash Opname akan diteruskan ke Sales Superintendent (SS) untuk menyaksikan dan memverifikasi fisik uang di brankas toko.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="bg-muted/40 p-4 rounded-lg border border-border text-xs space-y-2">
@@ -1542,7 +1542,7 @@ export default function Active({
                             Verifikasi Saksi Fisik Brankas
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground text-sm">
-                            Sebagai Store Supervisor (SS), Anda bertindak sebagai saksi fisik dalam penghitungan uang kas di brankas toko.
+                            Sebagai Sales Superintendent (SS), Anda bertindak sebagai saksi fisik dalam penghitungan uang kas di brankas toko.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="bg-emerald-50/60 dark:bg-emerald-950/40 p-4 rounded-lg border border-emerald-200 dark:border-emerald-900 text-xs space-y-2 text-emerald-900 dark:text-emerald-200">

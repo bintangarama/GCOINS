@@ -44,7 +44,7 @@ class RejectSessionAction
         // Validate actor & state transition
         if ($session->status === CashOpnameSession::STATUS_SUBMITTED) {
             if ($actor->role !== 'SS' || $actor->store_id !== $session->store_id) {
-                throw new AuthorizationException('Hanya Store Supervisor (SS) yang dapat menolak sesi pada tahap verifikasi saksi.');
+                throw new AuthorizationException('Hanya Sales Superintendent (SS) yang dapat menolak sesi pada tahap verifikasi saksi.');
             }
         } elseif ($session->status === CashOpnameSession::STATUS_VERIFIED_SS) {
             if ($actor->role !== 'SM' || $actor->store_id !== $session->store_id) {

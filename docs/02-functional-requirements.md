@@ -11,9 +11,9 @@
 ### FR-AUTH-02: Logout
 - Destroy session cookie, redirect to login page
 
-### FR-AUTH-03: Session Check
-- Every page load validates active session
-- Auto-redirect to login if session expired
+### FR-AUTH-03: Session Check & Immediate Revocation
+- Every page load validates active session and verifies `user.is_active === true` via `EnsureStoreScope` middleware
+- Auto-redirect to login if session expired or account is deactivated mid-session (session immediately invalidated)
 
 ### FR-AUTH-04: Change PIN
 - Authenticated user can change their own PIN
@@ -25,12 +25,12 @@
 - **Segregation of Duties (SoD)**:
   - SAC DILARANG membuat atau mengubah user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`. Hanya SM dan SYSTEM_ADMIN yang berwenang mengelola role $\ge$ SS.
   - User DILARANG mengubah rolenya sendiri (anti-privilege escalation).
-- Deactivate user: soft — set `is_active = false`. User tidak bisa menonaktifkan dirinya sendiri.
+- Deactivate user: soft — set `is_active = false` dan langsung menghapus seluruh sesi aktif (`sessions` table purge) milik user tersebut. User tidak bisa menonaktifkan dirinya sendiri.
 - **PIN Reset Safeguards**:
   - SAC hanya boleh me-reset PIN user dengan role `SOA` atau `SAC`.
   - SAC DILARANG me-reset PIN milik `SS`, `SM`, atau `SYSTEM_ADMIN`.
   - User tidak boleh me-reset PIN miliknya sendiri via endpoint admin.
-  - Reset PIN menghasilkan PIN sementara 6 digit tanpa mencetak PIN terbuka di response log.
+  - Reset PIN menghasilkan PIN sementara 6 digit tanpa mencetak PIN terbuka di response log, serta otomatis mencabut seluruh sesi aktif user target di tabel `sessions`.
 
 ### FR-AUTH-06: SYSTEM_ADMIN Store Management
 - Create new store (code, name, address, imprest fund)
@@ -42,29 +42,31 @@
 
 ## Module 2: Voucher Bon Kas Kecil (Petty Cash Voucher)
 
-### FR-VCH-01: Create Draft
+### FR-VCH-01: Create & Edit Draft
 - Roles: SOA, SS, SAC
-- Fields: amount (> 0, ≤ imprest fund), receipt_date (optional, default: today), purpose, category, receipt photo, item photo
+- Fields: amount (> 0, ≤ imprest fund), receipt_date (optional, default: today), purpose, category, receipt attachment (photo/PDF), item attachment (photo/PDF)
 - Auto-generate voucher number: `{SEQ}/{TYPE_CODE}/{STORE_CODE}/{ROMAN_MONTH}/{YEAR}`
 - Status: `DRAFT`
-- Photos compressed client-side to WebP (≤ 250KB); support dual mobile actions (kamera langsung & galeri/file)
+- Photos compressed client-side to WebP (≤ 250KB); PDF documents supported up to 5 MB; dual mobile actions (kamera langsung & galeri/file)
+- **Edit Draft (`GET /vouchers/{voucher}/edit`, `PUT /vouchers/{voucher}`)**: Pemohon asli (`requester_id == current_user.id`) dapat mengubah nominal, tanggal bon, keperluan, kategori, serta mempertahankan/mengganti/menghapus berkas bukti selama status masih `DRAFT` (mencatat `UPDATE_VOUCHER`), atau langsung menyimpan sekaligus mengajukan (`SUBMIT_VOUCHER`).
 
 ### FR-VCH-02: Delete Draft
 - Only draft owner can delete their own draft
 - Soft delete (`deleted_at` timestamp)
 
-### FR-VCH-03: Submit for Review
+### FR-VCH-03: Submit for Review & Recall to Draft (`DRAFT ⇄ SUBMITTED`)
 - Owner submits draft → status becomes `SUBMITTED`
-- Appears in approval queue for SS/SAC
+- Appears in approval queue for SS/SAC/SM
+- **Recall to Draft (`POST /vouchers/{voucher}/recall`)**: Selama bon masih berstatus `SUBMITTED` (belum disetujui/ditolak), pemohon asli (`requester_id == current_user.id`) dapat menarik kembali bon ke status `DRAFT` untuk merevisi data/lampiran dengan pencatatan audit `RECALL_VOUCHER`.
 
 ### FR-VCH-04: Approve Voucher
 - Roles: SS, SAC, SM
-- **Anti Self-Approval**: If requester is SAC, SAC cannot approve their own voucher. Must be approved by SS or SM.
+- **Universal Anti Self-Approval (Rule 5)**: Pembuat bon (`requester_id == current_user.id`) DILARANG menyetujui bon miliknya sendiri pada seluruh role (`SAC`, `SS`, maupun `SM`). Bon harus disetujui oleh approver lain yang berwenang.
 - Status: `SUBMITTED` → `APPROVED_SS`
 - Triggers in-app notification to SAC for disbursement
 
 ### FR-VCH-05: Reject Voucher
-- Roles: SS, SAC, SM
+- Roles: SS, SAC, SM (terikat **Universal Anti Self-Approval**: pemohon dilarang menolak bon miliknya sendiri)
 - Rejection reason is **mandatory**
 - Status: `SUBMITTED` → `REJECTED`
 - Triggers in-app notification to requester
@@ -120,10 +122,10 @@
   - Direct Web Print A4 Landscape (`@media print` CSS 1:1 replika fisik lembar Karawang `GAM435`)
   - Excel Columnar Matrix Pivot (`.xlsx`) dengan formula `=SUM()` dan kotak tanda tangan SAC & SM
 
-### FR-VCH-14: Validasi Foto Bukti Pengajuan (Receipt Image Guard)
-- Pengajuan langsung (`is_submit: true` atau tombol "Ajukan Sekarang") **WAJIB** melampirkan foto kuitansi/struk fisik
-- Pembuatan draft (`is_submit: false` atau tombol "Simpan Sebagai Draft") mengizinkan penyimpanan tanpa foto bukti
-- Validasi FormRequest mengembalikan error HTTP 422 (*Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.*) dan ditampilkan langsung di bawah input uploader tanpa menyebabkan crash 500
+### FR-VCH-14: Validasi Bukti Pengajuan (Receipt Evidence Guard)
+- Pengajuan langsung (`is_submit: true` atau tombol "Ajukan Sekarang" baik saat buat baru maupun edit draft) **WAJIB** melampirkan foto atau dokumen PDF kuitansi/struk fisik (`jpg,jpeg,png,webp,pdf` ≤ 5 MB)
+- Pembuatan atau penyimpanan draft (`is_submit: false` atau tombol "Simpan Sebagai Draft") mengizinkan penyimpanan tanpa berkas bukti
+- Validasi FormRequest (`StoreVoucherRequest` & `UpdateVoucherRequest`) mengembalikan error HTTP 422 (*Foto kuitansi/bukti wajib dilampirkan sebelum pengajuan.*) dan ditampilkan langsung di bawah input uploader tanpa menyebabkan crash 500
 - Action layer dilindungi dengan `ValidationException` jika dipanggil di luar FormRequest
 
 ### FR-VCH-15: Tanggal Bon Fisik (Receipt Date)
@@ -136,15 +138,21 @@
 ### FR-VCH-16: Persetujuan Massal Bon (Bulk Approval)
 - **Roles**: SS, SAC, SM
 - **Endpoint**: `POST /vouchers/bulk-approve`
-- **Fitur**: Multi-select voucher berstatus `SUBMITTED` dari antrean `/vouchers/pending`.
-- **Anti Self-Approval Enforcement**: Jika pengguna login adalah kasir (SAC), sistem memblokir pemilihan voucher milik sendiri di UI (checkbox disabled + badge penanda) dan memvalidasi ketat di Action layer (`BulkApproveVouchersAction`).
+- **Fitur**: Multi-select voucher berstatus `SUBMITTED` baik dari antrean `/vouchers/pending` maupun langsung dari daftar `/vouchers` (berdampingan dengan tombol Export Excel).
+- **Universal Anti Self-Approval Enforcement**: Berlaku untuk seluruh role approver (`SS`, `SAC`, `SM`). Sistem memblokir persetujuan voucher milik sendiri di UI (checkbox disabled pada `/vouchers/pending` atau indikator nonaktif `Milik Sendiri (Anti Self-Approve)` pada `/vouchers`) dan memvalidasi ketat di Action layer (`BulkApproveVouchersAction`).
 - **Atomicity Guard**: Seluruh batch voucher dieksekusi dalam satu transaksi database (`DB::transaction`). Jika ditemukan 1 saja voucher milik sendiri atau berstatus invalid, seluruh batch dibatalkan secara atomik dan mengembalikan HTTP 403 `ForbiddenSelfApprovalException`.
 - **Audit Trail**: Setiap voucher yang disetujui dalam batch otomatis mencatat entri log audit tersendiri (`APPROVE_VOUCHER`).
 
 ### FR-VCH-17: Ekspor Excel Selektif (Bulk Export)
-- **Roles**: All authenticated store roles
+- **Roles**: SAC, SS, SM, SYSTEM_ADMIN (`PettyCashVoucherPolicy::export`; SOA tidak memiliki akses ekspor)
 - **Endpoint**: `GET /vouchers/export?voucher_ids={id1,id2,...}`
-- **Fitur**: Pengguna dapat mencentang voucher tertentu pada daftar `/vouchers` dan mengklik "Export Excel Terpilih" pada `DataTableBulkBar` untuk mengunduh rekap spreadsheet (.xlsx) hanya dari voucher yang dipilih.
+- **Fitur**: Pengguna yang berwenang dapat mencentang voucher tertentu pada daftar `/vouchers` dan mengklik "Export Excel Terpilih" pada `DataTableBulkBar` (berdampingan dengan tombol "Setujui Bon Terpilih" jika terdapat bon `SUBMITTED` milik user lain yang dicentang) untuk mengunduh rekap spreadsheet (.xlsx) hanya dari voucher yang dipilih.
+
+### FR-VCH-18: Reklasifikasi Kategori Pos Beban Sebelum Settlement
+- **Roles**: SS, SAC, SM
+- **Endpoint**: `PUT /vouchers/{voucher}/category`
+- **Status Diizinkan**: `SUBMITTED`, `APPROVED_SS`, atau `DISBURSED` (tersedia pada halaman Detail Bon `/vouchers/{voucher}` serta langsung pada tabel persiapan Rekap KKCL `/vouchers/settlement`).
+- **Integritas Finansial & Audit**: Hanya memutakhirkan kolom `category` (tanpa mengubah `amount_cents`, `status`, maupun berkas lampiran) untuk mengoreksi salah pilih pos beban sebelum tutup buku rekap, dengan pencatatan wajib `RECLASSIFY_CATEGORY` (kategori lama, kategori baru, dan alasan opsional) di `audit_logs`. Terkunci permanen setelah status `SETTLED`, `REJECTED`, atau `REFUNDED`.
 
 ---
 
@@ -350,6 +358,7 @@
 - Import BRI fund postings from .xlsx
 - Import master categories from .xlsx (kode unik, lingkup toko/global, urutan kolom)
 - Preview dengan row-by-row validation sebelum commit ke database (terlindungi proteksi CSRF header `X-CSRF-TOKEN` / cookie `X-XSRF-TOKEN`)
+- **Server-Side Commit Re-Validation & SoD Guard**: Endpoint `/admin/import-export/commit` memvalidasi ulang seluruh payload baris di sisi server (anti-tampering) serta menegakkan hierarki role (SAC diblokir mengimpor user dengan role $\ge$ `SS` atau kategori global)
 - Error rows highlighted dengan penyebab kesalahan detail
 
 ---
