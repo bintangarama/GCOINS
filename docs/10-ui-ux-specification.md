@@ -260,7 +260,15 @@ Untuk memberikan area kerja vertikal yang lebih luas bagi data tabel keuangan da
   - Tombol aksi verifikasi SS dan sign-off SM yang mudah dijangkau dengan satu tangan di depan brankas.
 
 - **Section 5: Sticky Live Discrepancy & Action Bar**
-  - Floating bottom bar menampilkan metrik aktual, target plafon, dan status `Outstanding Variance` (`BALANCED` / `SURPLUS` / `SHORTAGE`).
+  - Floating bottom bar menampilkan metrik aktual, target plafon, dan pemisahan hasil rekonsiliasi menjadi dua indikator mandiri:
+    1. **Acuan Target / Plafon** (`Acuan ke 5Jt` untuk Kas Kecil, `Acuan Expected` untuk Kas Besar):
+       - Jika surplus atau pas seimbang: bernilai **`Rp 0`** dengan badge **`[Terpenuhi]`** (pokok dana plafon 5 juta sudah tercapai penuh).
+       - Jika kurang: bernilai nominal minus (misal **`-Rp 900`** atau **`-Rp 1.813.193`**) dengan badge **`[Kurang Target]`**.
+    2. **Selisih Kasir**:
+       - Menampilkan deviasi murni fisik kasir:
+         - Surplus: **`+Rp X.XXX`** dengan badge **`[Lebih Kas]`** ↗️
+         - Seimbang: **`Rp 0`** dengan badge **`[Balanced]`** ⚖️
+         - Kurang: **`-Rp X.XXX`** dengan badge **`[Selisih Kurang]`** ↘️
   - Action buttons kontekstual: Simpan Pecahan, Simpan BRI, Ajukan Verifikasi (SAC), Verifikasi Saksi (SS), Sign-Off & Setujui (SM).
 
 ### 4.7. Print/Report View (`/opname/:id/report`)

@@ -485,11 +485,17 @@
 - [x] Fitur **Ubah Kategori Pos Beban Sebelum `SETTLED`** (`PUT /vouchers/{voucher}/category`, `ReclassifyVoucherCategoryAction`, `ReclassifyCategoryDialog.tsx`) pada halaman Detail Bon & persiapan Rekap KKCL `/vouchers/settlement` dengan log `RECLASSIFY_CATEGORY` tanpa menyentuh nominal/status
 - [x] Penambahan suite pengujian lengkap (`SecurityHardeningTest`, `UpdateDraftVoucherTest`, `RecallAndReclassifyVoucherTest`, ekspansi `SelfApprovalPreventionTest` & `BulkApproveVouchersTest` — total **242 tests, 931 assertions, 100% lulus**)
 
+#### 9.4 Cash Opname Dual Indicator & UI Polish
+- [x] Pemisahan tampilan hasil rekonsiliasi kas pada *Sticky Bottom Bar* Sesi Aktif Cash Opname (`Active.tsx`) menjadi dua indikator mandiri: **Acuan Target / Plafon** (bernilai `0` saat surplus/pas terpenuhi, minus saat kurang) dan **Selisih Kasir** (nilai surplus `+`, seimbang `0`, atau tekor `-`)
+- [x] Sinkronisasi ringkasan dialog konfirmasi pengajuan verifikasi saksi (`SubmitModal`) dan persetujuan Store Manager (`SignOffModal`) dengan dua indikator rekonsiliasi
+- [x] Pembaruan dokumentasi spesifikasi antarmuka pengguna (`docs/10-ui-ux-specification.md`)
+
 ### Acceptance Criteria
 - ✅ Seluruh celah keamanan (import tampering, MIME bypass, session zombie, self-approval lintas role) tertutup dan teruji otomatis
 - ✅ Dokumen nota/invoice berformat `.pdf` (≤ 5 MB) dapat diunggah dan dipratinjau pada bon kas kecil
 - ✅ Pemohon dapat mengedit bon `DRAFT` atau menarik bon `SUBMITTED` kembali ke `DRAFT` sebelum disetujui
 - ✅ `SS`/`SAC`/`SM` dapat mereklasifikasi kategori bon yang salah pilih hingga sebelum dikunci ke Rekap KKCL (`SETTLED`) dengan jejak audit lengkap
+- ✅ Sesi aktif cash opname menyajikan pemisahan acuan pokok plafon 5 juta dan selisih kas secara transparan dan mudah dipahami kasir/auditor
 
 ---
 

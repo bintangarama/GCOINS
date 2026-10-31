@@ -538,6 +538,16 @@ export default function Active({
         liveVarianceStatus = 'SHORTAGE';
     }
 
+    // Pemisahan metrik bar bawah:
+    // 1. Acuan terhadap Target/Plafon (5Jt): jika surplus atau pas bernilai 0 (terpenuhi), jika kurang bernilai minus
+    const targetBaselineGapCents = Math.min(0, liveOutstandingVarianceCents);
+    const acuanTargetLabel =
+        currentType === 'KAS_BESAR'
+            ? 'Acuan Expected'
+            : targetBaselineCents === 500000000
+            ? 'Acuan ke 5Jt'
+            : 'Acuan Target';
+
     // Handle Switcher Select Type
     const handleSelectType = (selected: OpnameType) => {
         if (isDenomDirty || isBriDirty) {
@@ -1354,26 +1364,70 @@ export default function Active({
                         </div>
 
                         {/* Prominent Live Variance Result & Actions */}
-                        <div className="flex items-center gap-3 sm:gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0 border-border">
+                        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0 border-border">
+                            {/* 1. Indikator Acuan Target / Plafon */}
                             <div className="text-left md:text-right">
                                 <div className="flex items-center gap-1.5 justify-start md:justify-end">
                                     <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold uppercase">
-                                        Outstanding
+                                        {acuanTargetLabel}
+                                    </span>
+                                    {targetBaselineGapCents === 0 ? (
+                                        <Badge
+                                            variant="outline"
+                                            className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 text-[10px] font-semibold h-4 px-1.5"
+                                        >
+                                            Terpenuhi
+                                        </Badge>
+                                    ) : (
+                                        <Badge
+                                            variant="outline"
+                                            className="bg-red-50 text-red-700 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800 text-[10px] font-semibold h-4 px-1.5"
+                                        >
+                                            Kurang Target
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-1 justify-start md:justify-end mt-0.5">
+                                    {targetBaselineGapCents === 0 ? (
+                                        <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                                    ) : (
+                                        <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+                                    )}
+                                    <span
+                                        className={`font-mono font-extrabold text-sm sm:text-lg ${
+                                            targetBaselineGapCents === 0
+                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                : 'text-red-600 dark:text-red-400'
+                                        }`}
+                                    >
+                                        {formatMoney(targetBaselineGapCents)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Divider vertikal pemisah */}
+                            <div className="h-7 w-px bg-border shrink-0 hidden sm:block" />
+
+                            {/* 2. Indikator Selisih Kasir */}
+                            <div className="text-left md:text-right">
+                                <div className="flex items-center gap-1.5 justify-start md:justify-end">
+                                    <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold uppercase">
+                                        Selisih Kas
                                     </span>
                                     <StatusBadge status={liveVarianceStatus} />
                                 </div>
                                 <div className="flex items-center gap-1 justify-start md:justify-end mt-0.5">
                                     {liveVarianceStatus === 'BALANCED' && (
-                                        <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 shrink-0" />
+                                        <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
                                     )}
                                     {liveVarianceStatus === 'SURPLUS' && (
-                                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 shrink-0" />
+                                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0" />
                                     )}
                                     {liveVarianceStatus === 'SHORTAGE' && (
-                                        <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
+                                        <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500 shrink-0" />
                                     )}
                                     <span
-                                        className={`font-mono font-extrabold text-base sm:text-xl ${
+                                        className={`font-mono font-extrabold text-sm sm:text-xl ${
                                             liveVarianceStatus === 'BALANCED'
                                                 ? 'text-emerald-600 dark:text-emerald-400'
                                                 : liveVarianceStatus === 'SURPLUS'
@@ -1511,11 +1565,19 @@ export default function Active({
                                 </div>
                             </>
                         )}
-                        <div className="border-t border-border pt-2 flex justify-between font-mono font-bold text-sm">
-                            <span>Outstanding Variance:</span>
-                            <span className={liveVarianceStatus === 'BALANCED' ? 'text-emerald-600' : liveVarianceStatus === 'SURPLUS' ? 'text-indigo-600' : 'text-red-600'}>
-                                {liveOutstandingVarianceCents > 0 ? '+' : ''}{formatMoney(liveOutstandingVarianceCents)}
-                            </span>
+                        <div className="border-t border-border pt-2 space-y-1 font-mono text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">{acuanTargetLabel}:</span>
+                                <span className={targetBaselineGapCents === 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                    {formatMoney(targetBaselineGapCents)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between font-bold text-sm">
+                                <span>Selisih Kas:</span>
+                                <span className={liveVarianceStatus === 'BALANCED' ? 'text-emerald-600' : liveVarianceStatus === 'SURPLUS' ? 'text-indigo-600' : 'text-red-600'}>
+                                    {liveOutstandingVarianceCents > 0 ? '+' : ''}{formatMoney(liveOutstandingVarianceCents)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <p className="text-xs text-amber-600 dark:text-amber-400">
@@ -1589,8 +1651,14 @@ export default function Active({
                                 <span className="text-muted-foreground">Target / Plafon:</span>
                                 <span className="font-bold">{formatMoney(session?.imprest_fund_cents || targetBaselineCents)}</span>
                             </div>
+                            <div className="flex justify-between border-t border-border pt-1.5">
+                                <span className="text-muted-foreground">{acuanTargetLabel}:</span>
+                                <span className={targetBaselineGapCents === 0 ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                    {formatMoney(targetBaselineGapCents)}
+                                </span>
+                            </div>
                             <div className="flex justify-between border-t border-border pt-2 text-sm font-bold">
-                                <span>Outstanding Variance:</span>
+                                <span>Selisih Kas:</span>
                                 <span className={liveVarianceStatus === 'BALANCED' ? 'text-emerald-600' : liveVarianceStatus === 'SURPLUS' ? 'text-indigo-600' : 'text-red-600'}>
                                     {liveOutstandingVarianceCents > 0 ? '+' : ''}
                                     {formatMoney(liveOutstandingVarianceCents)} ({liveVarianceStatus})
