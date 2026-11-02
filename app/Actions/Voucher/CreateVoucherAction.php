@@ -34,7 +34,8 @@ class CreateVoucherAction
      *     category: string,
      *     receipt_image?: UploadedFile|null,
      *     item_photo?: UploadedFile|null,
-     *     is_submit?: bool
+     *     is_submit?: bool,
+     *     clears_sub_ledger_id?: string|null
      * }  $data
      */
     public function execute(array $data, User $actor, ?string $ipAddress = null): PettyCashVoucher
@@ -71,6 +72,7 @@ class CreateVoucherAction
 
             $voucher = PettyCashVoucher::create([
                 'store_id' => $store->id,
+                'clears_sub_ledger_id' => $data['clears_sub_ledger_id'] ?? null,
                 'voucher_number' => $voucherNumber,
                 'requester_id' => $actor->id,
                 'amount_cents' => $data['amount_cents'],

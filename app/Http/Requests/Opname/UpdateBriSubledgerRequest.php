@@ -22,8 +22,15 @@ class UpdateBriSubledgerRequest extends FormRequest
      */
     public function rules(): array
     {
+        $requireNotes = (int) $this->input('bank_admin_fee_cents', 0) > 0
+            && $this->exists('bank_admin_fee_notes')
+            && ! $this->boolean('is_autosave');
+
         return [
             'bri_mutation_total_cents' => ['nullable', 'integer', 'min:0'],
+            'bank_admin_fee_cents' => ['nullable', 'integer', 'min:0'],
+            'bank_admin_fee_notes' => [$requireNotes ? 'required' : 'nullable', 'string', 'max:255'],
+            'is_autosave' => ['nullable', 'boolean'],
             'statement_proof' => ['nullable', 'file', 'mimes:webp,jpg,jpeg,png,pdf', 'max:2048'],
             'custom_allocations' => ['nullable', 'array'],
             'custom_allocations.*.name' => ['required_with:custom_allocations', 'string', 'max:100'],
@@ -42,6 +49,10 @@ class UpdateBriSubledgerRequest extends FormRequest
         return [
             'bri_mutation_total_cents.integer' => 'Saldo mutasi BRI harus berupa angka bilangan bulat.',
             'bri_mutation_total_cents.min' => 'Saldo mutasi BRI tidak boleh bernilai negatif.',
+            'bank_admin_fee_cents.integer' => 'Biaya admin bank harus berupa angka bilangan bulat.',
+            'bank_admin_fee_cents.min' => 'Biaya admin bank tidak boleh bernilai negatif.',
+            'bank_admin_fee_notes.required' => 'Keterangan potongan biaya bank wajib diisi jika nominal biaya admin lebih dari 0.',
+            'bank_admin_fee_notes.max' => 'Keterangan potongan biaya bank maksimal 255 karakter.',
             'statement_proof.file' => 'Bukti rekening koran harus berupa berkas dokumen/gambar.',
             'statement_proof.mimes' => 'Format bukti rekening koran harus webp, jpg, png, atau pdf.',
             'statement_proof.max' => 'Ukuran bukti rekening koran maksimal 2MB.',

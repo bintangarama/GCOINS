@@ -687,6 +687,27 @@ export default function OpnameShowPage({
                                         </span>
                                     </div>
 
+                                    {(session.sub_ledger?.bank_admin_fee_cents ?? 0) > 0 && (
+                                        <div className="py-1.5 px-2 rounded font-mono text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 space-y-0.5">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-sans">Biaya Admin Bank (Pending Bon):</span>
+                                                <span className="font-bold">
+                                                    + {formatMoney(session.sub_ledger?.bank_admin_fee_cents || 0)}
+                                                </span>
+                                            </div>
+                                            {session.sub_ledger?.bank_admin_fee_notes && (
+                                                <p className="font-sans text-[10px] text-amber-800 dark:text-amber-300">
+                                                    Ket: {session.sub_ledger.bank_admin_fee_notes}
+                                                </p>
+                                            )}
+                                            {session.sub_ledger?.cleared_by_voucher && (
+                                                <p className="font-sans text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                                                    Dilunasi Bon #{session.sub_ledger.cleared_by_voucher.voucher_number}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <div className="border-t border-border pt-2 space-y-1.5 text-muted-foreground font-mono">
                                         <div className="flex justify-between">
                                             <span className="font-sans">Alokasi B2B:</span>
@@ -716,7 +737,7 @@ export default function OpnameShowPage({
                                                 Net Kas Kecil di BRI (K_bri)
                                             </span>
                                             <span className="text-[10px] text-muted-foreground font-sans">
-                                                Mutasi - Total Alokasi
+                                                (Mutasi + Biaya Bank) - Total Alokasi
                                             </span>
                                         </div>
                                         <span className="font-mono text-base font-extrabold text-blue-600 dark:text-blue-400">

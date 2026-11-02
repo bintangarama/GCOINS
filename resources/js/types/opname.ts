@@ -55,6 +55,8 @@ export interface BriSubLedger {
     id: string;
     session_id: string;
     bri_mutation_total_cents: number;
+    bank_admin_fee_cents?: number;
+    bank_admin_fee_notes?: string | null;
     b2b_allocation_cents: number;
     event_allocation_cents: number;
     aksel_allocation_cents: number;
@@ -62,6 +64,14 @@ export interface BriSubLedger {
     custom_allocations_total_cents: number;
     statement_proof_url: string | null;
     net_kas_kecil_bri_cents: number;
+    cleared_by_voucher_id?: string | null;
+    cleared_at?: string | null;
+    cleared_by_voucher?: {
+        id: string;
+        voucher_number: string;
+        amount_cents: number;
+        status: string;
+    } | null;
     custom_allocations?: BriCustomAllocation[];
 }
 

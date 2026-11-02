@@ -2,10 +2,14 @@
 
 use App\Actions\Opname\OpenSessionAction;
 use App\Actions\Opname\UpdateBriSubledgerAction;
+use App\Actions\Voucher\CancelVoucherAction;
+use App\Actions\Voucher\DisburseVoucherAction;
 use App\Models\Attachment;
 use App\Models\BriCustomAllocation;
 use App\Models\BriFundPosting;
+use App\Models\CashOpnameSession;
 use App\Models\OpnameItemDefinition;
+use App\Models\PettyCashVoucher;
 use App\Models\Store;
 use App\Models\StoreOpnameConfig;
 use App\Models\User;
@@ -110,6 +114,27 @@ test('T-BRI-02: K_bri = mutation - sum(allocations)', function () {
         ->and($updatedSession->subLedger->event_allocation_cents)->toBe(50000000);
 });
 
+test('T-BRI-02c: UpdateBriSubledgerAction adds bank_admin_fee_cents to K_bri', function () {
+    $action = app(UpdateBriSubledgerAction::class);
+
+    // Mutation = Rp 3.000.000 (300.000.000 cents)
+    // Allocations: B2B (100.000.000) + EVENT (50.000.000) = 150.000.000 cents
+    // Bank admin fee = Rp 80.000 (8.000.000 cents)
+    // Expected K_bri = (300.000.000 - 150.000.000) + 8.000.000 = 158.000.000 cents (Rp 1.580.000)
+    $updatedSession = $action->execute(
+        $this->session,
+        [
+            'bri_mutation_total_cents' => 300000000,
+            'bank_admin_fee_cents' => 8000000,
+        ],
+        $this->sacUser
+    );
+
+    expect($updatedSession->subLedger->bank_admin_fee_cents)->toBe(8000000)
+        ->and($updatedSession->subLedger->net_kas_kecil_bri_cents)->toBe(158000000)
+        ->and($updatedSession->bri_clean_balance_cents)->toBe(158000000);
+});
+
 test('UpdateBriSubledgerAction: handles statement proof photo upload', function () {
     $file = UploadedFile::fake()->image('statement.png');
 
@@ -170,10 +195,13 @@ test('PUT /opname/{session}/bri-subledger: endpoint updates via HTTP', function 
     $response = $this->actingAs($this->sacUser)
         ->put("/opname/{$this->session->id}/bri-subledger", [
             'bri_mutation_total_cents' => 450000000,
+            'bank_admin_fee_cents' => 8000000,
         ]);
 
     $response->assertRedirect();
-    expect($this->session->fresh()->subLedger->bri_mutation_total_cents)->toBe(450000000);
+    $subLedger = $this->session->fresh()->subLedger;
+    expect($subLedger->bri_mutation_total_cents)->toBe(450000000)
+        ->and($subLedger->bank_admin_fee_cents)->toBe(8000000);
 });
 
 test('POST /opname/{session}/bri-sync: endpoint syncs allocations live', function () {
@@ -194,4 +222,84 @@ test('POST /opname/{session}/bri-sync: endpoint syncs allocations live', functio
 
     $response->assertRedirect();
     expect($this->session->fresh()->subLedger->aksel_allocation_cents)->toBe(30000000);
+});
+
+test('PUT /opname/{session}/bri-subledger: requires bank_admin_fee_notes when fee > 0 on manual save', function () {
+    $response = $this->actingAs($this->sacUser)
+        ->put("/opname/{$this->session->id}/bri-subledger", [
+            'bri_mutation_total_cents' => 450000000,
+            'bank_admin_fee_cents' => 8000000,
+            'bank_admin_fee_notes' => '',
+            'is_autosave' => 0,
+        ]);
+
+    $response->assertSessionHasErrors(['bank_admin_fee_notes']);
+});
+
+test('Option B lifecycle: auto carry-forward, fee accumulation, and proportional auto-clearance on voucher disbursement', function () {
+    $updateAction = app(UpdateBriSubledgerAction::class);
+    $openAction = app(OpenSessionAction::class);
+
+    // 1. Session 1: Set Rp 80.000 bank admin fee with notes and mark session APPROVED
+    $updateAction->execute(
+        $this->session,
+        [
+            'bri_mutation_total_cents' => 492000000,
+            'bank_admin_fee_cents' => 8000000,
+            'bank_admin_fee_notes' => 'Biaya admin bulanan Oktober',
+        ],
+        $this->sacUser
+    );
+
+    $this->session->update([
+        'status' => CashOpnameSession::STATUS_APPROVED,
+        'approved_sm_at' => now(),
+    ]);
+
+    // 2. Open Session 2 on next day -> Rp 80.000 is automatically carried forward
+    $this->travel(1)->days();
+    $session2 = $openAction->execute($this->sacUser);
+
+    expect($session2->subLedger->bank_admin_fee_cents)->toBe(8000000)
+        ->and($session2->subLedger->bank_admin_fee_notes)->toBe('Biaya admin bulanan Oktober');
+
+    // 3. Before creating a voucher, bank fee increases in Session 2 from Rp 80.000 to Rp 100.000 (+Rp 20.000 BI-Fast)
+    $updateAction->execute(
+        $session2,
+        [
+            'bri_mutation_total_cents' => 640000000, // after 150M allocations = 490M + 100k fee = 500M
+            'bank_admin_fee_cents' => 10000000,
+            'bank_admin_fee_notes' => 'Admin 80rb + BI-Fast 20rb',
+        ],
+        $this->sacUser
+    );
+
+    expect($session2->fresh()->subLedger->bank_admin_fee_cents)->toBe(10000000)
+        ->and($session2->fresh()->bri_clean_balance_cents)->toBe(500000000);
+
+    // 4. Create & Disburse a partial voucher for the first Rp 80.000 linked to Session 1 sub-ledger
+    $voucher = PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'clears_sub_ledger_id' => $this->session->subLedger->id,
+        'voucher_number' => '001/KKCL/10435/X/2026',
+        'requester_id' => $this->sacUser->id,
+        'amount_cents' => 8000000,
+        'receipt_date' => now()->toDateString(),
+        'purpose' => 'Biaya admin bulanan Oktober',
+        'category' => 'LAINNYA',
+        'status' => PettyCashVoucher::STATUS_APPROVED_SS,
+    ]);
+
+    app(DisburseVoucherAction::class)->execute($voucher, $this->sacUser);
+
+    // Session 1 sub-ledger is marked cleared, and Session 2 draft fee is proportionally reduced to Rp 20.000!
+    expect($this->session->fresh()->subLedger->cleared_by_voucher_id)->toBe($voucher->id)
+        ->and($session2->fresh()->subLedger->bank_admin_fee_cents)->toBe(2000000)
+        ->and($session2->fresh()->vouchers_total_cents)->toBe(8000000)
+        ->and($session2->fresh()->bri_clean_balance_cents)->toBe(492000000)
+        ->and($session2->fresh()->total_actual_cents)->toBe(500000000); // 0 physical + 80k voucher + 4.92M BRI = 5.00M (no double counting!)
+
+    // 5. If voucher is cancelled, cleared_by_voucher_id is reopened
+    app(CancelVoucherAction::class)->execute($voucher->fresh(), 'Revisi nominal', $this->sacUser);
+    expect($this->session->fresh()->subLedger->cleared_by_voucher_id)->toBeNull();
 });

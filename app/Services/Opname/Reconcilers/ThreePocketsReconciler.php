@@ -58,6 +58,7 @@ class ThreePocketsReconciler extends AbstractOpnameReconciler
                     'k_fisik' => $physicalTotalCents,
                     'k_bon' => $vouchersTotalCents,
                     'k_bri' => $briCleanBalanceCents,
+                    'bank_admin_fee' => (int) ($session->subLedger?->bank_admin_fee_cents ?? 0),
                 ],
             ]
         );

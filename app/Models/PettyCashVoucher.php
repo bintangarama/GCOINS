@@ -17,6 +17,7 @@ class PettyCashVoucher extends Model
     protected $fillable = [
         'store_id',
         'settlement_id',
+        'clears_sub_ledger_id',
         'voucher_number',
         'requester_id',
         'amount_cents',
@@ -102,8 +103,14 @@ class PettyCashVoucher extends Model
         'LOGISTIK',
         'KONSUMSI',
         'MAINTENANCE',
+        'BIAYA_ADMIN_BANK',
         'LAINNYA',
     ];
+
+    public function clearedSubLedger(): BelongsTo
+    {
+        return $this->belongsTo(BriSubLedger::class, 'clears_sub_ledger_id');
+    }
 
     public function store(): BelongsTo
     {

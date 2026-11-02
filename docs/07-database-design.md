@@ -203,13 +203,17 @@ Snapshot of BRI allocation balances at the time of a cash opname session. Comput
 | `id` | VARCHAR(32) | NO | CUID | PK |
 | `session_id` | VARCHAR(32) | NO | — | FK → `cash_opname_sessions.id` (CASCADE). UNIQUE. |
 | `bri_mutation_total_cents` | INTEGER | NO | 0 | Manual input: BRI statement balance |
+| `bank_admin_fee_cents` | INTEGER | NO | 0 | Unvouchered bank admin & transfer fees (auto carried-forward until cleared) |
+| `bank_admin_fee_notes` | VARCHAR(255) | YES | NULL | Breakdown/description of bank admin fees (required when fee > 0) |
 | `b2b_allocation_cents` | INTEGER | NO | 0 | Computed: running balance of B2B |
 | `event_allocation_cents` | INTEGER | NO | 0 | Computed: running balance of EVENT |
 | `aksel_allocation_cents` | INTEGER | NO | 0 | Computed: running balance of AKSEL |
 | `anonymous_allocation_cents` | INTEGER | NO | 0 | Computed: running balance of ANONYMOUS |
 | `custom_allocations_total_cents` | INTEGER | NO | 0 | Computed: sum of all CUSTOM |
 | `statement_proof_url` | VARCHAR(255) | YES | NULL | Bank statement photo path |
-| `net_kas_kecil_bri_cents` | INTEGER | NO | 0 | mutation - all allocations |
+| `net_kas_kecil_bri_cents` | INTEGER | NO | 0 | (mutation - all allocations) + bank_admin_fee |
+| `cleared_by_voucher_id` | VARCHAR(32) | YES | NULL | FK → `petty_cash_vouchers.id` that cleared the pending bank admin fee |
+| `cleared_at` | DATETIME | YES | NULL | Timestamp when pending bank admin fee was cleared by voucher disbursement |
 | `created_at` | DATETIME | NO | NOW() | |
 | `updated_at` | DATETIME | NO | NOW() | |
 
@@ -317,6 +321,7 @@ Document header for petty cash reimbursement recaps (KKCL) aggregating disbursed
 | `disbursed_by_id` | VARCHAR(32) | YES | NULL | FK → `users.id` (SAC) |
 | `disbursed_at` | DATETIME | YES | NULL | Cash handover timestamp |
 | `settled_at` | DATETIME | YES | NULL | Reimbursement timestamp |
+| `clears_sub_ledger_id` | VARCHAR(32) | YES | NULL | FK → `bri_sub_ledgers.id` (SET NULL on delete) for auto-clearing pending bank admin fees upon disbursement |
 | `rejection_reason` | VARCHAR(255) | YES | NULL | |
 | `deleted_at` | DATETIME | YES | NULL | Soft delete for DRAFT |
 | `created_at` | DATETIME | NO | NOW() | |

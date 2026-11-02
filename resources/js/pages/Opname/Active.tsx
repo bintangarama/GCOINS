@@ -134,6 +134,12 @@ export default function Active({
     const [briMutationCents, setBriMutationCents] = useState<number>(
         session?.sub_ledger?.bri_mutation_total_cents || 0
     );
+    const [bankAdminFeeCents, setBankAdminFeeCents] = useState<number>(
+        session?.sub_ledger?.bank_admin_fee_cents || 0
+    );
+    const [bankAdminFeeNotes, setBankAdminFeeNotes] = useState<string>(
+        session?.sub_ledger?.bank_admin_fee_notes || ''
+    );
     const [statementFile, setStatementFile] = useState<File | null>(null);
     const [customAllocations, setCustomAllocations] = useState<
         Array<{ name: string; amount_cents: number; notes?: string | null }>
@@ -186,8 +192,10 @@ export default function Active({
             setIsDenomDirty(false);
         }
 
-        if (session?.sub_ledger) {
+        if (session?.sub_ledger && !isBriDirty) {
             setBriMutationCents(session.sub_ledger.bri_mutation_total_cents || 0);
+            setBankAdminFeeCents(session.sub_ledger.bank_admin_fee_cents || 0);
+            setBankAdminFeeNotes(session.sub_ledger.bank_admin_fee_notes || '');
             if (session.sub_ledger.custom_allocations) {
                 setCustomAllocations(
                     session.sub_ledger.custom_allocations.map((c) => ({
@@ -275,6 +283,17 @@ export default function Active({
         return () => clearTimeout(timer);
     }, [counts, conditions, isDenomDirty]);
 
+    // Autosave BRI Sub-Ledger with debounce (800ms)
+    useEffect(() => {
+        if (!isBriDirty || isReadOnly || !session || currentType !== 'KAS_KECIL' || statementFile) return;
+
+        const timer = setTimeout(() => {
+            handleSaveBri(undefined, true);
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [briMutationCents, bankAdminFeeCents, bankAdminFeeNotes, customAllocations, isBriDirty]);
+
     // Unsaved changes guard (beforeunload)
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -290,7 +309,7 @@ export default function Active({
     }, [isDenomDirty, isBriDirty]);
 
     // Save BRI Sub-Ledger
-    const handleSaveBri = (e?: React.FormEvent) => {
+    const handleSaveBri = (e?: React.FormEvent, isAutosave = false, onSavedCallback?: () => void) => {
         if (e) e.preventDefault();
         if (!session || isReadOnly) return;
 
@@ -298,7 +317,10 @@ export default function Active({
         const payload: any = {
             _method: 'put',
             bri_mutation_total_cents: briMutationCents,
+            bank_admin_fee_cents: bankAdminFeeCents,
+            bank_admin_fee_notes: bankAdminFeeCents > 0 ? bankAdminFeeNotes : null,
             custom_allocations: customAllocations,
+            is_autosave: isAutosave ? 1 : 0,
         };
 
         if (statementFile) {
@@ -308,9 +330,13 @@ export default function Active({
         router.post(`/opname/${session.id}/bri-subledger`, payload, {
             forceFormData: true,
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 setIsBriDirty(false);
                 setIsSavingBri(false);
+                if (onSavedCallback) {
+                    onSavedCallback();
+                }
             },
             onError: () => {
                 setIsSavingBri(false);
@@ -383,7 +409,7 @@ export default function Active({
     };
 
     // Workflow Actions
-    const handleSubmitSession = () => {
+    const executeSubmitPost = () => {
         if (!session) return;
         setIsSubmitting(true);
         router.post(
@@ -395,6 +421,18 @@ export default function Active({
                 onFinish: () => setIsSubmitting(false),
             }
         );
+    };
+
+    const handleSubmitSession = () => {
+        if (!session) return;
+        if (currentType === 'KAS_KECIL' && isBriDirty) {
+            setIsSubmitting(true);
+            handleSaveBri(undefined, false, () => {
+                executeSubmitPost();
+            });
+            return;
+        }
+        executeSubmitPost();
     };
 
     const handleVerifySession = () => {
@@ -490,7 +528,7 @@ export default function Active({
     const totalBriAllocations =
         b2bAllocation + eventAllocation + akselAllocation + anonymousAllocation + customAllocationTotal;
     const liveBriCleanBalanceCents =
-        currentType === 'KAS_KECIL' ? briMutationCents - totalBriAllocations : 0;
+        currentType === 'KAS_KECIL' ? (briMutationCents - totalBriAllocations) + bankAdminFeeCents : 0;
 
     // KAS_BESAR specific calculations
     const refLines = session?.reference_lines || [];
@@ -955,6 +993,61 @@ export default function Active({
                                                     className="h-10 text-base font-mono font-bold bg-background"
                                                     placeholder="0"
                                                 />
+                                            </div>
+
+                                            <div className="space-y-2 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-900">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="font-semibold text-slate-700 dark:text-slate-300">
+                                                        Biaya Admin & Transfer Bank
+                                                    </label>
+                                                    <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">Penambah Sementara</span>
+                                                </div>
+                                                <MoneyInput
+                                                    disabled={isReadOnly}
+                                                    value={bankAdminFeeCents}
+                                                    onChange={(val) => {
+                                                        setBankAdminFeeCents(val);
+                                                        setIsBriDirty(true);
+                                                    }}
+                                                    className="h-10 text-base font-mono font-bold bg-background"
+                                                    placeholder="0"
+                                                />
+                                                {bankAdminFeeCents > 0 && (
+                                                    <div className="space-y-1.5 pt-1">
+                                                        <Input
+                                                            disabled={isReadOnly}
+                                                            value={bankAdminFeeNotes}
+                                                            onChange={(e) => {
+                                                                setBankAdminFeeNotes(e.target.value);
+                                                                setIsBriDirty(true);
+                                                            }}
+                                                            placeholder="Keterangan potongan (cth: Admin bulanan Okt + 5x BI-Fast)"
+                                                            className="h-8 text-xs bg-background"
+                                                            maxLength={255}
+                                                        />
+                                                        {session.sub_ledger?.id && (
+                                                            <div className="flex items-center justify-between pt-0.5">
+                                                                <span className="text-[10px] text-amber-800 dark:text-amber-300">
+                                                                    Otomatis di-reset ke Rp 0 saat bon cair.
+                                                                </span>
+                                                                <a
+                                                                    href={`/vouchers/create?from_sub_ledger=${session.sub_ledger.id}`}
+                                                                    className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                                                                >
+                                                                    Buat Bon Biaya Bank &rarr;
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {session.sub_ledger?.cleared_by_voucher && (
+                                                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium pt-0.5">
+                                                        Telah dilunasi oleh Bon #{session.sub_ledger.cleared_by_voucher.voucher_number}
+                                                    </div>
+                                                )}
+                                                <p className="text-[10px] text-muted-foreground leading-tight pt-0.5">
+                                                    Terbawa otomatis ke sesi berikutnya sampai dibuatkan Bon Kas Kecil dan dicairkan (<strong>DISBURSED</strong>).
+                                                </p>
                                             </div>
 
                                             <div className="space-y-1.5">

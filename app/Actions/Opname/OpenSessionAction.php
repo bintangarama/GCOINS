@@ -139,6 +139,8 @@ class OpenSessionAction
             $vouchersTotalCents = 0;
             $briCleanBalanceCents = 0;
             $briMutationTotal = 0;
+            $carriedBankAdminFeeCents = 0;
+            $carriedBankAdminFeeNotes = null;
             $b2b = 0;
             $event = 0;
             $aksel = 0;
@@ -152,6 +154,15 @@ class OpenSessionAction
                     ->where('status', PettyCashVoucher::STATUS_DISBURSED)
                     ->sum('amount_cents');
 
+                // Auto carry-forward unvouchered bank admin fee from last APPROVED KAS_KECIL session
+                if ($lastApproved) {
+                    $lastSubLedger = BriSubLedger::where('session_id', $lastApproved->id)->first();
+                    if ($lastSubLedger && $lastSubLedger->bank_admin_fee_cents > 0 && $lastSubLedger->cleared_by_voucher_id === null) {
+                        $carriedBankAdminFeeCents = (int) $lastSubLedger->bank_admin_fee_cents;
+                        $carriedBankAdminFeeNotes = $lastSubLedger->bank_admin_fee_notes;
+                    }
+                }
+
                 // Auto-populate BRI running balances from APPROVED postings (Pocket 3: K_bri)
                 $b2b = $this->briBalanceService->getCategoryBalance($store->id, 'B2B');
                 $event = $this->briBalanceService->getCategoryBalance($store->id, 'EVENT');
@@ -161,7 +172,11 @@ class OpenSessionAction
 
                 $totalAllocations = $b2b + $event + $aksel + $anonymous + $custom;
                 $briMutationTotal = 0;
-                $netKasKecilBri = $briMutationTotal - $totalAllocations;
+                $netKasKecilBri = $this->briBalanceService->calculatePettyCashPortion(
+                    $briMutationTotal,
+                    $totalAllocations,
+                    $carriedBankAdminFeeCents
+                );
                 $briCleanBalanceCents = $netKasKecilBri;
             }
 
@@ -196,6 +211,8 @@ class OpenSessionAction
                 BriSubLedger::create([
                     'session_id' => $session->id,
                     'bri_mutation_total_cents' => $briMutationTotal,
+                    'bank_admin_fee_cents' => $carriedBankAdminFeeCents,
+                    'bank_admin_fee_notes' => $carriedBankAdminFeeNotes,
                     'b2b_allocation_cents' => $b2b,
                     'event_allocation_cents' => $event,
                     'aksel_allocation_cents' => $aksel,

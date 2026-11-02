@@ -54,6 +54,7 @@ class StoreVoucherRequest extends FormRequest
                 'max:5120',
             ],
             'is_submit' => ['nullable', 'boolean'],
+            'clears_sub_ledger_id' => ['nullable', 'string', 'max:32'],
         ];
     }
 

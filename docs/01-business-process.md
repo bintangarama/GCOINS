@@ -48,13 +48,13 @@ K_bon = Σ voucher.amount WHERE voucher.status = 'DISBURSED'
 
 ### Pocket 3 — Petty Cash Portion in BRI Bank (K_bri)
 
-The store's BRI operational bank account is a **pooling account** containing multiple fund types. The petty cash portion is isolated by subtracting all non-petty-cash allocations:
+The store's BRI operational bank account is a **pooling account** containing multiple fund types. The petty cash portion is isolated by subtracting all non-petty-cash allocations, plus any unvouchered bank administrative and transfer fees (*lihat [15 — SOP Biaya Admin Bank Opname](15-sop-biaya-admin-bank-opname.md)*):
 
 ```
-K_bri = BRI_mutation_balance - (S_b2b + S_event + S_aksel + S_anonymous + Σ S_custom)
+K_bri = (BRI_mutation_balance - (S_b2b + S_event + S_aksel + S_anonymous + Σ S_custom)) + Bank_Admin_Fee
 ```
 
-Where each `S_category` is the **running balance** of that fund category, calculated from incremental BRI fund postings (INFLOW - OUTFLOW).
+Where each `S_category` is the **running balance** of that fund category, calculated from incremental BRI fund postings (INFLOW - OUTFLOW), and `Bank_Admin_Fee` is the pending unvouchered bank fee.
 
 ## 3. BRI Pooling Account — Sub-Ledger Architecture
 

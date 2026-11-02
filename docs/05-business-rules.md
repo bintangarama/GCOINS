@@ -28,7 +28,7 @@ Outstanding_Variance = Raw_Discrepancy + Cumulative_Resolved
 ```
 
 Dimana:
-- `Total_Actual`: Nilai aktual terhitung (pada KAS_KECIL: $K_{\text{fisik}} + K_{\text{bon}} + K_{\text{bri}}$).
+- `Total_Actual`: Nilai aktual terhitung (pada KAS_KECIL: $K_{\text{fisik}} + K_{\text{bon}} + K_{\text{bri}}$, dimana $K_{\text{bri}} = (\text{Saldo Koran} - \text{Total Alokasi Non-Kas Kecil}) + \text{Biaya Admin Bank Tertunda}$).
 - `Target_Baseline`: Plafon dana tetap / expected cash target.
 - `Raw_Discrepancy`: Selisih mentah sebelum resolusi disahkan.
 - `Cumulative_Resolved`: Total resolusi selisih yang disetujui (REPLACED / WRITE_OFF / FOUND).

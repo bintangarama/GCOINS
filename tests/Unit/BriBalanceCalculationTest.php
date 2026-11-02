@@ -95,6 +95,18 @@ test('T-BRI-02: K_bri = mutation - Σ allocations', function () {
     expect($kBri)->toBe(550000000);
 });
 
+test('T-BRI-02b: K_bri = (mutation - Σ allocations) + bank_admin_fee', function () {
+    // Mutation from bank statement: Rp 3.500.000 (350.000.000 cents)
+    $mutationBalanceCents = 350000000;
+    $totalAllocationsCents = 50000000; // Rp 500.000
+    $bankAdminFeeCents = 8000000; // Rp 80.000
+
+    $kBri = $this->balanceService->calculatePettyCashPortion($mutationBalanceCents, $totalAllocationsCents, $bankAdminFeeCents);
+
+    // Expected K_bri: (3.500.000 - 500.000) + 80.000 = Rp 3.080.000 (308.000.000 cents)
+    expect($kBri)->toBe(308000000);
+});
+
 test('T-BRI-01 (Category Aggregation): S_category = Σ S_entity for all entities in category', function () {
     // Entity 1 in EVENT: Rp 2.000.000
     BriFundPosting::create([

@@ -76,11 +76,11 @@ class BriBalanceService
 
     /**
      * Calculate K_bri (Petty Cash portion in BRI Bank).
-     * Formula: K_bri = BRI_mutation_balance - Σ allocations
+     * Formula: K_bri = (BRI_mutation_balance - Σ allocations) + bank_admin_fee
      */
-    public function calculatePettyCashPortion(int $mutationBalanceCents, int $totalAllocationsCents): int
+    public function calculatePettyCashPortion(int $mutationBalanceCents, int $totalAllocationsCents, int $bankAdminFeeCents = 0): int
     {
-        return $mutationBalanceCents - $totalAllocationsCents;
+        return ($mutationBalanceCents - $totalAllocationsCents) + $bankAdminFeeCents;
     }
 
     /**

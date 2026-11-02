@@ -311,6 +311,7 @@ class BacoExport implements Export, WithEvents, WithTitle
 
         $subLedger = $session->subLedger;
         $mutationBalance = ($subLedger?->bri_mutation_total_cents ?? 0) / 100;
+        $bankAdminFee = ($subLedger?->bank_admin_fee_cents ?? 0) / 100;
 
         // Row 3.1: Mutation balance
         $sheet->setCellValue("A{$row}", '3.1');
@@ -323,8 +324,23 @@ class BacoExport implements Export, WithEvents, WithTitle
         $briMutasiRow = $row;
         $row++;
 
-        // Subheader: Allocations
+        // Row 3.2: Bank Admin & Transfer Fee (Pending Voucher)
+        $bankAdminFeeLabel = 'Biaya Admin & Transfer Bank (Belum Diajukan Bon)';
+        if (! empty($subLedger?->bank_admin_fee_notes)) {
+            $bankAdminFeeLabel .= ' — '.$subLedger->bank_admin_fee_notes;
+        }
         $sheet->setCellValue("A{$row}", '3.2');
+        $sheet->setCellValue("B{$row}", $bankAdminFeeLabel);
+        $sheet->setCellValue("E{$row}", $bankAdminFee);
+        $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode(self::ACCOUNTING_FORMAT);
+        $sheet->getStyle("A{$row}:E{$row}")->getFont()->setSize(9);
+        $sheet->getStyle("A{$row}:E{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $bankAdminFeeRow = $row;
+        $row++;
+
+        // Subheader: Allocations
+        $sheet->setCellValue("A{$row}", '3.3');
         $sheet->setCellValue("B{$row}", 'Alokasi Dana Non-Kas Kecil (Pengurang):');
         $sheet->mergeCells("B{$row}:E{$row}");
         $sheet->getStyle("A{$row}:E{$row}")->getFont()->setItalic(true)->setSize(9);
@@ -357,9 +373,9 @@ class BacoExport implements Export, WithEvents, WithTitle
         $allocSubtotalRow = $row;
         $row++;
 
-        // Net K_bri: Mutation - Allocations
+        // Net K_bri: (Mutation + Admin Fee) - Allocations
         $sheet->setCellValue("B{$row}", 'TOTAL KAS KECIL BANK BRI (K_bri)');
-        $sheet->setCellValue("E{$row}", "=E{$briMutasiRow}-E{$allocSubtotalRow}");
+        $sheet->setCellValue("E{$row}", "=E{$briMutasiRow}+E{$bankAdminFeeRow}-E{$allocSubtotalRow}");
         $this->styleGrandTotalRow($sheet, $row);
         $kBriRow = $row;
         $row += 2;

@@ -439,8 +439,18 @@ export default function OpnameReportPage({
                                         {formatMoney(subLedger?.bri_mutation_total_cents || 0)}
                                     </td>
                                 </tr>
+                                <tr className="border-b border-slate-300 bg-amber-50/60 font-semibold text-amber-900">
+                                    <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold">3.2</td>
+                                    <td className="py-1.5 px-2 border-r border-slate-300">
+                                        Biaya Admin & Transfer Bank (Belum Diajukan Bon Kas Kecil)
+                                        {subLedger?.bank_admin_fee_notes ? ` — ${subLedger.bank_admin_fee_notes}` : ''}
+                                    </td>
+                                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                                        + {formatMoney(subLedger?.bank_admin_fee_cents || 0)}
+                                    </td>
+                                </tr>
                                 <tr className="bg-slate-100 font-bold italic border-b border-slate-200 text-[10px]">
-                                    <td className="py-1 px-2 border-r border-slate-300 text-center">3.2</td>
+                                    <td className="py-1 px-2 border-r border-slate-300 text-center">3.3</td>
                                     <td colSpan={2} className="py-1 px-2">Alokasi Dana Non-Kas Kecil (Faktor Pengurang Rekening Koran):</td>
                                 </tr>
                                 {briAllocations.map((alloc, idx) => (
@@ -466,7 +476,7 @@ export default function OpnameReportPage({
                             <tfoot>
                                 <tr className="bg-slate-200 font-bold text-slate-900 border-t-2 border-slate-400">
                                     <td colSpan={2} className="py-1.5 px-2 text-right border-r border-slate-300 uppercase">
-                                        TOTAL KAS KECIL BANK BRI (K_bri = Mutasi - Alokasi):
+                                        TOTAL KAS KECIL BANK BRI (K_bri = (Mutasi + Biaya Bank) - Alokasi):
                                     </td>
                                     <td className="py-1.5 px-2 text-right font-mono text-sm font-extrabold">
                                         {formatMoney(session.bri_clean_balance_cents)}

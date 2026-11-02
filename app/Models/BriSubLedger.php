@@ -15,6 +15,8 @@ class BriSubLedger extends Model
     protected $fillable = [
         'session_id',
         'bri_mutation_total_cents',
+        'bank_admin_fee_cents',
+        'bank_admin_fee_notes',
         'b2b_allocation_cents',
         'event_allocation_cents',
         'aksel_allocation_cents',
@@ -22,24 +24,33 @@ class BriSubLedger extends Model
         'custom_allocations_total_cents',
         'statement_proof_url',
         'net_kas_kecil_bri_cents',
+        'cleared_by_voucher_id',
+        'cleared_at',
     ];
 
     protected function casts(): array
     {
         return [
             'bri_mutation_total_cents' => 'integer',
+            'bank_admin_fee_cents' => 'integer',
             'b2b_allocation_cents' => 'integer',
             'event_allocation_cents' => 'integer',
             'aksel_allocation_cents' => 'integer',
             'anonymous_allocation_cents' => 'integer',
             'custom_allocations_total_cents' => 'integer',
             'net_kas_kecil_bri_cents' => 'integer',
+            'cleared_at' => 'datetime',
         ];
     }
 
     public function session(): BelongsTo
     {
         return $this->belongsTo(CashOpnameSession::class, 'session_id');
+    }
+
+    public function clearedByVoucher(): BelongsTo
+    {
+        return $this->belongsTo(PettyCashVoucher::class, 'cleared_by_voucher_id');
     }
 
     public function customAllocations(): HasMany

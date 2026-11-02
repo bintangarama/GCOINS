@@ -22,6 +22,8 @@ use App\Http\Requests\Voucher\ReclassifyVoucherCategoryRequest;
 use App\Http\Requests\Voucher\RejectVoucherRequest;
 use App\Http\Requests\Voucher\StoreVoucherRequest;
 use App\Http\Requests\Voucher\UpdateVoucherRequest;
+use App\Models\BriSubLedger;
+use App\Models\CashOpnameSession;
 use App\Models\PettyCashCategory;
 use App\Models\PettyCashVoucher;
 use App\Models\StoreOpnameConfig;
@@ -182,9 +184,37 @@ class VoucherController extends Controller
             ]);
         }
 
+        $pendingBankFee = null;
+        if ($currentUser->store_id) {
+            $fromSubLedgerId = $request->query('from_sub_ledger');
+            $subLedgerQuery = BriSubLedger::query()
+                ->whereHas('session', function ($q) use ($currentUser) {
+                    $q->where('store_id', $currentUser->store_id)
+                        ->where('opname_type', CashOpnameSession::TYPE_KAS_KECIL);
+                })
+                ->with('session:id,opname_number,date,status')
+                ->where('bank_admin_fee_cents', '>', 0)
+                ->whereNull('cleared_by_voucher_id');
+
+            $targetSubLedger = $fromSubLedgerId
+                ? (clone $subLedgerQuery)->where('id', $fromSubLedgerId)->first()
+                : $subLedgerQuery->latest('updated_at')->first();
+
+            if ($targetSubLedger) {
+                $pendingBankFee = [
+                    'sub_ledger_id' => $targetSubLedger->id,
+                    'opname_number' => $targetSubLedger->session?->opname_number,
+                    'amount_cents' => (int) $targetSubLedger->bank_admin_fee_cents,
+                    'notes' => $targetSubLedger->bank_admin_fee_notes,
+                    'auto_apply' => (bool) $fromSubLedgerId,
+                ];
+            }
+        }
+
         return Inertia::render('Voucher/Create', [
             'categories' => $categories,
             'imprestFundCents' => $imprestFundCents,
+            'pendingBankFee' => $pendingBankFee,
         ]);
     }
 

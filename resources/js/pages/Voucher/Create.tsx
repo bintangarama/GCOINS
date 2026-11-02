@@ -19,28 +19,58 @@ import { ImageUploader } from '@/components/shared/ImageUploader';
 import { formatMoney } from '@/lib/money';
 import { PettyCashCategoryItem } from '@/types/voucher';
 
+interface PendingBankFee {
+    sub_ledger_id: string;
+    opname_number?: string | null;
+    amount_cents: number;
+    notes?: string | null;
+    auto_apply?: boolean;
+}
+
 interface CreateVoucherProps {
     categories: (string | PettyCashCategoryItem)[];
     imprestFundCents: number;
+    pendingBankFee?: PendingBankFee | null;
 }
 
-export default function CreateVoucherPage({ categories, imprestFundCents }: CreateVoucherProps) {
+export default function CreateVoucherPage({ categories, imprestFundCents, pendingBankFee }: CreateVoucherProps) {
     const normalizedCategories = categories.map((c) =>
         typeof c === 'string' ? { code: c, name: c } : c
     );
-    const initialCategory = normalizedCategories[0]?.code || 'BDL';
+    const defaultBankCategory =
+        normalizedCategories.find((c) => c.code === 'BIAYA_ADMIN_BANK')?.code ||
+        normalizedCategories.find((c) => c.code === 'LAINNYA')?.code ||
+        normalizedCategories[0]?.code ||
+        'LAINNYA';
+    const initialCategory = pendingBankFee?.auto_apply
+        ? defaultBankCategory
+        : normalizedCategories[0]?.code || 'BDL';
 
     const todayStr = new Date().toISOString().split('T')[0];
 
     const { data, setData, post, processing, errors, transform } = useForm({
-        amount_cents: 0,
+        amount_cents: pendingBankFee?.auto_apply ? pendingBankFee.amount_cents : 0,
         receipt_date: todayStr,
-        purpose: '',
+        purpose: pendingBankFee?.auto_apply
+            ? `Biaya Admin & Transfer Bank BRI${pendingBankFee.notes ? ` (${pendingBankFee.notes})` : ''}`
+            : '',
         category: initialCategory,
+        clears_sub_ledger_id: pendingBankFee?.auto_apply ? pendingBankFee.sub_ledger_id : '',
         receipt_image: null as File | null,
         item_photo: null as File | null,
         is_submit: false,
     });
+
+    const applyPendingBankFee = () => {
+        if (!pendingBankFee) return;
+        setData((prev) => ({
+            ...prev,
+            amount_cents: pendingBankFee.amount_cents,
+            purpose: `Biaya Admin & Transfer Bank BRI${pendingBankFee.notes ? ` (${pendingBankFee.notes})` : ''}`,
+            category: defaultBankCategory,
+            clears_sub_ledger_id: pendingBankFee.sub_ledger_id,
+        }));
+    };
 
     const handleSubmit = (isSubmit: boolean) => {
         transform((data) => ({
@@ -63,6 +93,36 @@ export default function CreateVoucherPage({ categories, imprestFundCents }: Crea
                     description="Form pengeluaran kas kecil dengan kompresi bukti WebP otomatis"
                     icon={Receipt}
                 />
+
+                {pendingBankFee && (
+                    <div className="p-3.5 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-0.5">
+                            <p className="font-semibold text-amber-900 dark:text-amber-200">
+                                Biaya Admin Bank Tertunda: {formatMoney(pendingBankFee.amount_cents)}
+                                {pendingBankFee.opname_number ? ` (Opname ${pendingBankFee.opname_number})` : ''}
+                            </p>
+                            <p className="text-amber-800 dark:text-amber-300">
+                                {pendingBankFee.notes || 'Potongan biaya admin/transfer bank menunggu dibuatkan Bon Kas Kecil.'}
+                                {data.clears_sub_ledger_id === pendingBankFee.sub_ledger_id && (
+                                    <span className="ml-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                                        ✓ Tertaut Otomatis
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        {data.clears_sub_ledger_id !== pendingBankFee.sub_ledger_id && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={applyPendingBankFee}
+                                className="border-amber-400 text-amber-900 hover:bg-amber-100 text-xs shrink-0"
+                            >
+                                Gunakan Data Biaya Bank
+                            </Button>
+                        )}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Main Form */}

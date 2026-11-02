@@ -32,6 +32,8 @@ class UpdateBriSubledgerAction
      *
      * @param  array{
      *     bri_mutation_total_cents?: int,
+     *     bank_admin_fee_cents?: int,
+     *     bank_admin_fee_notes?: string|null,
      *     statement_proof?: UploadedFile|string|null,
      *     custom_allocations?: array<int, array{name: string, amount_cents: int, notes?: string|null}>
      * }  $data
@@ -68,6 +70,7 @@ class UpdateBriSubledgerAction
             $subLedger = $session->subLedger ?: BriSubLedger::create([
                 'session_id' => $session->id,
                 'bri_mutation_total_cents' => 0,
+                'bank_admin_fee_cents' => 0,
                 'b2b_allocation_cents' => 0,
                 'event_allocation_cents' => 0,
                 'aksel_allocation_cents' => 0,
@@ -118,12 +121,25 @@ class UpdateBriSubledgerAction
                 ? max(0, (int) $data['bri_mutation_total_cents'])
                 : $subLedger->bri_mutation_total_cents;
 
-            // Net Kas Kecil BRI: K_bri = mutation - sum(allocations) (T-BRI-02)
+            // Bank admin & transfer fee (pending voucher)
+            $bankAdminFee = isset($data['bank_admin_fee_cents'])
+                ? max(0, (int) $data['bank_admin_fee_cents'])
+                : (int) ($subLedger->bank_admin_fee_cents ?? 0);
+
+            $bankAdminFeeNotes = $bankAdminFee > 0
+                ? (array_key_exists('bank_admin_fee_notes', $data)
+                    ? ($data['bank_admin_fee_notes'] !== null ? trim((string) $data['bank_admin_fee_notes']) : null)
+                    : $subLedger->bank_admin_fee_notes)
+                : null;
+
+            // Net Kas Kecil BRI: K_bri = (mutation - sum(allocations)) + bank_admin_fee (T-BRI-02)
             $totalAllocations = $b2b + $event + $aksel + $anonymous + $totalCustom;
-            $netKasKecilBri = $this->briBalanceService->calculatePettyCashPortion($mutationTotal, $totalAllocations);
+            $netKasKecilBri = $this->briBalanceService->calculatePettyCashPortion($mutationTotal, $totalAllocations, $bankAdminFee);
 
             $subLedger->update([
                 'bri_mutation_total_cents' => $mutationTotal,
+                'bank_admin_fee_cents' => $bankAdminFee,
+                'bank_admin_fee_notes' => $bankAdminFeeNotes,
                 'b2b_allocation_cents' => $b2b,
                 'event_allocation_cents' => $event,
                 'aksel_allocation_cents' => $aksel,

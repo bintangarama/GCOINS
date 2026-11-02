@@ -4,6 +4,7 @@ namespace App\Actions\Voucher;
 
 use App\Exceptions\InvalidVoucherStateException;
 use App\Models\AuditLog;
+use App\Models\BriSubLedger;
 use App\Models\PettyCashVoucher;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -38,6 +39,11 @@ class CancelVoucherAction
             $voucher->update([
                 'status' => PettyCashVoucher::STATUS_REJECTED_REFUND_PENDING,
                 'rejection_reason' => $reason,
+            ]);
+
+            BriSubLedger::where('cleared_by_voucher_id', $voucher->id)->update([
+                'cleared_by_voucher_id' => null,
+                'cleared_at' => null,
             ]);
 
             AuditLog::create([
