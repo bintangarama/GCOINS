@@ -109,7 +109,7 @@ test('SAC cannot create user with SM, SS, or SYSTEM_ADMIN role', function (strin
     $this->assertDatabaseMissing('users', ['nik' => 'NEWUSER01']);
 })->with(['SM', 'SS', 'SYSTEM_ADMIN']);
 
-test('SAC can create user with SOA or SAC role', function (string $allowedRole) {
+test('SAC can create user with SOA, ME, CS, BM, or SAC role', function (string $allowedRole) {
     $this->actingAs($this->sacUser);
 
     $response = $this->post('/admin/users', [
@@ -125,7 +125,7 @@ test('SAC can create user with SOA or SAC role', function (string $allowedRole) 
         'role' => $allowedRole,
         'store_id' => $this->store->id,
     ]);
-})->with(['SOA', 'SAC']);
+})->with(['SOA', 'ME', 'CS', 'BM', 'SAC']);
 
 test('SM can create user with SS role', function () {
     $this->actingAs($this->smUser);

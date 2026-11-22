@@ -47,7 +47,7 @@ class UsersImportTemplate implements FromCollection, ShouldAutoSize, WithHeading
         return [
             'NIK',
             'Nama Lengkap',
-            'Role (SM/SAC/SS/SOA)',
+            'Role (SM/SAC/SS/SOA/ME/CS/BM)',
             'Nomor Telepon',
             'PIN Awal (min 6 digit)',
         ];

@@ -58,6 +58,9 @@ export const STATUS_META: Record<string, StatusMeta> = {
     SAC: { label: 'Kasir Utama (SAC)', tone: 'info', icon: UserCheck },
     SS: { label: 'Sales Superintendent (SS)', tone: 'progress', icon: UserCheck },
     SOA: { label: 'Officer (SOA)', tone: 'neutral', icon: UserCheck },
+    ME: { label: 'Teknisi (ME)', tone: 'neutral', icon: UserCheck },
+    CS: { label: 'Cleaning Service (CS)', tone: 'neutral', icon: UserCheck },
+    BM: { label: 'Building Maint. (BM)', tone: 'neutral', icon: UserCheck },
 };
 
 export function getVarianceMeta(cents: number): StatusMeta {

@@ -27,7 +27,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { PageProps } from '@/types/auth';
+import { isRequesterRole, PageProps, REQUESTER_ROLES, Role } from '@/types/auth';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import usersRoutes from '@/routes/admin/users';
@@ -117,7 +117,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
         },
     };
 
-    const isSOA = user?.role === 'SOA';
+    const isSOA = isRequesterRole(user?.role);
     const isSAC = user?.role === 'SAC';
     const isSS = user?.role === 'SS';
     const isSM = user?.role === 'SM';
@@ -916,7 +916,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-1 gap-3">
-                                {['SOA', 'SS', 'SAC'].includes(user?.role || '') && (
+                                {[...REQUESTER_ROLES, 'SS', 'SAC'].includes((user?.role || '') as Role) && (
                                     <Link
                                         href="/vouchers/create"
                                         className="p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-muted/40 transition-all flex items-start gap-3 group"

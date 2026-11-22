@@ -12,7 +12,7 @@ class CashOpnameSessionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'], true);
+        return in_array($user->role, User::ALL_ROLES, true);
     }
 
     /**

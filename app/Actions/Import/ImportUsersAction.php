@@ -20,12 +20,12 @@ class ImportUsersAction
     protected function allowedRolesFor(?User $actor): array
     {
         if (! $actor) {
-            return ['SM', 'SAC', 'SS', 'SOA'];
+            return User::STORE_ROLES;
         }
 
         return match ($actor->role) {
-            'SYSTEM_ADMIN', 'SM' => ['SM', 'SAC', 'SS', 'SOA'],
-            'SAC' => ['SAC', 'SOA'],
+            'SYSTEM_ADMIN', 'SM' => User::STORE_ROLES,
+            'SAC' => User::SAC_ASSIGNABLE_ROLES,
             default => [],
         };
     }

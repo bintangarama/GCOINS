@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -67,13 +68,17 @@ class RoleAndPermissionSeeder extends Seeder
         }
 
         // Roles
-        $soa = Role::findOrCreate('SOA', 'web');
-        $soa->syncPermissions([
+        $requesterPermissions = [
             'auth.change_own_pin',
             'vouchers.create',
             'vouchers.delete_draft',
             'vouchers.submit',
-        ]);
+        ];
+
+        foreach (User::REQUESTER_ROLES as $requesterRoleName) {
+            $requesterRole = Role::findOrCreate($requesterRoleName, 'web');
+            $requesterRole->syncPermissions($requesterPermissions);
+        }
 
         $ss = Role::findOrCreate('SS', 'web');
         $ss->syncPermissions([

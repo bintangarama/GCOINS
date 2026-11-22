@@ -27,9 +27,9 @@ class StoreUserRequest extends FormRequest
         $actor = $this->user();
 
         $allowedRoles = match ($actor?->role) {
-            'SYSTEM_ADMIN' => ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'],
-            'SM' => ['SOA', 'SS', 'SAC', 'SM'],
-            'SAC' => ['SOA', 'SAC'],
+            'SYSTEM_ADMIN' => User::ALL_ROLES,
+            'SM' => User::STORE_ROLES,
+            'SAC' => User::SAC_ASSIGNABLE_ROLES,
             default => [],
         };
 

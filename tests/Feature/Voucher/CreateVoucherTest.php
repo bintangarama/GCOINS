@@ -253,3 +253,40 @@ test('Voucher normalizes legacy localhost receipt_image_url to relative path', f
     expect($voucher->receipt_image_url)->toBe('/storage/vouchers/receipt_123.webp')
         ->and($voucher->item_photo_url)->toBe('/storage/vouchers/item_456.webp');
 });
+
+test('Requester roles ME, CS, and BM have equivalent SOA access to create vouchers and view requester dashboard', function (string $requesterRole) {
+    $user = User::create([
+        'store_id' => $this->store->id,
+        'nik' => "{$requesterRole}001",
+        'name' => "Staff {$requesterRole}",
+        'role' => $requesterRole,
+        'pin_hash' => Hash::make('123456'),
+        'is_active' => true,
+    ]);
+    $user->syncRoles([$requesterRole]);
+
+    expect($user->isRequesterRole())->toBeTrue();
+
+    $this->actingAs($user);
+
+    // Can create draft voucher
+    $response = $this->post('/vouchers', [
+        'amount_cents' => 4500000,
+        'purpose' => "Keperluan operasional {$requesterRole}",
+        'category' => 'OPERASIONAL',
+        'is_submit' => false,
+    ]);
+
+    $voucher = PettyCashVoucher::where('purpose', "Keperluan operasional {$requesterRole}")->first();
+    expect($voucher)->not->toBeNull()
+        ->and($voucher->requester_id)->toBe($user->id);
+    $response->assertRedirect("/vouchers/{$voucher->id}");
+
+    // Can access dashboard with requester summary
+    $dashResponse = $this->get('/dashboard');
+    $dashResponse->assertStatus(200);
+
+    // Cannot access admin user management
+    $adminResponse = $this->get('/admin/users');
+    $adminResponse->assertStatus(403);
+})->with(['ME', 'CS', 'BM']);

@@ -19,9 +19,9 @@
 - **Scope**: Per-store
 - **Purpose**: Operations supervisor. Approves vouchers, witnesses physical cash counting, approves legacy BRI outflows.
 
-### SOA — Store Operation Associate
+### SOA — Store Operation Associate (dan Staf Pemohon Setara: ME, CS, BM)
 - **Scope**: Per-store
-- **Purpose**: Floor staff across departments. Can only submit petty cash voucher requests.
+- **Purpose**: Floor & facility staff across departments (`SOA`: Store Operation Associate, `ME`: Mechanical & Electrical, `CS`: Cleaning Service, `BM`: Building Maintenance). Can only submit petty cash voucher requests (`User::REQUESTER_ROLES`).
 
 ## 2. Role Hierarchy
 

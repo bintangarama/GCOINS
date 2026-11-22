@@ -44,7 +44,7 @@ import { resolveDefaultBreadcrumbs } from '@/lib/breadcrumbs';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 import { cn } from '@/lib/utils';
-import { PageProps, Role } from '@/types/auth';
+import { PageProps, REQUESTER_ROLES, Role } from '@/types/auth';
 import type { BreadcrumbItem } from '@/types/navigation';
 
 import { dashboard, logout } from '@/routes';
@@ -128,7 +128,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                         !url.startsWith('/vouchers/pending') &&
                         !url.startsWith('/vouchers/settlement') &&
                         !url.startsWith('/vouchers/settlements'),
-                    show: hasRole('SOA', 'SS', 'SAC', 'SM'),
+                    show: hasRole(...REQUESTER_ROLES, 'SS', 'SAC', 'SM'),
                 },
                 {
                     label: 'Antrean Approval',

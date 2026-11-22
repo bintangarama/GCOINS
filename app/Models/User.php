@@ -26,6 +26,34 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasCuid2, HasFactory, HasRoles, Notifiable;
 
+    /**
+     * Floor & facility requester roles equivalent to SOA.
+     *
+     * @var list<string>
+     */
+    public const REQUESTER_ROLES = ['SOA', 'ME', 'CS', 'BM'];
+
+    /**
+     * Roles that a SAC is permitted to create or assign (Rule 13 SoD).
+     *
+     * @var list<string>
+     */
+    public const SAC_ASSIGNABLE_ROLES = ['SOA', 'ME', 'CS', 'BM', 'SAC'];
+
+    /**
+     * All store-level operational roles.
+     *
+     * @var list<string>
+     */
+    public const STORE_ROLES = ['SOA', 'ME', 'CS', 'BM', 'SS', 'SAC', 'SM'];
+
+    /**
+     * All valid system roles including global administrator.
+     *
+     * @var list<string>
+     */
+    public const ALL_ROLES = ['SOA', 'ME', 'CS', 'BM', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'];
+
     protected $fillable = [
         'store_id',
         'nik',
@@ -62,6 +90,14 @@ class User extends Authenticatable
     public function verifyPin(string $pin): bool
     {
         return Hash::check($pin, $this->pin_hash);
+    }
+
+    /**
+     * Determine whether the user belongs to the floor/facility requester tier (SOA, ME, CS, BM).
+     */
+    public function isRequesterRole(): bool
+    {
+        return in_array($this->role, self::REQUESTER_ROLES, true);
     }
 
     /**

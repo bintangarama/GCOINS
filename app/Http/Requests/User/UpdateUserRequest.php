@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,9 +30,9 @@ class UpdateUserRequest extends FormRequest
         $targetUser = $this->route('user');
 
         $allowedRoles = match ($actor?->role) {
-            'SYSTEM_ADMIN' => ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'],
-            'SM' => ['SOA', 'SS', 'SAC', 'SM'],
-            'SAC' => ['SOA', 'SAC'],
+            'SYSTEM_ADMIN' => User::ALL_ROLES,
+            'SM' => User::STORE_ROLES,
+            'SAC' => User::SAC_ASSIGNABLE_ROLES,
             default => [],
         };
 

@@ -75,7 +75,7 @@
 | `store_id` | VARCHAR(32) | YES | NULL | FK → `stores.id`. NULL for SYSTEM_ADMIN. |
 | `nik` | VARCHAR(20) | NO | — | Employee ID. UNIQUE. |
 | `name` | VARCHAR(100) | NO | — | Full name |
-| `role` | VARCHAR(20) | NO | `SOA` | `SYSTEM_ADMIN`, `SM`, `SAC`, `SS`, `SOA` |
+| `role` | VARCHAR(20) | NO | `SOA` | `SYSTEM_ADMIN`, `SM`, `SAC`, `SS`, `SOA`, `ME`, `CS`, `BM` |
 | `pin_hash` | VARCHAR(255) | NO | — | bcrypt/Argon2id hash |
 | `phone_number` | VARCHAR(20) | YES | NULL | WhatsApp contact |
 | `is_active` | BOOLEAN | NO | TRUE | |

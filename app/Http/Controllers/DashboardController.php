@@ -159,14 +159,14 @@ class DashboardController extends Controller
             }
         }
 
-        // SOA specific: My Recent Vouchers and Status Summary
+        // Requester roles (SOA, ME, CS, BM) specific: My Recent Vouchers and Status Summary
         $myRecentVouchers = [];
         $myVouchersSummary = [
             'approved_ready' => 0,
             'in_review' => 0,
             'rejected' => 0,
         ];
-        if ($user->hasRole('SOA')) {
+        if ($user->isRequesterRole()) {
             $myRecentVouchers = PettyCashVoucher::where('requester_id', $user->id)
                 ->latest('created_at')
                 ->limit(4)

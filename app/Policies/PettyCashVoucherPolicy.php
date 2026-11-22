@@ -12,7 +12,7 @@ class PettyCashVoucherPolicy
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['SOA', 'SS', 'SAC', 'SM', 'SYSTEM_ADMIN'], true);
+        return in_array($user->role, User::ALL_ROLES, true);
     }
 
     /**
@@ -29,11 +29,11 @@ class PettyCashVoucherPolicy
 
     /**
      * Determine whether the user can create vouchers.
-     * Roles: SOA, SS, SAC. (SM and SYSTEM_ADMIN cannot create vouchers).
+     * Roles: SOA, ME, CS, BM, SS, SAC. (SM and SYSTEM_ADMIN cannot create vouchers).
      */
     public function create(User $user): bool
     {
-        return in_array($user->role, ['SOA', 'SS', 'SAC'], true);
+        return in_array($user->role, [...User::REQUESTER_ROLES, 'SS', 'SAC'], true);
     }
 
     /**

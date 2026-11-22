@@ -430,9 +430,16 @@ export default function UsersPage({ users, stores, filters }: UsersProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="SOA">SOA (Store Operation Associate)</SelectItem>
-                                    <SelectItem value="SS">SS (Sales Superintendent)</SelectItem>
+                                    <SelectItem value="ME">ME (Mechanical & Electrical)</SelectItem>
+                                    <SelectItem value="CS">CS (Cleaning Service)</SelectItem>
+                                    <SelectItem value="BM">BM (Building Maintenance)</SelectItem>
                                     <SelectItem value="SAC">SAC (Staff Administrative Clerk)</SelectItem>
-                                    <SelectItem value="SM">SM (Store Manager)</SelectItem>
+                                    {currentUser?.role !== 'SAC' && (
+                                        <>
+                                            <SelectItem value="SS">SS (Sales Superintendent)</SelectItem>
+                                            <SelectItem value="SM">SM (Store Manager)</SelectItem>
+                                        </>
+                                    )}
                                     {currentUser?.role === 'SYSTEM_ADMIN' && (
                                         <SelectItem value="SYSTEM_ADMIN">SYSTEM_ADMIN (Administrator)</SelectItem>
                                     )}
@@ -518,9 +525,16 @@ export default function UsersPage({ users, stores, filters }: UsersProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="SOA">SOA (Store Operation Associate)</SelectItem>
-                                    <SelectItem value="SS">SS (Sales Superintendent)</SelectItem>
+                                    <SelectItem value="ME">ME (Mechanical & Electrical)</SelectItem>
+                                    <SelectItem value="CS">CS (Cleaning Service)</SelectItem>
+                                    <SelectItem value="BM">BM (Building Maintenance)</SelectItem>
                                     <SelectItem value="SAC">SAC (Staff Administrative Clerk)</SelectItem>
-                                    <SelectItem value="SM">SM (Store Manager)</SelectItem>
+                                    {currentUser?.role !== 'SAC' && (
+                                        <>
+                                            <SelectItem value="SS">SS (Sales Superintendent)</SelectItem>
+                                            <SelectItem value="SM">SM (Store Manager)</SelectItem>
+                                        </>
+                                    )}
                                     {currentUser?.role === 'SYSTEM_ADMIN' && (
                                         <SelectItem value="SYSTEM_ADMIN">SYSTEM_ADMIN (Administrator)</SelectItem>
                                     )}

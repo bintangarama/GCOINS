@@ -1,4 +1,10 @@
-export type Role = 'SYSTEM_ADMIN' | 'SM' | 'SAC' | 'SS' | 'SOA';
+export type Role = 'SYSTEM_ADMIN' | 'SM' | 'SAC' | 'SS' | 'SOA' | 'ME' | 'CS' | 'BM';
+
+export const REQUESTER_ROLES: Role[] = ['SOA', 'ME', 'CS', 'BM'];
+
+export function isRequesterRole(role?: string | null): boolean {
+    return Boolean(role && REQUESTER_ROLES.includes(role as Role));
+}
 
 export type Store = {
     id: string;
