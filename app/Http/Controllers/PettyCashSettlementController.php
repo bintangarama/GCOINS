@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Voucher\CancelSettlementAction;
 use App\Exports\PettyCashMatrixRecapExport;
+use App\Http\Requests\Voucher\CancelSettlementRequest;
 use App\Models\PettyCashCategory;
 use App\Models\PettyCashSettlement;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -130,5 +133,33 @@ class PettyCashSettlementController extends Controller
         $filename = "Rekap-Kas-Kecil-{$cleanNumber}.xlsx";
 
         return Excel::download(new PettyCashMatrixRecapExport($settlement), $filename);
+    }
+
+    /**
+     * Cancel / undo a settlement recap.
+     */
+    public function destroy(
+        CancelSettlementRequest $request,
+        PettyCashSettlement $settlement,
+        CancelSettlementAction $action
+    ): RedirectResponse {
+        $currentUser = $request->user();
+
+        if ($currentUser->role !== 'SYSTEM_ADMIN' && $currentUser->store_id !== $settlement->store_id) {
+            abort(403, __('Anda tidak berwenang membatalkan rekapitulasi dari toko lain.'));
+        }
+
+        $settlementNumber = $settlement->settlement_number;
+        $revertedVouchers = $action->execute(
+            settlement: $settlement,
+            actor: $currentUser,
+            reason: $request->validated('reason'),
+            ipAddress: $request->ip()
+        );
+
+        return redirect()->route('vouchers.settlements.index')->with(
+            'success',
+            "Rekapitulasi {$settlementNumber} berhasil dibatalkan. Sebanyak {$revertedVouchers->count()} voucher dikembalikan ke status DISBURSED."
+        );
     }
 }

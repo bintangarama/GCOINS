@@ -79,6 +79,7 @@ SOA (Per-store, basic)
 | Reject voucher (reason required, Anti Self-Approval) | ❌ | ✅* | ✅* | ✅* | ❌ |
 | Disburse cash (DISBURSED) | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Generate & Settle Rekap KKCL (SETTLED) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Cancel Rekap KKCL (Undo Settlement) | ❌ | ❌ | ✅ | ✅ | ✅ |
 | View Settlement Matrix & Archive | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Print KKCL A4 Landscape & Export Excel | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Cancel post-disbursement | ❌ | ❌ | ✅ | ✅ | ❌ |

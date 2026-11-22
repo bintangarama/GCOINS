@@ -154,6 +154,18 @@
 - **Status Diizinkan**: `SUBMITTED`, `APPROVED_SS`, atau `DISBURSED` (tersedia pada halaman Detail Bon `/vouchers/{voucher}` serta langsung pada tabel persiapan Rekap KKCL `/vouchers/settlement`).
 - **Integritas Finansial & Audit**: Hanya memutakhirkan kolom `category` (tanpa mengubah `amount_cents`, `status`, maupun berkas lampiran) untuk mengoreksi salah pilih pos beban sebelum tutup buku rekap, dengan pencatatan wajib `RECLASSIFY_CATEGORY` (kategori lama, kategori baru, dan alasan opsional) di `audit_logs`. Terkunci permanen setelah status `SETTLED`, `REJECTED`, atau `REFUNDED`.
 
+### FR-VCH-19: Pembatalan Rekapitulasi Kas Kecil (Undo / Cancel Settlement)
+- **Roles**: SAC, SM, SYSTEM_ADMIN (`PettyCashSettlementPolicy` / otorisasi controller & action)
+- **Endpoint**: `DELETE /vouchers/settlements/{settlement}`
+- **Input Form**: `reason` (string, wajib, min: 5, max: 500 karakter)
+- **Perilaku Transaksional (`DB::transaction`)**:
+  - Mengembalikan seluruh voucher terikat dari status `SETTLED` ke `DISBURSED`.
+  - Mengosongkan nilai `settlement_id = null` dan `settled_at = null`.
+  - Menghapus entitas dokumen `PettyCashSettlement`.
+  - Seluruh voucher kembali otomatis masuk ke perhitungan Kantong 2 ($K_{\text{bon}}$) pada sesi Cash Opname kas kecil toko dan muncul kembali pada antrean settlement.
+- **Audit Trail**: Merekam entri `UNSETTLE_VOUCHER` pada masing-masing voucher dan `CANCEL_SETTLEMENT_RECAP` pada entitas settlement lengkap dengan alasan pembatalan, snapshot nomor dokumen, total nominal, dan ID aktor.
+
+
 ---
 
 ## Module 3: BRI Fund Posting (Bank Sub-Ledger)

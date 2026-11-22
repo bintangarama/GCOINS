@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     FileText,
     Search,
@@ -10,6 +10,7 @@ import {
     ArrowLeft,
     CheckCircle2,
     Download,
+    RotateCcw,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ import {
 import { Pagination } from '@/components/shared/Pagination';
 import { formatMoney } from '@/lib/money';
 import { PaginatedSettlements, PettyCashSettlement } from '@/types/voucher';
+import { PageProps } from '@/types/auth';
+import { CancelSettlementDialog } from '@/components/voucher/CancelSettlementDialog';
 
 interface SettlementIndexProps {
     settlements: PaginatedSettlements;
@@ -39,6 +42,10 @@ interface SettlementIndexProps {
 }
 
 export default function SettlementIndexPage({ settlements, filters }: SettlementIndexProps) {
+    const { auth } = usePage<PageProps>().props;
+    const canCancel = ['SAC', 'SM', 'SYSTEM_ADMIN'].includes(auth.user?.role || '');
+    const [cancelTarget, setCancelTarget] = useState<PettyCashSettlement | null>(null);
+
     const [search, setSearch] = useState(filters.search || '');
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
@@ -239,6 +246,17 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                                                         <FileSpreadsheet className="w-4 h-4" />
                                                     </a>
                                                 </Button>
+                                                {canCancel && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setCancelTarget(item)}
+                                                        className="h-7 w-7 p-0 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                                                        title="Batalkan Rekapitulasi"
+                                                    >
+                                                        <RotateCcw className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </DataTableCell>
                                     </DataTableRow>
@@ -258,6 +276,21 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                     />
                 )}
             </div>
+
+            <CancelSettlementDialog
+                open={!!cancelTarget}
+                onOpenChange={(open) => !open && setCancelTarget(null)}
+                settlement={
+                    cancelTarget
+                        ? {
+                              id: cancelTarget.id,
+                              settlement_number: cancelTarget.settlement_number,
+                              total_amount_cents: cancelTarget.total_amount_cents,
+                              voucher_count: cancelTarget.vouchers_count ?? cancelTarget.vouchers?.length ?? 0,
+                          }
+                        : null
+                }
+            />
         </AppLayout>
     );
 }

@@ -159,12 +159,12 @@ No financial state change may occur without an audit log entry.
 ## Rule 13: Segregation of Duties (SoD) & Anti-Escalation Safeguard
 
 1. **Role Assignment Hierarchy**:
-   - Petugas kasir (SAC) DILARANG membuat atau mengubah user dengan role $\ge \text{SS}$ (`SS`, `SM`, `SYSTEM_ADMIN`).
+   - Petugas kasir (SAC) DILARANG membuat atau mengubah user dengan role $\ge \text{SS}$ (`SS`, `SM`, `SYSTEM_ADMIN`). SAC hanya berwenang menugaskan role staf pemohon (`User::REQUESTER_ROLES`: `SOA`, `ME`, `CS`, `BM`) dan `SAC`.
    - Penugasan role supervisor ke atas hanya dapat dilakukan oleh Store Manager (SM) atau `SYSTEM_ADMIN`.
 2. **Anti Self-Role Escalation**:
    - Pengguna DILARANG mengubah level rolenya sendiri.
 3. **PIN Reset Isolation**:
-   - SAC DILARANG me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN`.
+   - SAC DILARANG me-reset PIN milik user dengan role `SS`, `SM`, atau `SYSTEM_ADMIN` (hanya berwenang me-reset PIN staf pemohon dan sesama SAC).
    - Panjang PIN minimal 6 digit numerik dan tidak boleh di-echo dalam plain text.
 
 ## Rule 14: Polymorphic Cash Opname & Physical Audit Evidence
@@ -213,6 +213,11 @@ No financial state change may occur without an audit log entry.
    - Total per baris voucher = jumlah kolom kategori.
    - Total per kolom kategori = akumulasi voucher pada kategori tersebut.
    - Grand Total = $\sum \text{Total Kategori} = \sum \text{Total Baris Voucher}$.
+6. **Settlement Rollback & Cancellation Governance (Undo Settlement)**:
+   - Pembatalan dokumen rekapitulasi KKCL (`PettyCashSettlement`) hanya diizinkan untuk `SAC` atau `SM` pada toko yang bersangkutan (`HasStoreScope`), serta `SYSTEM_ADMIN`.
+   - Setiap pembatalan wajib menyertakan alasan pembatalan minimal 5 karakter (*mandatory cancellation notes*).
+   - Secara atomik (`DB::transaction`): seluruh voucher terkait dikembalikan ke status `DISBURSED`, ikatan `settlement_id` dan `settled_at` dikosongkan (`null`), dan dicatat log audit `UNSETTLE_VOUCHER` pada masing-masing voucher serta `CANCEL_SETTLEMENT_RECAP` pada dokumen rekapitulasi sebelum entitas settlement dihapus.
+   - Seluruh voucher yang dipulihkan seketika kembali terhitung pada Kantong 2 ($K_{\text{bon}}$) pada sesi Cash Opname Kas Kecil toko dan dapat dipilih ulang pada antrean settlement.
 
 ## Rule 17: Selective Bulk Actions & Financial Safety Non-Negotiables
 

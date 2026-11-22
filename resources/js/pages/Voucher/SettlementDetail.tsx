@@ -1,5 +1,5 @@
-import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Printer,
     FileSpreadsheet,
@@ -7,13 +7,15 @@ import {
     CheckCircle2,
     Calendar,
     Layers,
+    RotateCcw,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatMoney } from '@/lib/money';
 import { PettyCashSettlement, PettyCashVoucher } from '@/types/voucher';
-import { User } from '@/types/auth';
+import { PageProps, User } from '@/types/auth';
+import { CancelSettlementDialog } from '@/components/voucher/CancelSettlementDialog';
 
 interface SettlementDetailProps {
     settlement: PettyCashSettlement;
@@ -26,6 +28,10 @@ export default function SettlementDetailPage({
     categories,
     storeManager,
 }: SettlementDetailProps) {
+    const { auth } = usePage<PageProps>().props;
+    const canCancel = ['SAC', 'SM', 'SYSTEM_ADMIN'].includes(auth.user?.role || '');
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
+
     const handlePrint = () => {
         window.print();
     };
@@ -108,6 +114,18 @@ export default function SettlementDetailPage({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {canCancel && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowCancelDialog(true)}
+                                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 shadow-xs"
+                            >
+                                <RotateCcw className="size-4" />
+                                Batalkan Rekap
+                            </Button>
+                        )}
+
                         <Button
                             variant="outline"
                             size="sm"
@@ -303,6 +321,17 @@ export default function SettlementDetailPage({
                     </div>
                 </Card>
             </div>
+
+            <CancelSettlementDialog
+                open={showCancelDialog}
+                onOpenChange={setShowCancelDialog}
+                settlement={{
+                    id: settlement.id,
+                    settlement_number: settlement.settlement_number,
+                    total_amount_cents: settlement.total_amount_cents,
+                    voucher_count: vouchers.length,
+                }}
+            />
 
             {/* Custom Print Styling */}
             <style>{`

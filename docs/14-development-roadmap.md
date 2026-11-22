@@ -15,7 +15,7 @@
 | Phase 9 | Security Hardening & Complete Voucher Lifecycle | Week 10 | Complete ✅ |
 | Phase 10 | Analytics & Mobile Enhancements | Future | Planned ⏳ |
 
-**Scope Status**: Scope Penuh 5 Item Cash Count Engine, Comprehensive Security Hardening, Universal Anti Self-Approval, Complete Voucher Lifecycle (Draft Edit, Recall `SUBMITTED → DRAFT`, Pre-Settlement Category Reclassification, PDF Attachment Support), Deep Midnight Slate Dark Mode, Layout Ergonomics, dan Dual Selective Bulk Actions selesai diimplementasikan dengan 242 pengujian unit & fitur lulus 100% (931 assertions).
+**Scope Status**: Scope Penuh 5 Item Cash Count Engine, Comprehensive Security Hardening, Universal Anti Self-Approval, Complete Voucher Lifecycle (Draft Edit, Recall `SUBMITTED → DRAFT`, Pre-Settlement Category Reclassification, PDF Attachment Support, Petty Cash Settlement Rollback / Undo Settlement), Deep Midnight Slate Dark Mode, Layout Ergonomics, dan Dual Selective Bulk Actions selesai diimplementasikan dengan 257 pengujian unit & fitur lulus 100% (1006 assertions).
 
 ---
 
@@ -490,11 +490,29 @@
 - [x] Sinkronisasi ringkasan dialog konfirmasi pengajuan verifikasi saksi (`SubmitModal`) dan persetujuan Store Manager (`SignOffModal`) dengan dua indikator rekonsiliasi
 - [x] Pembaruan dokumentasi spesifikasi antarmuka pengguna (`docs/10-ui-ux-specification.md`)
 
+#### 9.5 Extended Requester Roles (ME, CS, BM) & Centralized RBAC
+- [x] Penambahan 3 peran staf pemohon setara `SOA`: **`ME`** (*Mechanical & Electrical*), **`CS`** (*Cleaning Service*), dan **`BM`** (*Building Maintenance*)
+- [x] Sentralisasi konstanta grup peran pemohon pada model `User::REQUESTER_ROLES` (Backend) dan `REQUESTER_ROLES` di `resources/js/types/auth.ts` (Frontend)
+- [x] Sinkronisasi izin Spatie permission (`vouchers.create`, `vouchers.delete_draft`, `vouchers.submit`, `auth.change_own_pin`) melalui migrasi `2026_11_02_000001_seed_additional_requester_roles.php` dan `RoleAndPermissionSeeder`
+- [x] Otorisasi `PettyCashVoucherPolicy`, `StoreUserRequest`, `UpdateUserRequest`, dan `ImportUsersAction` mengadopsi konstanta tier peran (`SAC_ASSIGNABLE_ROLES`, `STORE_ROLES`, `ALL_ROLES`)
+- [x] Adaptasi komponen UI: badge `StatusBadge`, dropdown form `Users.tsx`, navigasi `AppLayout`, dan widget KPI dashboard pemohon `Dashboard.tsx`
+- [x] Penambahan pengujian otomatis pada `UserSodSecurityTest` dan `CreateVoucherTest` (53 tests lulus)
+
+#### 9.6 Petty Cash Settlement Rollback (Undo Settlement)
+- [x] Fitur pembatalan rekapitulasi kas kecil (`DELETE /vouchers/settlements/{settlement}`, `CancelSettlementAction`, `CancelSettlementRequest`)
+- [x] Antarmuka modal konfirmasi pembatalan rekap (`CancelSettlementDialog.tsx`) dengan validasi alasan tertulis (min. 5 karakter)
+- [x] Tombol batalkan rekap pada *Action Bar* Detail Rekap (`SettlementDetail.tsx`) dan baris tabel Riwayat Rekap (`SettlementIndex.tsx`)
+- [x] Pemulihan otomatis status voucher ke `DISBURSED`, reset `settlement_id`, dan restorasi saldo ke Kantong 2 ($K_{\text{bon}}$) pada cash opname
+- [x] Penegakan otorisasi peran (`SAC`, `SM`, `SYSTEM_ADMIN`) dan isolasi toko (*HasStoreScope*)
+- [x] Pencatatan jejak audit `CANCEL_SETTLEMENT_RECAP` dan `UNSETTLE_VOUCHER`
+- [x] Test suite `CancelSettlementTest.php` (5 skenario pengujian lulus 100%)
+
 ### Acceptance Criteria
 - ✅ Seluruh celah keamanan (import tampering, MIME bypass, session zombie, self-approval lintas role) tertutup dan teruji otomatis
 - ✅ Dokumen nota/invoice berformat `.pdf` (≤ 5 MB) dapat diunggah dan dipratinjau pada bon kas kecil
 - ✅ Pemohon dapat mengedit bon `DRAFT` atau menarik bon `SUBMITTED` kembali ke `DRAFT` sebelum disetujui
 - ✅ `SS`/`SAC`/`SM` dapat mereklasifikasi kategori bon yang salah pilih hingga sebelum dikunci ke Rekap KKCL (`SETTLED`) dengan jejak audit lengkap
+- ✅ Kasir (`SAC`) atau Manager (`SM`) dapat membatalkan rekap KKCL (`Undo Settlement`) dengan alasan wajib, memulihkan voucher ke `DISBURSED` dan menyeimbangkan kembali $K_{\text{bon}}$
 - ✅ Sesi aktif cash opname menyajikan pemisahan acuan pokok plafon 5 juta dan selisih kas secara transparan dan mudah dipahami kasir/auditor
 
 ---

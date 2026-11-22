@@ -18,6 +18,7 @@ stateDiagram-v2
     APPROVED_SS --> REJECTED: Cancelled before disbursement
 
     DISBURSED --> SETTLED: SAC groups into Rekap KKCL\n(reimbursement received, exits K_bon)
+    SETTLED --> DISBURSED: SAC/SM cancels Rekap KKCL\n(UNSETTLE_VOUCHER, re-enters K_bon)
     DISBURSED --> REJECTED_REFUND_PENDING: Auditor rejects post-disbursement
 
     REJECTED_REFUND_PENDING --> REFUNDED: Staff returns cash to cashier\n(exits K_bon)
@@ -44,6 +45,7 @@ stateDiagram-v2
 | APPROVED_SS | DISBURSED | SAC | — | Set disbursed_at, enters K_bon |
 | APPROVED_SS | REJECTED | SAC/SM | — | Notify requester |
 | DISBURSED | SETTLED | SAC | Grouped into `PettyCashSettlement` | Set `settled_at`, set `settlement_id`, exits K_bon, locks category |
+| SETTLED | DISBURSED | SAC/SM/SYSTEM_ADMIN | Rekap KKCL dibatalkan dengan alasan tertulis (min. 5 chars) | Clear `settled_at` & `settlement_id`, delete settlement, log `UNSETTLE_VOUCHER` & `CANCEL_SETTLEMENT_RECAP`, re-enters K_bon |
 | DISBURSED | REJECTED_REFUND_PENDING | SAC/SM | — | Staff must return cash |
 | REJECTED_REFUND_PENDING | REFUNDED | SAC | Cash returned confirmed | Exits K_bon |
 | (import) | SETTLED | SM/SAC | Excel commit with status `SETTLED` | `approved_by` & `disbursed_by` set to actor; backdated; exits K_bon |
@@ -62,6 +64,7 @@ stateDiagram-v2
         GENERATE_DOC --> BIND_VOUCHERS: Update vouchers status=SETTLED & set settlement_id
         BIND_VOUCHERS --> READY_EXPORT: Available for A4 Landscape Print & Excel Export
     }
+    SETTLED --> [*]: SAC/SM executes "Batalkan Rekap" (Rollback vouchers to DISBURSED)
 ```
 
 - **Instant Settlement**: Rekap diselesaikan langsung oleh kasir (SAC) tanpa approval bertingkat di level toko.

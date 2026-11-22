@@ -192,3 +192,17 @@ Sesuai dokumen operasional fisik toko **Gramedia World Karawang (`GAM435`)**, si
 - **Ekspor Excel (.xlsx)**:
   - File spreadsheet berkolom matriks akuntansi dengan styling border, format mata uang `#,##0`, formula penjumlahan `=SUM()`, dan layout siap cetak landscape.
 
+### 5. Alur Pembatalan Rekapitulasi Kas Kecil (Undo / Rollback Settlement)
+1. Jika kasir (SAC) atau Store Manager (SM) mendapati kesalahan dalam pengelompokan kas kecil sebelum diajukan atau diganti dananya oleh pusat:
+   - SAC atau SM dapat menekan tombol **"Batalkan Rekap"** dari halaman Detail Rekap atau Riwayat Rekapitulasi (`/vouchers/settlements`).
+   - Pengguna wajib memasukkan alasan pembatalan tertulis (minimal 5 karakter).
+2. Sistem secara atomik (`DB::transaction`):
+   - Mengembalikan seluruh voucher terikat dari status `SETTLED` kembali ke `DISBURSED`.
+   - Mengosongkan kaitan `settlement_id = NULL` dan `settled_at = NULL`.
+   - Mencatat log audit `UNSETTLE_VOUCHER` pada masing-masing voucher dan `CANCEL_SETTLEMENT_RECAP` pada dokumen rekapitulasi.
+   - Menghapus entitas `PettyCashSettlement`.
+3. Dampak rekonsiliasi kas:
+   - Seluruh voucher otomatis kembali muncul di menu **Settlement Kas Kecil** (`/vouchers/settlement`) untuk dapat direkapitulasi ulang atau direklasifikasi pos bebannya.
+   - Seluruh voucher tersebut seketika **kembali terhitung pada Kantong 2 ($K_{\text{bon}}$)** pada sesi Cash Opname Kas Kecil toko sehingga saldo fisik kas brankas kembali seimbang.
+
+

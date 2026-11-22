@@ -87,6 +87,7 @@ These are used in flash messages and policy rejections:
 | GET | `/vouchers/settlements` | `PettyCashSettlementController@index` | Settlement archive list |
 | POST | `/vouchers/settlements` | `PettyCashSettlementController@store` | Generate KKCL & instant settle |
 | GET | `/vouchers/settlements/{settlement}` | `PettyCashSettlementController@show` | Columnar matrix workspace (A4 print) |
+| DELETE | `/vouchers/settlements/{settlement}` | `PettyCashSettlementController@destroy` | Cancel/undo KKCL recap, revert vouchers to DISBURSED (SAC/SM/SYSADMIN) |
 | GET | `/vouchers/settlements/{settlement}/export` | `PettyCashSettlementController@exportExcel` | Export matrix spreadsheet (.xlsx) |
 | GET | `/vouchers/settlement` | `VoucherController@settlement` | Pending `DISBURSED` settlement workspace (supports inline category reclassification) |
 | POST | `/vouchers/batch-settle` | `VoucherController@batchSettle` | Legacy batch settle |

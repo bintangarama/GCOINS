@@ -55,6 +55,7 @@ Route::middleware(['auth', 'store.scope'])->group(function () {
         Route::post('bulk-approve', [VoucherController::class, 'bulkApprove'])->name('bulk-approve');
         Route::get('settlements', [PettyCashSettlementController::class, 'index'])->name('settlements.index');
         Route::get('settlements/{settlement}', [PettyCashSettlementController::class, 'show'])->name('settlements.show');
+        Route::delete('settlements/{settlement}', [PettyCashSettlementController::class, 'destroy'])->name('settlements.destroy');
         Route::get('settlements/{settlement}/export-excel', [PettyCashSettlementController::class, 'exportExcel'])->name('settlements.export-excel');
         Route::get('export', [VoucherController::class, 'export'])->name('export');
         Route::get('{voucher}', [VoucherController::class, 'show'])->name('show');

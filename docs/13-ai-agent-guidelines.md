@@ -72,11 +72,13 @@ Before writing any code, the AI agent MUST:
 - **DO** compress images client-side before upload (WebP $\le$ 250KB)
 - **DO** use proper HTTP methods (GET for reads, POST for actions, PUT for updates)
 - **DO** format money consistently: `Rp 5.000.000` (no decimals for display)
+- **DO** use role tier constants for requester checks (`User::REQUESTER_ROLES` / `$user->isRequesterRole()` in PHP, `REQUESTER_ROLES` / `isRequesterRole()` in TypeScript)
 
 ### ❌ DON'T
 
 - **DON'T** use float/double for money. EVER.
 - **DON'T** bypass RBAC or SoD checks — SAC cannot manage $\ge$ SS roles or reset SS/SM PINs
+- **DON'T** check hardcoded `'SOA'` role string alone when checking requester capabilities or rendering staff requester views — use `REQUESTER_ROLES` (SOA, ME, CS, BM)
 - **DON'T** modify APPROVED opname sessions — they are immutable
 - **DON'T** bypass the Outstanding Variance & Resolution Ledger model
 - **DON'T** create REST API endpoints — use Inertia controllers only
