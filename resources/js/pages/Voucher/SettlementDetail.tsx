@@ -16,6 +16,7 @@ import { formatMoney } from '@/lib/money';
 import { PettyCashSettlement, PettyCashVoucher } from '@/types/voucher';
 import { PageProps, User } from '@/types/auth';
 import { CancelSettlementDialog } from '@/components/voucher/CancelSettlementDialog';
+import { resolveRememberedListUrl } from '@/lib/list-url-memory';
 
 interface SettlementDetailProps {
     settlement: PettyCashSettlement;
@@ -97,7 +98,7 @@ export default function SettlementDetailPage({
                 {/* Action Bar (Hidden on print) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
                     <div className="flex items-center gap-3">
-                        <Link href="/vouchers/settlements">
+                        <Link href={resolveRememberedListUrl('/vouchers/settlements')}>
                             <Button variant="outline" size="sm" className="gap-2 shadow-xs">
                                 <ArrowLeft className="size-4" />
                                 Riwayat Rekap
@@ -137,7 +138,7 @@ export default function SettlementDetailPage({
                                 download
                             >
                                 <FileSpreadsheet className="size-4" />
-                                Download Excel (.xlsx)
+                                Ekspor Excel
                             </a>
                         </Button>
 
@@ -147,7 +148,7 @@ export default function SettlementDetailPage({
                             className="gap-2 bg-primary text-primary-foreground shadow-xs"
                         >
                             <Printer className="size-4" />
-                            Cetak Dokumen (Print / PDF)
+                            Cetak Dokumen
                         </Button>
                     </div>
                 </div>
@@ -220,9 +221,13 @@ export default function SettlementDetailPage({
                                         </tr>
                                     ) : (
                                         vouchers.map((voucher) => {
-                                            const requester = voucher.requester;
-                                            const employeeIdStr = requester
-                                                ? `${requester.name} ${requester.nik ? requester.nik : ''}`
+                                            const approver = voucher.approved_by ?? voucher.requester;
+                                            const firstName = approver?.name?.trim().split(/\s+/)[0] || '';
+                                            const employeeIdStr = approver
+                                                ? `${firstName}${approver.nik ? ` ${approver.nik}` : ''}`
+                                                : '-';
+                                            const employeeIdFullTitle = approver
+                                                ? `${approver.name}${approver.nik ? ` ${approver.nik}` : ''}`
                                                 : '-';
 
                                             return (
@@ -233,7 +238,7 @@ export default function SettlementDetailPage({
                                                     <td className="py-1 px-2 text-center text-slate-600 font-mono whitespace-nowrap">
                                                         {formatDateShort(voucher.receipt_date || voucher.disbursed_at || voucher.created_at)}
                                                     </td>
-                                                    <td className="py-1 px-2 text-slate-800 whitespace-nowrap max-w-[150px] truncate" title={employeeIdStr}>
+                                                    <td className="py-1 px-2 text-slate-800 whitespace-nowrap max-w-[150px] truncate" title={employeeIdFullTitle}>
                                                         {employeeIdStr}
                                                     </td>
                                                     {categories.map((cat) => {

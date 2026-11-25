@@ -84,13 +84,13 @@ export default function CreateVoucherPage({ categories, imprestFundCents, pendin
     };
 
     return (
-        <AppLayout title="Buat Voucher Kas Kecil">
-            <Head title="Buat Voucher Kas Kecil" />
+        <AppLayout title="Ajukan Bon Kas Kecil">
+            <Head title="Ajukan Bon Kas Kecil" />
 
             <div className="max-w-5xl flex flex-col gap-6">
                 <PageHeader
-                    title="Buat Bon Kas Kecil"
-                    description="Form pengeluaran kas kecil dengan kompresi bukti WebP otomatis"
+                    title="Ajukan Bon Kas Kecil"
+                    description="Catat pengajuan pengeluaran kas kecil beserta lampiran nota atau struk belanja"
                     icon={Receipt}
                 />
 
@@ -236,7 +236,7 @@ export default function CreateVoucherPage({ categories, imprestFundCents, pendin
                                     Lampiran Foto & Bukti
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Mendukung foto (otomatis dikompresi ke WebP &le; 250KB) atau dokumen PDF (&le; 5MB)
+                                    Unggah foto nota/struk belanja atau dokumen PDF (maks. 5 MB)
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">

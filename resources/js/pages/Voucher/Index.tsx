@@ -43,6 +43,7 @@ import {
     DataTableBulkBar,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
+import { getActivePerPageParam } from '@/lib/list-url-memory';
 import { formatMoney } from '@/lib/money';
 import { PaginatedVouchers, PettyCashCategoryItem, VoucherStatus } from '@/types/voucher';
 import { PageProps, User } from '@/types/auth';
@@ -85,6 +86,12 @@ export default function VoucherIndexPage({
     const [isBulkApproving, setIsBulkApproving] = useState(false);
 
     useEffect(() => {
+        setSearch(filters.search || '');
+        setStatus(filters.status || 'ALL');
+        setCategory(filters.category || 'ALL');
+        setRequesterId(filters.requester_id || 'ALL');
+        setDateFrom(filters.date_from || '');
+        setDateTo(filters.date_to || '');
         setSelectedIds([]);
     }, [
         vouchers.current_page,
@@ -167,6 +174,7 @@ export default function VoucherIndexPage({
                 date_to: dateTo || undefined,
                 sort: field,
                 direction: nextDirection,
+                per_page: getActivePerPageParam(),
             },
             {
                 preserveState: true,
@@ -188,6 +196,7 @@ export default function VoucherIndexPage({
                 date_to: dateTo || undefined,
                 sort: filters.sort || undefined,
                 direction: filters.direction || undefined,
+                per_page: getActivePerPageParam(),
             },
             {
                 preserveState: true,
@@ -204,7 +213,8 @@ export default function VoucherIndexPage({
         setDateFrom('');
         setDateTo('');
         setSelectedIds([]);
-        router.get('/vouchers');
+        const perPage = getActivePerPageParam();
+        router.get('/vouchers', perPage ? { per_page: perPage } : {});
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -237,14 +247,14 @@ export default function VoucherIndexPage({
                                 download
                             >
                                 <FileSpreadsheet className="size-4" />
-                                Export Excel
+                                Ekspor Excel
                             </a>
                         </Button>
                     )}
                     <Button asChild size="sm" className="gap-2 shadow-xs">
                         <Link href="/vouchers/create">
                             <Plus className="size-4" />
-                            Buat Voucher Baru
+                            Ajukan Bon Baru
                         </Link>
                     </Button>
                 </PageHeader>
@@ -257,7 +267,7 @@ export default function VoucherIndexPage({
                             <div className="lg:col-span-2 relative">
                                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground pointer-events-none" />
                                 <Input
-                                    placeholder="Cari nomor voucher / keperluan..."
+                                    placeholder="Cari nomor bon atau keperluan..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     onKeyDown={handleKeyDown}
@@ -273,14 +283,14 @@ export default function VoucherIndexPage({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL" className="text-xs font-medium">Semua Status</SelectItem>
-                                        <SelectItem value="DRAFT" className="text-xs">DRAFT</SelectItem>
-                                        <SelectItem value="SUBMITTED" className="text-xs">SUBMITTED</SelectItem>
-                                        <SelectItem value="APPROVED_SS" className="text-xs">APPROVED_SS</SelectItem>
-                                        <SelectItem value="DISBURSED" className="text-xs">DISBURSED</SelectItem>
-                                        <SelectItem value="SETTLED" className="text-xs">SETTLED</SelectItem>
-                                        <SelectItem value="REJECTED" className="text-xs">REJECTED</SelectItem>
-                                        <SelectItem value="REJECTED_REFUND_PENDING" className="text-xs">REFUND_PENDING</SelectItem>
-                                        <SelectItem value="REFUNDED" className="text-xs">REFUNDED</SelectItem>
+                                        <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
+                                        <SelectItem value="SUBMITTED" className="text-xs">Menunggu Verifikasi</SelectItem>
+                                        <SelectItem value="APPROVED_SS" className="text-xs">Disetujui (Siap Cair)</SelectItem>
+                                        <SelectItem value="DISBURSED" className="text-xs">Sudah Dicairkan</SelectItem>
+                                        <SelectItem value="SETTLED" className="text-xs">Selesai Direkap</SelectItem>
+                                        <SelectItem value="REJECTED" className="text-xs">Ditolak</SelectItem>
+                                        <SelectItem value="REJECTED_REFUND_PENDING" className="text-xs">Batal (Wajib Refund)</SelectItem>
+                                        <SelectItem value="REFUNDED" className="text-xs">Dana Dikembalikan</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -377,7 +387,7 @@ export default function VoucherIndexPage({
                                         currentDirection={filters.direction || 'desc'}
                                         onSort={handleSort}
                                     >
-                                        No. Voucher
+                                        No. Bon
                                     </DataTableHeaderCell>
                                     <DataTableHeaderCell
                                         sortable
@@ -427,8 +437,8 @@ export default function VoucherIndexPage({
                                     <DataTableEmpty
                                         colSpan={9}
                                         icon={<Receipt className="w-10 h-10 stroke-1" />}
-                                        message="Tidak ada voucher yang ditemukan"
-                                        description="Coba sesuaikan filter pencarian atau buat pengajuan bon kas kecil baru."
+                                        message="Belum ada data bon kas kecil"
+                                        description="Sesuaikan filter pencarian atau buat pengajuan bon kas kecil baru."
                                         action={
                                             <div className="flex items-center gap-2 mt-1">
                                                 {(filters.search || filters.status || filters.category || filters.requester_id || filters.date_from || filters.date_to) && (
@@ -439,7 +449,7 @@ export default function VoucherIndexPage({
                                                 <Link href="/vouchers/create">
                                                     <Button size="sm" className="text-xs h-8 gap-1.5">
                                                         <Plus className="w-3.5 h-3.5" />
-                                                        Buat Pengajuan
+                                                        Ajukan Bon Baru
                                                     </Button>
                                                 </Link>
                                             </div>
@@ -651,7 +661,7 @@ export default function VoucherIndexPage({
                                 download
                             >
                                 <FileSpreadsheet className="size-3.5" />
-                                Export Excel Terpilih ({selectedIds.length})
+                                Ekspor Excel Terpilih ({selectedIds.length})
                             </a>
                         </Button>
                     )}

@@ -756,11 +756,11 @@ export default function Active({
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-emerald-900 dark:text-emerald-100 text-base">
-                                            Sesi Resmi Disetujui & Dikunci Permanen (Immutable Snapshot)
+                                            Sesi Telah Disetujui & Dikunci Permanen
                                         </h3>
                                         <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
-                                            Seluruh data perhitungan fisik dan rekonsiliasi telah terkunci permanen sesuai <strong>Rule 4 (Immutable Snapshot)</strong>.
-                                            Selisih akhir <strong>{session.current_variance_cents > 0 ? '+' : ''}{formatMoney(session.current_variance_cents)}</strong> tercatat di audit log.
+                                            Seluruh data perhitungan fisik dan rekonsiliasi telah disahkan oleh Store Manager dan tidak dapat diubah lagi.
+                                            Selisih akhir sebesar <strong>{session.current_variance_cents > 0 ? '+' : ''}{formatMoney(session.current_variance_cents)}</strong> telah tercatat dalam buku rekonsiliasi.
                                         </p>
                                         {session.notes && (
                                             <p className="text-xs text-emerald-900 dark:text-emerald-200 mt-1.5 font-medium italic">

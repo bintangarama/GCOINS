@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveRememberedListUrl } from '@/lib/list-url-memory';
 
 export interface PageHeaderProps {
     title: string;
@@ -30,6 +31,8 @@ export function PageHeader({
     children,
     className,
 }: PageHeaderProps) {
+    const resolvedBackHref = backHref ? resolveRememberedListUrl(backHref) : undefined;
+
     return (
         <div
             className={cn(
@@ -38,7 +41,7 @@ export function PageHeader({
             )}
         >
             <div className="flex items-start sm:items-center gap-3">
-                {backHref && (
+                {resolvedBackHref && (
                     <Button
                         asChild
                         variant="ghost"
@@ -46,7 +49,7 @@ export function PageHeader({
                         className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
                         title={backLabel || 'Kembali'}
                     >
-                        <Link href={backHref}>
+                        <Link href={resolvedBackHref}>
                             <ArrowLeft className="size-4" />
                             <span className="sr-only">{backLabel || 'Kembali'}</span>
                         </Link>

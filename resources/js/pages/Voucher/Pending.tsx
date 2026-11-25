@@ -38,6 +38,7 @@ import {
     DataTableBulkBar,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
+import { getActivePerPageParam } from '@/lib/list-url-memory';
 import { formatMoney } from '@/lib/money';
 import { PaginatedVouchers, PettyCashVoucher } from '@/types/voucher';
 
@@ -102,6 +103,7 @@ export default function PendingApprovalsPage({
                 ...filters,
                 sort: field,
                 direction: nextDirection,
+                per_page: getActivePerPageParam(),
             },
             { preserveState: true, preserveScroll: true }
         );
@@ -150,14 +152,14 @@ export default function PendingApprovalsPage({
     };
 
     return (
-        <AppLayout title="Antrean Persetujuan Voucher">
-            <Head title="Antrean Persetujuan Voucher" />
+        <AppLayout title="Antrean Persetujuan Bon">
+            <Head title="Antrean Persetujuan Bon" />
 
             <div className="space-y-6">
                 <PageHeader
-                    title="Antrean Persetujuan Voucher"
+                    title="Antrean Persetujuan Bon"
                     icon={Clock}
-                    description="Voucher kas kecil yang diajukan dan menunggu verifikasi serta persetujuan supervisor"
+                    description="Daftar pengajuan bon kas kecil yang menunggu pemeriksaan dan persetujuan"
                 >
                     <span className="text-xs font-semibold px-3 py-1 bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-full">
                         {vouchers.total} Menunggu Persetujuan
@@ -169,7 +171,7 @@ export default function PendingApprovalsPage({
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2.5">
                         <AlertCircle className="w-4 h-4 shrink-0 text-blue-600" />
                         <span>
-                            <b>Aturan Anti Self-Approval:</b> Pembuat bon tidak dapat menyetujui atau menolak pengajuan miliknya sendiri. Bon yang Anda ajukan harus diverifikasi oleh approver lain ({currentUserRole === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}).
+                            <b>Kebijakan Persetujuan:</b> Pembuat bon tidak dapat menyetujui atau menolak pengajuan miliknya sendiri. Bon yang Anda ajukan harus diperiksa oleh pejabat lain ({currentUserRole === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}).
                         </span>
                     </div>
                 )}
@@ -186,7 +188,7 @@ export default function PendingApprovalsPage({
                                             checked={isAllEligibleSelected}
                                             disabled={eligibleVouchers.length === 0}
                                             onCheckedChange={handleSelectAll}
-                                            aria-label="Pilih semua voucher yang memenuhi syarat"
+                                            aria-label="Pilih semua bon yang memenuhi syarat"
                                         />
                                     </DataTableHeaderCell>
                                     <DataTableHeaderCell
@@ -196,7 +198,7 @@ export default function PendingApprovalsPage({
                                         currentDirection={filters?.direction}
                                         onSort={handleSort}
                                     >
-                                        No. Voucher
+                                        No. Bon
                                     </DataTableHeaderCell>
                                     <DataTableHeaderCell
                                         sortable

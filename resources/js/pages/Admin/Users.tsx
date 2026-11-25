@@ -78,16 +78,22 @@ export default function UsersPage({ users, stores, filters }: UsersProps) {
     const [resetPinDialogOpen, setResetPinDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+    React.useEffect(() => {
+        setSearch(filters?.search || '');
+    }, [filters?.search]);
+
     const handleSort = (field: string) => {
         const currentSort = filters?.sort || 'created_at';
         const isCurrent = currentSort === field;
         const nextDirection = isCurrent && filters?.direction === 'asc' ? 'desc' : 'asc';
+        const perPage = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('per_page') || undefined : undefined;
         router.get(
             usersRoutes.index.url(),
             {
                 search: search || undefined,
                 sort: field,
                 direction: nextDirection,
+                per_page: perPage,
             },
             { preserveState: true, preserveScroll: true, replace: true }
         );
@@ -95,12 +101,14 @@ export default function UsersPage({ users, stores, filters }: UsersProps) {
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
+            const perPage = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('per_page') || undefined : undefined;
             router.get(
                 usersRoutes.index.url(),
                 {
                     search: search || undefined,
                     sort: filters?.sort || undefined,
                     direction: filters?.direction || undefined,
+                    per_page: perPage,
                 },
                 { preserveState: true, replace: true }
             );

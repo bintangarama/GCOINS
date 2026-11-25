@@ -59,7 +59,8 @@ class UserController extends Controller
             $query->latest();
         }
 
-        $users = $query->paginate(15)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $users = $query->paginate($perPage)->withQueryString();
         $stores = $currentUser->role === 'SYSTEM_ADMIN' ? Store::where('is_active', true)->get() : [];
 
         return Inertia::render('Admin/Users', [

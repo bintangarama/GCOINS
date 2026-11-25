@@ -119,7 +119,8 @@ class VoucherController extends Controller
             $query->latest('created_at');
         }
 
-        $vouchers = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $vouchers = $query->paginate($perPage)->withQueryString();
 
         $requesters = User::where('store_id', $currentUser->store_id)
             ->where('is_active', true)
@@ -497,7 +498,8 @@ class VoucherController extends Controller
             $query->latest('created_at');
         }
 
-        $vouchers = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $vouchers = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('Voucher/Pending', [
             'vouchers' => $vouchers,

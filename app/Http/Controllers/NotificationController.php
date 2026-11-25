@@ -30,7 +30,8 @@ class NotificationController extends Controller
             $query->whereNotNull('read_at');
         }
 
-        $notifications = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $notifications = $query->paginate($perPage)->withQueryString();
 
         $unreadCount = Notification::withoutGlobalScopes()
             ->where('user_id', $user->id)

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import {
     Coins,
@@ -44,6 +44,7 @@ import {
     DataTableMobileCard,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
+import { getActivePerPageParam } from '@/lib/list-url-memory';
 import { formatMoney } from '@/lib/money';
 import { PaginatedOpnameSessions, CashOpnameSession } from '@/types/opname';
 
@@ -79,6 +80,14 @@ export default function OpnameIndexPage({
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
+    useEffect(() => {
+        setSearch(filters.search || '');
+        setStatus(filters.status || 'ALL');
+        setOpnameType(filters.opname_type || 'ALL');
+        setDateFrom(filters.date_from || '');
+        setDateTo(filters.date_to || '');
+    }, [filters.search, filters.status, filters.opname_type, filters.date_from, filters.date_to]);
+
     const handleSort = (field: string) => {
         const currentSort = filters.sort || 'date';
         const isCurrent = currentSort === field;
@@ -93,6 +102,7 @@ export default function OpnameIndexPage({
                 date_to: dateTo || undefined,
                 sort: field,
                 direction: nextDirection,
+                per_page: getActivePerPageParam(),
             },
             {
                 preserveState: true,
@@ -113,6 +123,7 @@ export default function OpnameIndexPage({
                 date_to: dateTo || undefined,
                 sort: filters.sort || undefined,
                 direction: filters.direction || undefined,
+                per_page: getActivePerPageParam(),
             },
             {
                 preserveState: true,
@@ -127,7 +138,8 @@ export default function OpnameIndexPage({
         setOpnameType('ALL');
         setDateFrom('');
         setDateTo('');
-        router.get('/opname');
+        const perPage = getActivePerPageParam();
+        router.get('/opname', perPage ? { per_page: perPage } : {});
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -144,12 +156,12 @@ export default function OpnameIndexPage({
                 <PageHeader
                     title="Riwayat Cash Opname"
                     icon={Coins}
-                    description="Arsip seluruh sesi rekonsiliasi kas brankas, bon gantung, dan mutasi bank BRI toko."
+                    description="Arsip seluruh sesi penghitungan fisik brankas, bon gantung, dan rekonsiliasi kas toko"
                 >
                     <Button asChild>
                         <Link href="/opname/active">
                             <Coins className="size-4 mr-1.5" />
-                            Workspace Sesi Aktif
+                            Buka Sesi Aktif
                         </Link>
                     </Button>
                 </PageHeader>
@@ -249,10 +261,10 @@ export default function OpnameIndexPage({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">Semua Status</SelectItem>
-                                        <SelectItem value="DRAFT">DRAFT (Kasir)</SelectItem>
-                                        <SelectItem value="SUBMITTED">SUBMITTED (Menunggu Saksi)</SelectItem>
-                                        <SelectItem value="VERIFIED_SS">VERIFIED_SS (Menunggu SM)</SelectItem>
-                                        <SelectItem value="APPROVED">APPROVED (Selesai)</SelectItem>
+                                        <SelectItem value="DRAFT">Draft</SelectItem>
+                                        <SelectItem value="SUBMITTED">Menunggu Verifikasi SS</SelectItem>
+                                        <SelectItem value="VERIFIED_SS">Terverifikasi SS (Menunggu SM)</SelectItem>
+                                        <SelectItem value="APPROVED">Disetujui Final</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -329,11 +341,11 @@ export default function OpnameIndexPage({
                                         Tanggal
                                     </DataTableHeaderCell>
                                     <DataTableHeaderCell>Petugas</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">K_fisik (Safe)</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">K_bon</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">K_bri</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Kas Fisik</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Bon Gantung</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Saldo BRI</DataTableHeaderCell>
                                     <DataTableHeaderCell align="right">Total Aktual</DataTableHeaderCell>
-                                    <DataTableHeaderCell align="right">Target</DataTableHeaderCell>
+                                    <DataTableHeaderCell align="right">Plafon / Target</DataTableHeaderCell>
                                     <DataTableHeaderCell
                                         align="right"
                                         sortable
@@ -342,7 +354,7 @@ export default function OpnameIndexPage({
                                         currentDirection={filters.direction || 'desc'}
                                         onSort={handleSort}
                                     >
-                                        Selisih (V_current)
+                                        Selisih
                                     </DataTableHeaderCell>
                                     <DataTableHeaderCell
                                         align="center"

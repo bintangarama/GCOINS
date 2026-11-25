@@ -98,3 +98,42 @@ test('BRI INFLOW via HTTP stores successfully and redirects', function () {
         'amount_cents' => 75000000,
     ]);
 });
+
+test('BRI create page passes initialData from query parameters for pre-filling', function () {
+    $response = $this->actingAs($this->sacUser)
+        ->get(route('bri-funds.create', [
+            'type' => 'OUTFLOW',
+            'entity' => 'BS SO Tahunan',
+            'category' => 'CUSTOM',
+        ]));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('BriFund/Create')
+            ->where('initialData.type', 'OUTFLOW')
+            ->where('initialData.entity_name', 'BS SO Tahunan')
+            ->where('initialData.category', 'CUSTOM')
+        );
+});
+
+test('BRI store with create_another redirects back to create page with same mutation type', function () {
+    $response = $this->actingAs($this->sacUser)
+        ->post(route('bri-funds.store'), [
+            'category' => 'CUSTOM',
+            'custom_category_name' => 'SO',
+            'entity_name' => 'BS SO Tahunan',
+            'type' => 'INFLOW',
+            'amount_cents' => 1450000000,
+            'purpose' => 'Setoran SO Tahunan',
+            'create_another' => true,
+        ]);
+
+    $response->assertRedirect(route('bri-funds.create', ['type' => 'INFLOW']));
+    $this->assertDatabaseHas('bri_fund_postings', [
+        'category' => 'CUSTOM',
+        'custom_category_name' => 'SO',
+        'entity_name' => 'BS SO Tahunan',
+        'type' => 'INFLOW',
+        'amount_cents' => 1450000000,
+    ]);
+});

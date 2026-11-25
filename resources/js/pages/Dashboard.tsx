@@ -164,7 +164,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                     description={
                         user?.store
                             ? user.store.name.replace(/^Toko\s+/i, '')
-                            : 'Akses Administrator Sistem Pusat (Global Multi-Store)'
+                            : 'Administrator Pusat (Seluruh Toko)'
                     }
                     icon={LayoutDashboard}
                 >
@@ -174,7 +174,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                         className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-xs px-3 py-1 font-mono"
                     >
                         <CheckCircle2 className="size-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-                        Sistem Terisolasi & Aktif
+                        Operasional Aktif
                     </Badge>
                 </PageHeader>
 
@@ -183,7 +183,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                 {/* ==================================================================================== */}
                 {!isSOA && (
                     <div className="space-y-3">
-                        {/* A. Peringatan Bon Kas Kecil Menua (> 3 Hari Belum Settlement) */}
+                        {/* A. Peringatan Bon Kas Kecil Gantung (> 3 Hari Belum Direkap) */}
                         {data.aging_vouchers_count > 0 && (
                             <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/30 transition-all">
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -193,20 +193,20 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                         </div>
                                         <div>
                                             <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                                                <span>{data.aging_vouchers_count} Bon Kas Kecil Menua (&gt; 3 Hari Belum Settlement)</span>
+                                                <span>{data.aging_vouchers_count} Bon Gantung &gt; 3 Hari Belum Direkap</span>
                                                 <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px]">
-                                                    Dana Gantung: {formatMoney(data.aging_vouchers_amount_cents)}
+                                                    Total: {formatMoney(data.aging_vouchers_amount_cents)}
                                                 </Badge>
                                             </h4>
                                             <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-1">
-                                                Terdapat dana kasir yang belum diselesaikan ke form KKCL. Segera tagih nota fisik asli dari staf pemohon agar kas kecil dapat direimburse.
+                                                Terdapat bon yang sudah dicairkan namun belum dibukukan ke rekap KKCL. Pastikan nota fisik asli sudah diterima kasir.
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                                         <Link href={isSAC ? '/vouchers/settlement' : '/vouchers'}>
                                             <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white shadow-xs text-xs h-8">
-                                                {isSAC ? 'Proses Settlement KKCL' : 'Lihat Bon Gantung'}
+                                                {isSAC ? 'Rekap Bon Sekarang' : 'Lihat Bon Gantung'}
                                                 <ArrowRight className="size-3.5 ml-1.5" />
                                             </Button>
                                         </Link>
@@ -476,7 +476,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                             <Card className="h-full transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5 cursor-pointer">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                                     <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
-                                        Bon Belum Settlement
+                                        Bon Belum Direkap
                                     </CardTitle>
                                     <div className="flex items-center gap-1.5">
                                         <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
@@ -491,7 +491,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
                                         <span className="font-semibold text-purple-600">{data.pending_vouchers_count}</span>
-                                        <span>voucher butuh persetujuan</span>
+                                        <span>bon menunggu persetujuan</span>
                                     </p>
                                 </CardContent>
                             </Card>
@@ -506,7 +506,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                 <Card className="h-full transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5 cursor-pointer">
                                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
-                                            Outflow BRI
+                                            Penarikan Dana BRI
                                         </CardTitle>
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -521,7 +521,7 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1">
                                             {data.pending_outflows_count > 0
-                                                ? 'Pending dual-control review (SS)'
+                                                ? 'Menunggu persetujuan SS/SM'
                                                 : 'Tidak ada antrean'}
                                         </p>
                                     </CardContent>
@@ -741,11 +741,11 @@ export default function Dashboard({ dashboardData }: { dashboardData?: Dashboard
                                     <div className="flex items-center gap-2">
                                         <Wallet className="size-4 text-primary" />
                                         <CardTitle className="text-base font-bold text-foreground">
-                                            Likuiditas Kas Kecil &amp; Burn Rate
+                                            Pemakaian Dana Kas Kecil
                                         </CardTitle>
                                     </div>
                                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                                        Rasio pemakaian plafon sebelum proses settlement KKCL
+                                        Posisi uang fisik brankas dan bon gantung terhadap plafon
                                     </CardDescription>
                                 </div>
                                 <Badge

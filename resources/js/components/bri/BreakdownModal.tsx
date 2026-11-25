@@ -167,12 +167,12 @@ export function BreakdownModal({
                     <DataTable>
                         <DataTableHead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-border">
                             <tr>
-                                <DataTableHeaderCell className="w-[30%]">Nama Entitas / Mitra</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center" className="w-[12%]">Kategori</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right" className="w-[16%]">Total Masuk</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right" className="w-[16%]">Total Keluar</DataTableHeaderCell>
-                                <DataTableHeaderCell align="right" className="w-[16%]">Saldo Berjalan</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center" className="w-[10%]">Aksi</DataTableHeaderCell>
+                                <DataTableHeaderCell className="w-[26%]">Nama Entitas / Mitra</DataTableHeaderCell>
+                                <DataTableHeaderCell align="center" className="w-[10%]">Kategori</DataTableHeaderCell>
+                                <DataTableHeaderCell align="right" className="w-[14%]">Total Masuk</DataTableHeaderCell>
+                                <DataTableHeaderCell align="right" className="w-[14%]">Total Keluar</DataTableHeaderCell>
+                                <DataTableHeaderCell align="right" className="w-[14%]">Saldo Berjalan</DataTableHeaderCell>
+                                <DataTableHeaderCell align="center" className="w-[22%]">Aksi</DataTableHeaderCell>
                             </tr>
                         </DataTableHead>
                         <DataTableBody>
@@ -232,12 +232,40 @@ export function BreakdownModal({
                                             )}
                                         </DataTableCell>
                                         <DataTableCell align="center">
-                                            <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
-                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary">
-                                                    Rincian
-                                                    <ChevronRight className="size-3" />
-                                                </Button>
-                                            </Link>
+                                            <div className="inline-flex items-center justify-center gap-1">
+                                                <Link
+                                                    href={`/bri-funds/create?type=INFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                >
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-7 px-2 text-[11px] gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                                    >
+                                                        <ArrowDownLeft className="size-3" />
+                                                        Masuk
+                                                    </Button>
+                                                </Link>
+                                                {item.running_balance_cents > 0 && (
+                                                    <Link
+                                                        href={`/bri-funds/create?type=OUTFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                    >
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-7 px-2 text-[11px] gap-1 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                                        >
+                                                            <ArrowUpRight className="size-3" />
+                                                            Tarik
+                                                        </Button>
+                                                    </Link>
+                                                )}
+                                                <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
+                                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary">
+                                                        Rincian
+                                                        <ChevronRight className="size-3" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </DataTableCell>
                                     </DataTableRow>
                                 ))

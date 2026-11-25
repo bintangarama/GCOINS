@@ -96,7 +96,8 @@ class OpnameController extends Controller
             $query->latest('date')->latest('created_at');
         }
 
-        $sessions = $query->paginate(15)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $sessions = $query->paginate($perPage)->withQueryString();
 
         $user = $request->user();
         $stats = [

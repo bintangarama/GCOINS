@@ -114,9 +114,10 @@ class BriBalanceService
             $query->where('category', $category);
         }
 
-        // Fetch distinct entity list with category and custom name
-        $entities = $query->select('entity_name', 'category', 'custom_category_name')
+        // Fetch distinct entity list by entity_name and category
+        $entities = $query->select('entity_name', 'category')
             ->distinct()
+            ->orderBy('entity_name')
             ->get();
 
         return $entities->map(function ($item) use ($storeId) {
@@ -142,11 +143,13 @@ class BriBalanceService
 
             $postingsCount = (int) (clone $baseQuery)->count();
             $lastPosting = (clone $baseQuery)->latest('created_at')->first();
+            $customCategoryName = $lastPosting?->custom_category_name
+                ?? (clone $baseQuery)->whereNotNull('custom_category_name')->latest('created_at')->value('custom_category_name');
 
             return [
                 'entity_name' => $item->entity_name,
                 'category' => $item->category,
-                'custom_category_name' => $item->custom_category_name,
+                'custom_category_name' => $customCategoryName,
                 'inflow_total_cents' => $inflowTotal,
                 'outflow_total_cents' => $outflowTotal,
                 'running_balance_cents' => $inflowTotal - $outflowTotal,
@@ -154,6 +157,6 @@ class BriBalanceService
                 'postings_count' => $postingsCount,
                 'last_posting_at' => $lastPosting?->created_at?->toISOString(),
             ];
-        });
+        })->values();
     }
 }

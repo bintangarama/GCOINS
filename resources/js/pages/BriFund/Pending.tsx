@@ -80,20 +80,20 @@ export default function BriFundPending({ pendingPostings }: BriFundPendingProps)
     const isSupervisorOrManager = currentUser && ['SS', 'SM'].includes(currentUser.role);
 
     return (
-        <AppLayout title="Antrean Persetujuan Pengeluaran BRI">
-            <Head title="Antrean Persetujuan Pengeluaran BRI — Dual Control" />
+        <AppLayout title="Antrean Persetujuan Penarikan BRI">
+            <Head title="Antrean Persetujuan Penarikan BRI" />
 
             <div className="flex flex-col gap-6 max-w-7xl">
                 <PageHeader
-                    title="Antrean Persetujuan Pengeluaran Dana BRI"
-                    description="Persetujuan pengeluaran (OUTFLOW) oleh Supervisor atau Manager untuk memotong saldo berjalan bank"
+                    title="Antrean Persetujuan Penarikan Dana BRI"
+                    description="Daftar pengajuan penarikan dana BRI yang menunggu pemeriksaan Supervisor atau Store Manager"
                     icon={Shield}
                 >
                     <Button asChild variant="outline" size="sm">
-                        <Link href="/bri-funds">Overview Saldo</Link>
+                        <Link href="/bri-funds">Ringkasan Saldo</Link>
                     </Button>
                     <Button asChild variant="outline" size="sm">
-                        <Link href="/bri-funds/postings">Semua Riwayat</Link>
+                        <Link href="/bri-funds/postings">Riwayat Mutasi</Link>
                     </Button>
                 </PageHeader>
 
@@ -101,15 +101,15 @@ export default function BriFundPending({ pendingPostings }: BriFundPendingProps)
                 <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
                     <Shield className="size-4 text-amber-600 dark:text-amber-400" />
                     <AlertTitle className="font-semibold text-amber-900 dark:text-amber-200">
-                        Aturan Dual Control & Zero-Deficit Guard:
+                        Ketentuan Persetujuan Penarikan Dana:
                     </AlertTitle>
                     <AlertDescription className="text-amber-800 dark:text-amber-300/90 text-xs leading-relaxed">
                         <span>
-                            1. <strong>Dual Control:</strong> Petugas yang membuat pengajuan (creator) dilarang menyetujui pengajuannya sendiri. Persetujuan wajib dilakukan oleh Supervisor (SS) atau Store Manager (SM) lain.
+                            1. <strong>Pemisahan Wewenang:</strong> Petugas yang mencatat pengajuan tidak dapat menyetujui pengajuannya sendiri. Persetujuan harus dilakukan oleh Supervisor (SS) atau Store Manager (SM) lain.
                         </span>
                         <br />
                         <span>
-                            2. <strong>Zero-Deficit Guard:</strong> Sistem memverifikasi kembali saldo berjalan saat tombol persetujuan ditekan. Pengeluaran yang melebihi saldo berjalan tidak dapat disetujui.
+                            2. <strong>Batas Saldo Aktif:</strong> Sistem memeriksa kembali ketersediaan saldo rekanan saat persetujuan diproses. Penarikan yang melebihi saldo aktif tidak dapat disetujui.
                         </span>
                     </AlertDescription>
                 </Alert>

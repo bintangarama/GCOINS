@@ -96,6 +96,14 @@ export default function AuditLogs({
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
+    React.useEffect(() => {
+        setSearch(filters.search || '');
+        setEntityName(filters.entity_name || '');
+        setAction(filters.action || '');
+        setDateFrom(filters.date_from || '');
+        setDateTo(filters.date_to || '');
+    }, [filters.search, filters.entity_name, filters.action, filters.date_from, filters.date_to]);
+
     const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null);
     const [detailModalOpen, setDetailModalOpen] = useState(false);
 
@@ -103,6 +111,7 @@ export default function AuditLogs({
         const currentSort = filters.sort || 'created_at';
         const isCurrent = currentSort === field;
         const nextDirection = isCurrent && filters.direction === 'asc' ? 'desc' : 'asc';
+        const perPage = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('per_page') || undefined : undefined;
         router.get(
             '/admin/audit-logs',
             {
@@ -113,6 +122,7 @@ export default function AuditLogs({
                 date_to: dateTo || undefined,
                 sort: field,
                 direction: nextDirection,
+                per_page: perPage,
             },
             { preserveState: true, preserveScroll: true, replace: true }
         );
@@ -120,6 +130,7 @@ export default function AuditLogs({
 
     const handleFilterSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const perPage = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('per_page') || undefined : undefined;
         router.get(
             '/admin/audit-logs',
             {
@@ -130,6 +141,7 @@ export default function AuditLogs({
                 date_to: dateTo || undefined,
                 sort: filters.sort || undefined,
                 direction: filters.direction || undefined,
+                per_page: perPage,
             },
             { preserveState: true }
         );
@@ -141,7 +153,8 @@ export default function AuditLogs({
         setAction('');
         setDateFrom('');
         setDateTo('');
-        router.get('/admin/audit-logs', {}, { preserveState: true });
+        const perPage = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('per_page') || undefined : undefined;
+        router.get('/admin/audit-logs', perPage ? { per_page: perPage } : {}, { preserveState: true });
     };
 
     const handleExport = () => {
@@ -193,12 +206,12 @@ export default function AuditLogs({
     };
 
     return (
-        <AppLayout title="Audit Log">
+        <AppLayout title="Log Aktivitas">
             <div className="space-y-6">
                 <PageHeader
-                    title="Audit Log Sistem"
+                    title="Log Aktivitas & Audit"
                     icon={ShieldCheck}
-                    description="Catatan audit permanen seluruh aktivitas transaksi, otorisasi, dan mutasi finansial toko."
+                    description="Riwayat lengkap perubahan data, persetujuan, dan transaksi operasional toko"
                 >
                     <Button
                         onClick={handleExport}
@@ -206,7 +219,7 @@ export default function AuditLogs({
                         className="border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
                     >
                         <FileSpreadsheet className="size-4 text-emerald-600 dark:text-emerald-400" />
-                        <span>Ekspor Excel (.xlsx)</span>
+                        <span>Ekspor Excel</span>
                     </Button>
                 </PageHeader>
 

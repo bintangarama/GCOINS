@@ -172,7 +172,7 @@ export default function CategoryIndexPage({
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors shadow-2xs"
                         >
                             <Download className="size-3.5 text-indigo-600" />
-                            <span>Ekspor Excel (.xlsx)</span>
+                            <span>Ekspor Excel</span>
                         </a>
                         {canManageStore && (
                             <Button

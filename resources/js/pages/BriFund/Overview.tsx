@@ -48,7 +48,7 @@ export default function BriFundOverview({
     const categoryCards = [
         {
             key: 'B2B',
-            title: 'B2B Transactions',
+            title: 'Transaksi B2B',
             code: 'B2B',
             desc: 'Penjualan buku sekolah / korporasi',
             amount: categoryBalances.B2B,
@@ -57,7 +57,7 @@ export default function BriFundOverview({
         },
         {
             key: 'EVENT',
-            title: 'Events & Exhibitions',
+            title: 'Event & Pameran',
             code: 'EVENT',
             desc: 'Bazaar mall, pameran buku',
             amount: categoryBalances.EVENT,
@@ -75,18 +75,18 @@ export default function BriFundOverview({
         },
         {
             key: 'ANONYMOUS',
-            title: 'Anonymous Funds',
+            title: 'Dana Belum Teridentifikasi',
             code: 'ANONYMOUS',
-            desc: 'Transfer masuk belum teridentifikasi',
+            desc: 'Transfer masuk belum diketahui pengirimnya',
             amount: categoryBalances.ANONYMOUS,
             color: 'from-purple-600 to-violet-600',
             badgeBg: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
         },
         {
             key: 'CUSTOM',
-            title: 'Custom Allocations',
+            title: 'Alokasi Khusus',
             code: 'CUSTOM',
-            desc: 'Sewa booth & titipan khusus ad-hoc',
+            desc: 'Sewa booth & titipan khusus lainnya',
             amount: categoryBalances.CUSTOM,
             color: 'from-pink-600 to-rose-600',
             badgeBg: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
@@ -94,13 +94,13 @@ export default function BriFundOverview({
     ];
 
     return (
-        <AppLayout title="Mutasi BRI — Overview Saldo">
-            <Head title="Mutasi BRI — Overview Saldo" />
+        <AppLayout title="Mutasi BRI — Ringkasan Saldo">
+            <Head title="Mutasi BRI — Ringkasan Saldo" />
 
             <div className="flex flex-col gap-6 max-w-7xl">
                 <PageHeader
-                    title="Sub-Ledger Rekening Pooling BRI"
-                    description="Isolasi saldo kas kecil dan alokasi dana non-operasional berdasarkan mutasi riil bank"
+                    title="Ringkasan Saldo Rekening BRI"
+                    description="Rincian saldo dana titipan non-kas kecil (B2B, Event, Active Selling, dan alokasi khusus) di rekening BRI toko"
                     icon={Building2}
                 >
                     <BreakdownModal
@@ -110,7 +110,7 @@ export default function BriFundOverview({
                     <Button asChild variant="outline" size="sm" className="gap-2">
                         <Link href="/bri-funds/postings">
                             <History className="size-4" />
-                            Riwayat Posting
+                            Riwayat Mutasi
                         </Link>
                     </Button>
                     <Button asChild size="sm" className="gap-2 bg-primary text-primary-foreground shadow-xs">
@@ -130,10 +130,10 @@ export default function BriFundOverview({
                             </div>
                             <div>
                                 <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                                    Terdapat {pendingCount} pengajuan pengeluaran dana (OUTFLOW) menunggu persetujuan
+                                    Terdapat {pendingCount} pengajuan penarikan dana menunggu persetujuan
                                 </h4>
                                 <p className="text-xs text-amber-700 dark:text-amber-300/80">
-                                    Dual Control aktif: Supervisor (SS) atau Store Manager (SM) perlu memverifikasi sebelum saldo terpotong.
+                                    Supervisor (SS) atau Store Manager (SM) perlu memeriksa pengajuan sebelum saldo dipotong.
                                 </p>
                             </div>
                         </div>
@@ -152,7 +152,7 @@ export default function BriFundOverview({
                     <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                Total Alokasi Non-Operasional (Σ S_category)
+                                Total Dana Titipan Non-Kas Kecil
                             </span>
                             <Badge variant="outline" className="font-mono text-xs">
                                 5 Kategori Aktif
@@ -163,18 +163,18 @@ export default function BriFundOverview({
                                 {formatMoney(categoryBalances.TOTAL)}
                             </div>
                             <div className="text-xs text-muted-foreground sm:text-right">
-                                Nilai ini otomatis mengurangi saldo mutasi bank dalam pembentukan kas kecil BRI (K_bri)
+                                Nilai ini otomatis dikurangkan dari saldo rekening koran BRI saat menghitung porsi Kas Kecil
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent className="pt-2 text-xs text-muted-foreground border-t border-border/40 mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-mono">Formula: K_bri = BRI_mutation - (S_b2b + S_event + S_aksel + S_anonymous + Σ S_custom)</span>
+                        <span>Total akumulasi saldo aktif dari kategori B2B, Event, Active Selling, Dana Belum Teridentifikasi, dan Alokasi Khusus</span>
                         <BreakdownModal
                             categoryBalances={categoryBalances}
                             entities={entities}
                             trigger={
                                 <button className="text-primary hover:underline font-medium inline-flex items-center gap-1">
-                                    Lihat rincian modal alokasi <ExternalLink className="h-3 w-3" />
+                                    Lihat rincian alokasi <ExternalLink className="h-3 w-3" />
                                 </button>
                             }
                         />
@@ -241,9 +241,9 @@ export default function BriFundOverview({
                 <div className="space-y-4 pt-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-lg font-bold text-foreground">Daftar Entitas & Saldo Berjalan</h2>
+                            <h2 className="text-lg font-bold text-foreground">Daftar Rekanan & Saldo Aktif</h2>
                             <p className="text-xs text-muted-foreground">
-                                Saldo per rekanan/proyek yang siap digunakan untuk penarikan dana (Zero-Deficit Guard)
+                                Saldo per rekanan atau kegiatan yang tersedia untuk penarikan dana
                             </p>
                         </div>
                         <BreakdownModal
@@ -320,12 +320,42 @@ export default function BriFundOverview({
                                                     )}
                                                 </DataTableCell>
                                                 <DataTableCell align="center">
-                                                    <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
-                                                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
-                                                            Rincian
-                                                            <ChevronRight className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </Link>
+                                                    <div className="inline-flex items-center justify-center gap-1">
+                                                        <Link
+                                                            href={`/bri-funds/create?type=INFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                        >
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 px-2 gap-1 text-[11px] border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                                                title={`Tambah Pemasukan ke ${item.entity_name}`}
+                                                            >
+                                                                <ArrowDownLeft className="h-3 w-3" />
+                                                                Masuk
+                                                            </Button>
+                                                        </Link>
+                                                        {item.running_balance_cents > 0 && (
+                                                            <Link
+                                                                href={`/bri-funds/create?type=OUTFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                            >
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 gap-1 text-[11px] border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                                                    title={`Tarik Dana dari ${item.entity_name}`}
+                                                                >
+                                                                    <ArrowUpRight className="h-3 w-3" />
+                                                                    Tarik
+                                                                </Button>
+                                                            </Link>
+                                                        )}
+                                                        <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
+                                                            <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs">
+                                                                Rincian
+                                                                <ChevronRight className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
                                                 </DataTableCell>
                                             </DataTableRow>
                                         ))
@@ -374,12 +404,40 @@ export default function BriFundOverview({
                                                         {formatMoney(item.running_balance_cents)}
                                                     </span>
                                                 </div>
-                                                <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
-                                                    <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
-                                                        Rincian
-                                                        <ChevronRight className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Link
+                                                        href={`/bri-funds/create?type=INFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                    >
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-8 px-2 gap-1 text-xs border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                                                        >
+                                                            <ArrowDownLeft className="h-3 w-3" />
+                                                            Masuk
+                                                        </Button>
+                                                    </Link>
+                                                    {item.running_balance_cents > 0 && (
+                                                        <Link
+                                                            href={`/bri-funds/create?type=OUTFLOW&entity=${encodeURIComponent(item.entity_name)}&category=${encodeURIComponent(item.category)}`}
+                                                        >
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-8 px-2 gap-1 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400"
+                                                            >
+                                                                <ArrowUpRight className="h-3 w-3" />
+                                                                Tarik
+                                                            </Button>
+                                                        </Link>
+                                                    )}
+                                                    <Link href={`/bri-funds/entity/${encodeURIComponent(item.entity_name)}`}>
+                                                        <Button variant="outline" size="sm" className="h-8 px-2 gap-1 text-xs">
+                                                            Rincian
+                                                            <ChevronRight className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </DataTableMobileCard>
                                     ))}

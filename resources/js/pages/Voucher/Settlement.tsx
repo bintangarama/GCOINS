@@ -85,14 +85,14 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
     };
 
     return (
-        <AppLayout title="Penyelesaian Bon Kas Kecil (Settlement)">
-            <Head title="Penyelesaian Bon Kas Kecil (Settlement)" />
+        <AppLayout title="Penyelesaian Bon Kas Kecil">
+            <Head title="Penyelesaian Bon Kas Kecil" />
 
             <div className="space-y-6">
                 <PageHeader
-                    title="Penyelesaian Bon Kas Kecil (Settlement)"
+                    title="Penyelesaian Bon Kas Kecil"
                     icon={Layers}
-                    description="Pilih voucher tercairkan (DISBURSED) yang dananya telah diganti untuk dikeluarkan dari K_bon"
+                    description="Pilih bon yang sudah dicairkan untuk dibukukan ke dokumen rekap kas kecil (KKCL)"
                 >
                     <div className="flex items-center gap-2">
                         <Link href="/vouchers/settlements">
@@ -108,7 +108,7 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                             className="gap-2 shadow-xs"
                         >
                             <CheckCircle2 className="size-4" />
-                            Selesaikan Terpilih ({selectedIds.length})
+                            Rekap Terpilih ({selectedIds.length})
                         </Button>
                     </div>
                 </PageHeader>
@@ -131,7 +131,7 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                         </div>
                         <Link href={`/vouchers/settlements/${flash.settlement_id}`}>
                             <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                                Buka & Cetak Rekap Matriks
+                                Buka & Cetak Rekap
                                 <ArrowRight className="size-4" />
                             </Button>
                         </Link>
@@ -145,7 +145,7 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                             <Receipt className="w-5 h-5" />
                         </div>
                         <div>
-                            <span className="text-[11px] text-muted-foreground">Voucher Menggantung (K_bon)</span>
+                            <span className="text-[11px] text-muted-foreground">Bon Belum Direkap</span>
                             <div className="text-base font-bold text-foreground">
                                 {vouchers.length} Transaksi
                             </div>
@@ -157,7 +157,7 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                             <DollarSign className="w-5 h-5" />
                         </div>
                         <div>
-                            <span className="text-[11px] text-muted-foreground">Total Nilai K_bon</span>
+                            <span className="text-[11px] text-muted-foreground">Total Nilai Bon Gantung</span>
                             <div className="text-base font-bold font-mono text-foreground">
                                 {formatMoney(vouchers.reduce((acc, v) => acc + v.amount_cents, 0))}
                             </div>
@@ -170,7 +170,7 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                         </div>
                         <div>
                             <span className="text-[11px] text-primary font-medium">
-                                Siap Diselesaikan (Tercentang)
+                                Siap Direkap (Tercentang)
                             </span>
                             <div className="text-base font-bold font-mono text-primary">
                                 {formatMoney(selectedTotalCents)}
@@ -199,8 +199,8 @@ export default function VoucherSettlementPage({ vouchers, categories = [] }: Set
                                         />
                                     </div>
                                 </DataTableHeaderCell>
-                                <DataTableHeaderCell>No. Voucher</DataTableHeaderCell>
-                                <DataTableHeaderCell>Tgl Cair (Disbursed)</DataTableHeaderCell>
+                                <DataTableHeaderCell>No. Bon</DataTableHeaderCell>
+                                <DataTableHeaderCell>Tgl. Pencairan</DataTableHeaderCell>
                                 <DataTableHeaderCell>Pemohon</DataTableHeaderCell>
                                 <DataTableHeaderCell>Kategori</DataTableHeaderCell>
                                 <DataTableHeaderCell>Keperluan</DataTableHeaderCell>

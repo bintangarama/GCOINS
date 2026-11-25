@@ -55,7 +55,7 @@ class PettyCashMatrixRecapExport implements Export, WithEvents, WithTitle
         $margins->setLeft(0.4);
         $margins->setRight(0.4);
 
-        $settlement = $this->settlement->loadMissing(['store', 'settledBy', 'vouchers.requester']);
+        $settlement = $this->settlement->loadMissing(['store', 'settledBy', 'vouchers.approvedBy', 'vouchers.requester']);
         $store = $settlement->store;
         $storeName = $store?->name ?? 'Gramedia Store';
         $storeAddress = $store?->address ?? '';
@@ -152,9 +152,10 @@ class PettyCashMatrixRecapExport implements Export, WithEvents, WithTitle
             $voucherDate = $voucher->receipt_date ?? $voucher->disbursed_at ?? $voucher->created_at;
             $formattedDate = $voucherDate ? $voucherDate->format('d-M-y') : '-';
 
-            $requesterName = $voucher->requester?->name ?? '-';
-            $requesterNik = $voucher->requester?->nik ? " {$voucher->requester->nik}" : '';
-            $employeeId = trim("{$requesterName}{$requesterNik}");
+            $approver = $voucher->approvedBy ?? $voucher->requester;
+            $approverFirstName = $approver?->name ? (preg_split('/\s+/', trim($approver->name))[0] ?? '-') : '-';
+            $approverNik = $approver?->nik ? " {$approver->nik}" : '';
+            $employeeId = trim("{$approverFirstName}{$approverNik}");
 
             $sheet->setCellValue("A{$dataRow}", $formattedDate);
             $sheet->setCellValue("B{$dataRow}", $employeeId);

@@ -8,6 +8,7 @@ use Database\Seeders\PettyCashCategorySeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 uses(RefreshDatabase::class);
 
@@ -101,7 +102,7 @@ test('SAC batch settle creates a PettyCashSettlement with correct KKCL number fo
         ->and($v2->fresh()->status)->toBe(PettyCashVoucher::STATUS_SETTLED);
 });
 
-test('settlement detail page loads with matrix columnar categories and store manager', function () {
+test('settlement detail page loads with matrix columnar categories, approver attribution, and store manager', function () {
     $settlement = PettyCashSettlement::create([
         'store_id' => $this->store->id,
         'settlement_number' => '026/KKCL/GAM435/X/2026',
@@ -115,6 +116,8 @@ test('settlement detail page loads with matrix columnar categories and store man
         'settlement_id' => $settlement->id,
         'voucher_number' => '001/KKCL/GAM435/X/2026',
         'requester_id' => $this->soaUser->id,
+        'approved_by_id' => $this->smUser->id,
+        'approved_at' => now(),
         'amount_cents' => 36600000,
         'purpose' => 'Biaya Dinas Luar',
         'category' => 'BDL',
@@ -131,16 +134,32 @@ test('settlement detail page loads with matrix columnar categories and store man
         ->has('settlement')
         ->has('categories')
         ->where('storeManager.name', 'Eny Susanti')
+        ->where('settlement.vouchers.0.approved_by.name', 'Eny Susanti')
+        ->where('settlement.vouchers.0.approved_by.nik', '004838')
     );
 });
 
-test('settlement matrix excel export generates valid spreadsheet response', function () {
+test('settlement matrix excel export generates valid spreadsheet response with approver in Employee Id column', function () {
     $settlement = PettyCashSettlement::create([
         'store_id' => $this->store->id,
         'settlement_number' => '026/KKCL/GAM435/X/2026',
-        'total_amount_cents' => 240085000,
+        'total_amount_cents' => 36600000,
         'status' => 'SETTLED',
         'settled_by_id' => $this->sacUser->id,
+    ]);
+
+    PettyCashVoucher::create([
+        'store_id' => $this->store->id,
+        'settlement_id' => $settlement->id,
+        'voucher_number' => '001/KKCL/GAM435/X/2026',
+        'requester_id' => $this->soaUser->id,
+        'approved_by_id' => $this->smUser->id,
+        'approved_at' => now(),
+        'amount_cents' => 36600000,
+        'purpose' => 'Biaya Dinas Luar',
+        'category' => 'BDL',
+        'status' => PettyCashVoucher::STATUS_SETTLED,
+        'settled_at' => now(),
     ]);
 
     $this->actingAs($this->sacUser);
@@ -148,4 +167,36 @@ test('settlement matrix excel export generates valid spreadsheet response', func
 
     $response->assertStatus(200);
     expect($response->headers->get('content-disposition'))->toContain('Rekap-Kas-Kecil');
+
+    $filePath = $response->getFile()->getPathname();
+    $spreadsheet = IOFactory::load($filePath);
+    $sheet = $spreadsheet->getActiveSheet();
+
+    expect($sheet->getCell('B6')->getValue())->toBe('Employee Id')
+        ->and($sheet->getCell('B7')->getValue())->toBe('Eny 004838');
+});
+
+test('paginated list endpoints support whitelisted per_page options 20, 50, 100 and fallback to 20 for invalid values', function () {
+    $this->actingAs($this->sacUser);
+
+    $this->get('/vouchers/settlements?per_page=50')
+        ->assertStatus(200)
+        ->assertInertia(fn ($page) => $page
+            ->component('Voucher/SettlementIndex')
+            ->where('settlements.per_page', 50)
+        );
+
+    $this->get('/vouchers?per_page=100')
+        ->assertStatus(200)
+        ->assertInertia(fn ($page) => $page
+            ->component('Voucher/Index')
+            ->where('vouchers.per_page', 100)
+        );
+
+    $this->get('/vouchers?per_page=9999')
+        ->assertStatus(200)
+        ->assertInertia(fn ($page) => $page
+            ->component('Voucher/Index')
+            ->where('vouchers.per_page', 20)
+        );
 });

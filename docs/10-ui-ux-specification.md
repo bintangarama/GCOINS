@@ -277,6 +277,18 @@ Untuk memberikan area kerja vertikal yang lebih luas bagi data tabel keuangan da
 - Download buttons: .xlsx, .pdf (visible on screen, hidden on print)
 - Ctrl+P compatible
 
+### 4.8. BRI Sub-Ledger Overview, Entity Detail & Smart Mutation Form (`/bri-funds`, `/bri-funds/create`, `/bri-funds/entity/:name`)
+- **Smart Entity Selector & Auto-Locked Category (`/bri-funds/create`)**:
+  - Urutan input mengutamakan **Nama Entitas / Rekanan / Kegiatan** terlebih dahulu menggunakan *searchable dropdown popover* yang menampilkan nama rekanan, badge kategori (`B2B`, `EVENT`, `CUSTOM • SO`, dll.), dan saldo berjalan.
+  - Saat rekanan terdaftar dipilih (baik di mode `INFLOW` maupun `OUTFLOW`), `Kategori Dana` dan `Nama Kategori Khusus` otomatis terisi dan dikunci (*Read-Only Badge*) guna mencegah salah pilih kategori atau duplikasi sub-ledger.
+  - Pada mode `OUTFLOW`, daftar dropdown otomatis memfilter hanya rekanan terdaftar yang memiliki `Saldo Berjalan > Rp 0` (sesuai *Zero-Deficit Guard*).
+  - Pada mode `INFLOW`, mengetik nama rekanan yang belum terdaftar akan membuka pilihan dropdown `Kategori Dana` untuk membuat entitas baru, dilengkapi *quick-pick chips* sub-kategori `CUSTOM` yang sudah ada (mis. `SO`, `BS`, `PDAM`).
+- **1-Click Full Balance Withdrawal & Batch Entry**:
+  - Pada mode `OUTFLOW`, kartu informasi saldo berjalan menyediakan tombol 1-klik **`Tarik Semua Saldo (Rp ...)`** untuk langsung mengisi `Nominal Mutasi` sebesar 100% sisa saldo berjalan entitas.
+  - Action bar menyediakan tombol **`Simpan & Catat Lagi`** (`create_another: true`) di samping tombol simpan utama untuk pencatatan mutasi beruntun.
+- **Pre-Filled Quick Action Shortcuts (`/bri-funds`, `BreakdownModal`, `/bri-funds/entity/:name`)**:
+  - Setiap baris entitas pada tabel **Daftar Entitas & Saldo Berjalan**, modal **Breakdown Alokasi**, serta header **Rincian Entitas** menyediakan tombol pintasan **`+ Masuk`** dan **`- Tarik`** (khusus saldo `> Rp 0`) yang mengarahkan ke `/bri-funds/create?type={INFLOW|OUTFLOW}&entity={name}&category={cat}` dengan seluruh metadata entitas langsung terpilih otomatis.
+
 ### 4.11. Master Petty Cash Categories Management (`/admin/categories`)
 - Workspace pengelolaan master kategori pengeluaran kas kecil toko.
 - **Tabel Kategori**:

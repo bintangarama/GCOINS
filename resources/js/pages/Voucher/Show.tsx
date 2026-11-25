@@ -160,7 +160,7 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                                 className="text-xs h-8 gap-1.5"
                             >
                                 <Send className="w-3.5 h-3.5" />
-                                Ajukan Voucher
+                                Ajukan Bon
                             </Button>
                         )}
 
@@ -198,7 +198,7 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                                 className="text-xs h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                                 <CheckCircle className="w-3.5 h-3.5" />
-                                Setujui (Approve)
+                                Setujui Bon
                             </Button>
                         )}
 
@@ -210,7 +210,7 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                                 className="text-xs h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
                             >
                                 <XCircle className="w-3.5 h-3.5" />
-                                Tolak (Reject)
+                                Tolak Bon
                             </Button>
                         )}
 
@@ -222,7 +222,7 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                                 className="text-xs h-8 gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
                             >
                                 <Banknote className="w-3.5 h-3.5" />
-                                Cairkan Kas (Disburse)
+                                Cairkan Tunai
                             </Button>
                         )}
 
@@ -234,7 +234,7 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                                 className="text-xs h-8 gap-1.5 text-orange-600 border-orange-300 hover:bg-orange-50"
                             >
                                 <RotateCcw className="w-3.5 h-3.5" />
-                                Batalkan (Refund Kasir)
+                                Batalkan Pencairan
                             </Button>
                         )}
 
@@ -257,8 +257,8 @@ export default function VoucherShowPage({ voucher, categories = [], can }: Vouch
                     <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                         <div>
-                            <span className="font-semibold">Aturan Anti Self-Approval: </span>
-                            Anda tidak dapat menyetujui atau menolak pengajuan bon yang Anda buat sendiri. Bon ini harus diverifikasi oleh approver lain ({currentUser?.role === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}). Jika perlu merevisi data, klik <b>Tarik ke Draft</b>.
+                            <span className="font-semibold">Kebijakan Persetujuan: </span>
+                            Anda tidak dapat menyetujui atau menolak pengajuan bon yang Anda buat sendiri. Bon ini harus diperiksa oleh pejabat lain ({currentUser?.role === 'SAC' ? 'SS atau SM' : 'SAC, SS lain, atau SM'}). Jika perlu merevisi data, klik <b>Tarik ke Draft</b>.
                         </div>
                     </div>
                 )}

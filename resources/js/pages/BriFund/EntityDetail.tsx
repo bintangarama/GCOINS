@@ -41,6 +41,7 @@ import {
 interface BriFundEntityDetailProps {
     entityName: string;
     category: string;
+    customCategoryName?: string | null;
     runningBalanceCents: number;
     inflowTotalCents: number;
     outflowTotalCents: number;
@@ -50,6 +51,7 @@ interface BriFundEntityDetailProps {
 export default function BriFundEntityDetail({
     entityName,
     category,
+    customCategoryName,
     runningBalanceCents,
     inflowTotalCents,
     outflowTotalCents,
@@ -73,16 +75,33 @@ export default function BriFundEntityDetail({
                 {/* Page Header */}
                 <PageHeader
                     title={entityName}
-                    description={`Kategori: ${category} • Rekening Sub-Ledger`}
+                    description={`Kategori: ${category}${customCategoryName ? ` (${customCategoryName})` : ''} • Rincian Mutasi Rekanan`}
                     icon={Building2}
                     backHref="/bri-funds"
                 >
-                    <Button asChild size="sm" className="gap-2 bg-primary text-primary-foreground shadow-xs">
-                        <Link href="/bri-funds/create">
-                            <PlusCircle className="size-4" />
-                            Catat Mutasi Baru
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+                    >
+                        <Link
+                            href={`/bri-funds/create?type=INFLOW&entity=${encodeURIComponent(entityName)}&category=${encodeURIComponent(category)}`}
+                        >
+                            <ArrowDownLeft className="size-4" />
+                            Catat Dana Masuk
                         </Link>
                     </Button>
+                    {runningBalanceCents > 0 && (
+                        <Button asChild size="sm" className="gap-1.5 bg-primary text-primary-foreground shadow-xs">
+                            <Link
+                                href={`/bri-funds/create?type=OUTFLOW&entity=${encodeURIComponent(entityName)}&category=${encodeURIComponent(category)}`}
+                            >
+                                <ArrowUpRight className="size-4" />
+                                Tarik Dana
+                            </Link>
+                        </Button>
+                    )}
                 </PageHeader>
 
                 {/* Balance Cards Summary */}
@@ -92,7 +111,7 @@ export default function BriFundEntityDetail({
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    Saldo Berjalan Entitas (S_entity)
+                                    Saldo Aktif Rekanan
                                 </span>
                                 <Coins className="h-4 w-4 text-primary" />
                             </div>
@@ -100,8 +119,8 @@ export default function BriFundEntityDetail({
                                 {formatMoney(runningBalanceCents)}
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-0 text-[11px] text-muted-foreground font-mono">
-                            Formula: Σ Inflow (disetujui) - Σ Outflow (disetujui)
+                        <CardContent className="pt-0 text-[11px] text-muted-foreground">
+                            Selisih total dana masuk dikurangi total penarikan
                         </CardContent>
                     </Card>
 
@@ -110,7 +129,7 @@ export default function BriFundEntityDetail({
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    Total Pemasukan (INFLOW)
+                                    Total Dana Masuk
                                 </span>
                                 <div className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                                     <ArrowDownLeft className="h-4 w-4" />
@@ -121,7 +140,7 @@ export default function BriFundEntityDetail({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0 text-[11px] text-muted-foreground">
-                            Akumulasi seluruh dana masuk yang telah disetujui
+                            Akumulasi seluruh dana masuk yang telah tercatat
                         </CardContent>
                     </Card>
 
@@ -130,7 +149,7 @@ export default function BriFundEntityDetail({
                         <CardHeader className="pb-2">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                    Total Pengeluaran (OUTFLOW)
+                                    Total Penarikan Dana
                                 </span>
                                 <div className="p-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
                                     <ArrowUpRight className="h-4 w-4" />
@@ -141,7 +160,7 @@ export default function BriFundEntityDetail({
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0 text-[11px] text-muted-foreground">
-                            Akumulasi seluruh dana keluar yang telah disetujui SS/SM
+                            Akumulasi seluruh dana keluar yang telah disetujui
                         </CardContent>
                     </Card>
                 </div>

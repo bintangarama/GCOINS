@@ -208,7 +208,7 @@ export default function StoreSettings({
                                     />
                                 </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    Tersimpan sebagai {data.imprest_fund_cents.toLocaleString('id-ID')} sen.
+                                    Digunakan sebagai acuan modal tetap kas kecil saat rekonsiliasi opname.
                                 </p>
                                 {errors.imprest_fund_cents && (
                                     <p className="text-xs text-destructive">{errors.imprest_fund_cents}</p>
@@ -218,10 +218,10 @@ export default function StoreSettings({
                             <div className="p-3.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-xs text-blue-900 dark:text-blue-200 space-y-1">
                                 <div className="font-semibold flex items-center gap-1.5">
                                     <AlertCircle className="w-4 h-4 text-primary" />
-                                    Aturan Rekonsiliasi Formula:
+                                    Catatan Perhitungan Plafon:
                                 </div>
                                 <p>
-                                    Target Rekonsiliasi = Plafon Kas Kecil + Varian Sebelumnya (V_prev). Perubahan plafon akan langsung berlaku untuk sesi opname berikutnya.
+                                    Perubahan nilai plafon kas kecil akan langsung diterapkan sebagai target rekonsiliasi pada sesi cash opname berikutnya.
                                 </p>
                             </div>
                         </CardContent>

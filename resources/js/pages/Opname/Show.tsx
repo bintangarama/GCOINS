@@ -147,14 +147,14 @@ export default function OpnameShowPage({
                     title={session.opname_number}
                     description={`Tanggal Opname: ${session.date} • Dibuat oleh: ${session.created_by?.name || 'SAC'}`}
                     backHref="/opname"
-                    backLabel="Riwayat Sesi"
+                    backLabel="Riwayat Opname"
                     badge={
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <StatusBadge status={session.status} />
                             {isLocked && (
                                 <Badge variant="outline" className="border-emerald-500 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 gap-1 text-xs">
                                     <Lock className="size-3" />
-                                    Immutable Snapshot
+                                    Terkunci Permanen
                                 </Badge>
                             )}
                         </div>
@@ -172,7 +172,7 @@ export default function OpnameShowPage({
                         <Button asChild variant="outline" size="sm" className="gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950">
                             <a href={`/opname/${session.id}/export-excel`} download>
                                 <FileSpreadsheet className="size-4" />
-                                Download Excel
+                                Ekspor Excel
                             </a>
                         </Button>
                     )}
@@ -180,7 +180,7 @@ export default function OpnameShowPage({
                         <Button asChild size="sm">
                             <Link href="/opname/active">
                                 <Coins className="size-4 mr-1.5" />
-                                Buka di Workspace Aktif
+                                Buka Sesi Aktif
                             </Link>
                         </Button>
                     )}
@@ -197,7 +197,7 @@ export default function OpnameShowPage({
                                 Sesi Telah Disetujui & Dikunci Permanen
                             </p>
                             <p className="mt-0.5">
-                                Seluruh perhitungan fisik kas, bon gantung, dan rekonsiliasi BRI telah terkunci permanen sesuai <strong>Rule 4 (Immutable Snapshot)</strong>. Outstanding variance akhir <strong>{(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}{formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}</strong> tercatat permanen dalam buku besar rekonsiliasi kas.
+                                Seluruh perhitungan fisik kas, bon gantung, dan saldo BRI telah disahkan oleh Store Manager dan tidak dapat diubah lagi. Selisih akhir sebesar <strong>{(session.outstanding_variance_cents ?? session.current_variance_cents) > 0 ? '+' : ''}{formatMoney(session.outstanding_variance_cents ?? session.current_variance_cents)}</strong> telah tercatat dalam buku rekonsiliasi kas.
                             </p>
                             {session.notes && (
                                 <p className="mt-1.5 font-medium italic text-emerald-900 dark:text-emerald-100">

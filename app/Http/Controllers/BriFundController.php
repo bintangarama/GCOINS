@@ -122,7 +122,8 @@ class BriFundController extends Controller
             $query->latest();
         }
 
-        $postings = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $postings = $query->paginate($perPage)->withQueryString();
 
         $existingEntities = BriFundPosting::select('entity_name')
             ->distinct()
@@ -150,9 +151,22 @@ class BriFundController extends Controller
         $storeId = $request->user()->store_id;
         $entitiesWithBalances = $this->balanceService->getEntitiesWithBalances($storeId);
 
+        $initialType = in_array($request->query('type'), BriFundPosting::TYPES, true)
+            ? $request->query('type')
+            : null;
+        $initialEntity = $request->query('entity');
+        $initialCategory = in_array($request->query('category'), BriFundPosting::CATEGORIES, true)
+            ? $request->query('category')
+            : null;
+
         return Inertia::render('BriFund/Create', [
             'categories' => BriFundPosting::CATEGORIES,
             'entities' => $entitiesWithBalances,
+            'initialData' => [
+                'type' => $initialType,
+                'entity_name' => $initialEntity,
+                'category' => $initialCategory,
+            ],
         ]);
     }
 
@@ -170,6 +184,12 @@ class BriFundController extends Controller
         $msg = $posting->type === BriFundPosting::TYPE_INFLOW
             ? 'Posting pemasukan dana BRI berhasil dicatat dan disetujui.'
             : 'Posting pengeluaran dana BRI berhasil dicatat dan langsung disetujui.';
+
+        if ($request->boolean('create_another')) {
+            return redirect()
+                ->route('bri-funds.create', ['type' => $posting->type])
+                ->with('success', $msg);
+        }
 
         return redirect()->route('bri-funds.postings')->with('success', $msg);
     }
@@ -256,17 +276,27 @@ class BriFundController extends Controller
             ->outflow()
             ->sum('amount_cents');
 
+        $perPage = $this->resolvePerPage($request);
         $postings = BriFundPosting::with(['createdBy', 'approvedBy'])
             ->where('entity_name', $entityName)
             ->latest()
-            ->paginate(20);
+            ->paginate($perPage)
+            ->withQueryString();
 
-        $primaryCategory = BriFundPosting::where('entity_name', $entityName)
-            ->value('category') ?? 'B2B';
+        $latestPosting = BriFundPosting::where('entity_name', $entityName)
+            ->latest()
+            ->first();
+        $primaryCategory = $latestPosting?->category ?? 'B2B';
+        $customCategoryName = $latestPosting?->custom_category_name
+            ?? BriFundPosting::where('entity_name', $entityName)
+                ->whereNotNull('custom_category_name')
+                ->latest()
+                ->value('custom_category_name');
 
         return Inertia::render('BriFund/EntityDetail', [
             'entityName' => $entityName,
             'category' => $primaryCategory,
+            'customCategoryName' => $customCategoryName,
             'runningBalanceCents' => $runningBalance,
             'inflowTotalCents' => $inflowTotal,
             'outflowTotalCents' => $outflowTotal,

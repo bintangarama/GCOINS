@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     FileText,
@@ -27,6 +27,7 @@ import {
     DataTableEmpty,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
+import { getActivePerPageParam } from '@/lib/list-url-memory';
 import { formatMoney } from '@/lib/money';
 import { PaginatedSettlements, PettyCashSettlement } from '@/types/voucher';
 import { PageProps } from '@/types/auth';
@@ -50,6 +51,12 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
+    useEffect(() => {
+        setSearch(filters.search || '');
+        setDateFrom(filters.date_from || '');
+        setDateTo(filters.date_to || '');
+    }, [filters.search, filters.date_from, filters.date_to]);
+
     const applyFilters = () => {
         router.get(
             '/vouchers/settlements',
@@ -57,6 +64,7 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                 search: search || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
+                per_page: getActivePerPageParam(),
             },
             { preserveState: true }
         );
@@ -69,14 +77,14 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
     };
 
     return (
-        <AppLayout title="Riwayat Rekap Pengeluaran Kas Kecil">
-            <Head title="Riwayat Rekap Pengeluaran Kas Kecil" />
+        <AppLayout title="Riwayat Rekap Kas Kecil">
+            <Head title="Riwayat Rekap Kas Kecil" />
 
             <div className="space-y-6">
                 <PageHeader
                     title="Riwayat Rekap Pengeluaran Kas Kecil"
                     icon={FileText}
-                    description="Arsip dokumen rekapitulasi pengeluaran kas kecil berkolom matriks (Settlement)"
+                    description="Arsip dokumen rekapitulasi pengeluaran kas kecil (KKCL) yang telah diselesaikan"
                 >
                     <div className="flex items-center gap-2">
                         <a
@@ -88,12 +96,12 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs font-medium text-foreground transition-colors shadow-2xs"
                         >
                             <Download className="size-3.5 text-blue-600" />
-                            <span>Ekspor Excel (.xlsx)</span>
+                            <span>Ekspor Excel</span>
                         </a>
                         <Link href="/vouchers/settlement">
                             <Button variant="outline" size="sm" className="gap-2 shadow-xs">
                                 <ArrowLeft className="size-4" />
-                                Kembali ke Settlement
+                                Kembali ke Penyelesaian
                             </Button>
                         </Link>
                     </div>
@@ -146,7 +154,8 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                                     setSearch('');
                                     setDateFrom('');
                                     setDateTo('');
-                                    router.get('/vouchers/settlements');
+                                    const perPage = getActivePerPageParam();
+                                    router.get('/vouchers/settlements', perPage ? { per_page: perPage } : {});
                                 }}
                                 className="text-xs h-8"
                             >
@@ -169,7 +178,7 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                                 <DataTableHeaderCell>No. Rekap Invoice</DataTableHeaderCell>
                                 <DataTableHeaderCell>Tanggal Dibuat</DataTableHeaderCell>
                                 <DataTableHeaderCell>Penyusun (SAC)</DataTableHeaderCell>
-                                <DataTableHeaderCell align="center">Jumlah Voucher</DataTableHeaderCell>
+                                <DataTableHeaderCell align="center">Jumlah Bon</DataTableHeaderCell>
                                 <DataTableHeaderCell align="right">Total Pengeluaran</DataTableHeaderCell>
                                 <DataTableHeaderCell align="center" className="w-32">Aksi</DataTableHeaderCell>
                             </tr>
@@ -264,17 +273,17 @@ export default function SettlementIndexPage({ settlements, filters }: Settlement
                             )}
                         </DataTableBody>
                     </DataTable>
-                </Card>
 
-                {/* Pagination */}
-                {settlements.last_page > 1 && (
+                    {/* Pagination */}
                     <Pagination
                         currentPage={settlements.current_page}
                         lastPage={settlements.last_page}
+                        from={settlements.from}
+                        to={settlements.to}
                         total={settlements.total}
                         links={settlements.links}
                     />
-                )}
+                </Card>
             </div>
 
             <CancelSettlementDialog

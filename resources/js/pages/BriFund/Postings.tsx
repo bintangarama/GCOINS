@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
     DataTableMobileCard,
 } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
+import { getActivePerPageParam } from '@/lib/list-url-memory';
 import { PaginatedBriPostings, BriFundPosting } from '@/types/bri';
 import { formatMoney } from '@/lib/money';
 import {
@@ -75,6 +76,24 @@ export default function BriFundPostings({
     const [dateFrom, setDateFrom] = useState(filters.date_from || '');
     const [dateTo, setDateTo] = useState(filters.date_to || '');
 
+    useEffect(() => {
+        setSearch(filters.search || '');
+        setCategory(filters.category || 'all');
+        setEntityName(filters.entity_name || 'all');
+        setType(filters.type || 'all');
+        setStatus(filters.status || 'all');
+        setDateFrom(filters.date_from || '');
+        setDateTo(filters.date_to || '');
+    }, [
+        filters.search,
+        filters.category,
+        filters.entity_name,
+        filters.type,
+        filters.status,
+        filters.date_from,
+        filters.date_to,
+    ]);
+
     const [selectedProofUrl, setSelectedProofUrl] = useState<string | null>(null);
 
     const handleSort = (field: string) => {
@@ -85,6 +104,7 @@ export default function BriFundPostings({
     };
 
     const handleFilter = (customParams = {}) => {
+        const activePerPage = getActivePerPageParam();
         const params: Record<string, string> = {
             ...(search ? { search } : {}),
             ...(category !== 'all' ? { category } : {}),
@@ -95,6 +115,7 @@ export default function BriFundPostings({
             ...(dateTo ? { date_to: dateTo } : {}),
             ...(filters.sort ? { sort: filters.sort } : {}),
             ...(filters.direction ? { direction: filters.direction } : {}),
+            ...(activePerPage ? { per_page: String(activePerPage) } : {}),
             ...customParams,
         };
 
@@ -112,21 +133,22 @@ export default function BriFundPostings({
         setStatus('all');
         setDateFrom('');
         setDateTo('');
-        router.get('/bri-funds/postings');
+        const perPage = getActivePerPageParam();
+        router.get('/bri-funds/postings', perPage ? { per_page: perPage } : {});
     };
 
     return (
-        <AppLayout title="Riwayat Mutasi BRI — Bank Sub-Ledger">
-            <Head title="Riwayat Mutasi BRI — Bank Sub-Ledger" />
+        <AppLayout title="Riwayat Mutasi Dana BRI">
+            <Head title="Riwayat Mutasi Dana BRI" />
 
             <div className="flex flex-col gap-6 max-w-7xl">
                 <PageHeader
-                    title="Riwayat Posting Rekening BRI"
-                    description="Daftar seluruh transaksi pemasukan (INFLOW) dan pengeluaran (OUTFLOW) dana pooling bank"
+                    title="Riwayat Mutasi Dana BRI"
+                    description="Catatan seluruh transaksi dana masuk dan penarikan pada rekening BRI toko"
                     icon={Building2}
                 >
                     <Button asChild variant="outline" size="sm">
-                        <Link href="/bri-funds">Overview Saldo</Link>
+                        <Link href="/bri-funds">Ringkasan Saldo</Link>
                     </Button>
                     <Button asChild variant="outline" size="sm" className="gap-1.5 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-semibold shadow-xs">
                         <a
@@ -142,7 +164,7 @@ export default function BriFundPostings({
                             download
                         >
                             <FileSpreadsheet className="size-4" />
-                            Export Excel
+                            Ekspor Excel
                         </a>
                     </Button>
                     <Button asChild size="sm" className="gap-2 bg-primary text-primary-foreground shadow-xs">

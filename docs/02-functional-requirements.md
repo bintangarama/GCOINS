@@ -172,17 +172,19 @@
 
 ### FR-BRI-01: Record INFLOW
 - Roles: SAC, SS
-- Fields: category, entity name, amount (> 0), purpose, proof attachment
+- Fields: entity name (smart searchable selector or new entity creation), category (auto-filled & locked when selecting an existing registered entity; editable with quick-pick `CUSTOM` sub-category chips when creating a new entity), amount (> 0), purpose, proof attachment
 - Status: immediately `APPROVED`
 - Running balance increases instantly
+- Supports `"Simpan & Catat Lagi"` (`create_another: true`) for rapid sequential mutations
 
 ### FR-BRI-02: Record OUTFLOW
 - Roles: SAC, SS
-- Fields: same as INFLOW + destination account
+- Fields: entity name (searchable dropdown filtered strictly to registered entities with `running_balance_cents > 0`), auto-locked category & custom sub-category name, amount (> 0, with 1-click `"Tarik Semua Saldo (100%)"` helper), destination account/purpose, proof attachment
 - Validation: amount ≤ entity's current running balance (Zero-Deficit Guard)
 - Status: immediately `APPROVED` under SAC operational control (Rule 6)
 - Running balance decreases immediately upon creation
 - Notification: Informational notification (`BRI_OUTFLOW_RECORDED`) dispatched to SS and SM
+- Supports `"Simpan & Catat Lagi"` (`create_another: true`) for rapid sequential mutations
 
 ### FR-BRI-03: Approve OUTFLOW (Legacy & Pending Approval Queue)
 - Scope: Berlaku untuk antrean mutasi penarikan berstatus `PENDING_SS` (misalnya mutasi legacy/lampau).
@@ -201,9 +203,10 @@
 - Status: `PENDING_SS` → `REJECTED`
 - Running balance unchanged
 
-### FR-BRI-05: Balance Overview Dashboard
+### FR-BRI-05: Balance Overview Dashboard & Quick Mutation Shortcuts
 - Show running balance per category (B2B, EVENT, AKSEL, ANONYMOUS, CUSTOM total)
-- Show per-entity breakdown within each category
+- Show per-entity breakdown within each category (deduplicated by `(entity_name, category)`)
+- Direct `+ Masuk` (Inflow) and `- Tarik` (Outflow, when balance > 0) action buttons on every entity row in Overview Saldo and Breakdown Alokasi modal, navigating to `/bri-funds/create?type=...&entity=...&category=...` with pre-filled entity and locked category
 - Auto-refreshed when postings change
 
 ### FR-BRI-06: Posting History
@@ -211,8 +214,9 @@
 - Paginated, sortable
 
 ### FR-BRI-07: Entity Detail
-- Drill-down view showing all postings for a specific entity
+- Drill-down view showing all postings for a specific entity, including `custom_category_name` metadata
 - Running balance calculation visible
+- Pre-filled `+ Tambah Pemasukan` and `- Tarik Dana (Outflow)` shortcut buttons in page header
 
 ---
 

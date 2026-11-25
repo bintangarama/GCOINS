@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { resolveDefaultBreadcrumbs } from '@/lib/breadcrumbs';
+import { rememberListUrl, resolveRememberedListUrl } from '@/lib/list-url-memory';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useFlashToast } from '@/hooks/use-flash-toast';
 import { cn } from '@/lib/utils';
@@ -90,8 +91,18 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    // Remember active list page URL (including filters, sort, per_page, and page) in sessionStorage
+    rememberListUrl(url);
+    useEffect(() => {
+        rememberListUrl(url);
+    }, [url]);
+
     // Resolve breadcrumbs: prioritizes explicit prop (even if []), otherwise auto-resolves from URL & title
-    const resolvedBreadcrumbs = breadcrumbs !== undefined ? breadcrumbs : resolveDefaultBreadcrumbs(url, title);
+    const rawBreadcrumbs = breadcrumbs !== undefined ? breadcrumbs : resolveDefaultBreadcrumbs(url, title);
+    const resolvedBreadcrumbs = rawBreadcrumbs.map((item) => ({
+        ...item,
+        href: resolveRememberedListUrl(item.href),
+    }));
 
     const handleLogout = () => {
         router.post(logout.url());
@@ -131,14 +142,14 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     show: hasRole(...REQUESTER_ROLES, 'SS', 'SAC', 'SM'),
                 },
                 {
-                    label: 'Antrean Approval',
+                    label: 'Antrean Persetujuan',
                     href: '/vouchers/pending',
                     icon: Shield,
-                    active: url === '/vouchers/pending',
+                    active: url.startsWith('/vouchers/pending'),
                     show: hasRole('SS', 'SAC', 'SM'),
                 },
                 {
-                    label: 'Penyelesaian (Settlement)',
+                    label: 'Penyelesaian Bon',
                     href: '/vouchers/settlement',
                     icon: Layers,
                     active: url === '/vouchers/settlement',
@@ -164,10 +175,10 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     show: hasRole('SAC', 'SS', 'SM'),
                 },
                 {
-                    label: 'Riwayat Sesi',
+                    label: 'Riwayat Opname',
                     href: '/opname',
                     icon: FileText,
-                    active: url === '/opname',
+                    active: url === '/opname' || (url.startsWith('/opname?') || (url.startsWith('/opname/') && !url.startsWith('/opname/active'))),
                     show: hasRole('SS', 'SAC', 'SM', 'SYSTEM_ADMIN'),
                 },
             ],
@@ -176,24 +187,24 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
             title: 'Mutasi BRI',
             items: [
                 {
-                    label: 'Overview Saldo',
+                    label: 'Ringkasan Saldo',
                     href: '/bri-funds',
                     icon: Building2,
                     active: url === '/bri-funds' || url === '/bri-funds/create',
                     show: hasRole('SS', 'SAC', 'SM'),
                 },
                 {
-                    label: 'Riwayat Posting',
+                    label: 'Riwayat Mutasi',
                     href: '/bri-funds/postings',
                     icon: History,
                     active: url.startsWith('/bri-funds/postings'),
                     show: hasRole('SS', 'SAC', 'SM'),
                 },
                 {
-                    label: 'Antrean Approval',
+                    label: 'Antrean Persetujuan',
                     href: '/bri-funds/pending',
                     icon: Shield,
-                    active: url === '/bri-funds/pending',
+                    active: url.startsWith('/bri-funds/pending'),
                     show: hasRole('SS', 'SM'),
                 },
             ],
@@ -202,7 +213,7 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
             title: 'Administrasi',
             items: [
                 {
-                    label: 'Manajemen User',
+                    label: 'Kelola Pengguna',
                     href: usersRoutes.index.url(),
                     icon: Users,
                     active: url.startsWith('/admin/users'),
@@ -223,14 +234,14 @@ export function AppLayout({ title, breadcrumbs, children }: AppLayoutProps) {
                     show: hasRole('SAC', 'SM', 'SYSTEM_ADMIN'),
                 },
                 {
-                    label: 'Audit Log',
+                    label: 'Log Aktivitas',
                     href: '/admin/audit-logs',
                     icon: ShieldCheck,
                     active: url.startsWith('/admin/audit-logs'),
                     show: hasRole('SAC', 'SM', 'SYSTEM_ADMIN'),
                 },
                 {
-                    label: 'Import / Export',
+                    label: 'Ekspor & Impor',
                     href: '/admin/import-export',
                     icon: ArrowUpDown,
                     active: url.startsWith('/admin/import-export'),

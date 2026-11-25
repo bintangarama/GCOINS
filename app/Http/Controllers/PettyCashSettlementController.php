@@ -45,7 +45,8 @@ class PettyCashSettlementController extends Controller
             $query->whereDate('created_at', '<=', $request->input('date_to'));
         }
 
-        $settlements = $query->paginate(15)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $settlements = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('Voucher/SettlementIndex', [
             'settlements' => $settlements,
@@ -72,7 +73,7 @@ class PettyCashSettlementController extends Controller
             'store',
             'settledBy',
             'vouchers' => function ($q) {
-                $q->with('requester:id,name,nik')->orderBy('disbursed_at')->orderBy('created_at');
+                $q->with(['requester:id,name,nik', 'approvedBy:id,name,nik'])->orderBy('disbursed_at')->orderBy('created_at');
             },
         ]);
 

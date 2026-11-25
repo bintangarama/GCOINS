@@ -74,7 +74,8 @@ class AuditLogController extends Controller
             $query->latest('created_at');
         }
 
-        $logs = $query->paginate(20)->withQueryString();
+        $perPage = $this->resolvePerPage($request);
+        $logs = $query->paginate($perPage)->withQueryString();
 
         // Distinct actions and entity names for filter dropdowns
         $availableActions = AuditLog::select('action')->distinct()->orderBy('action')->pluck('action');

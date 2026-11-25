@@ -120,14 +120,14 @@ These are used in flash messages and policy rejections:
 ### BRI Fund Postings
 | Method | URI | Controller | Action |
 |---|---|---|---|
-| GET | `/bri-funds` | `BriFundController@overview` | Balance overview |
+| GET | `/bri-funds` | `BriFundController@overview` | Balance overview with quick `+ Masuk` / `- Tarik` shortcuts |
 | GET | `/bri-funds/postings` | `BriFundController@postings` | Posting history |
-| GET | `/bri-funds/create` | `BriFundController@create` | Create form |
-| POST | `/bri-funds` | `BriFundController@store` | Save posting (INFLOW & OUTFLOW immediately APPROVED under SAC control; Zero-Deficit Guard enforced) |
+| GET | `/bri-funds/create` | `BriFundController@create` | Create form (supports `?type=&entity=&category=` pre-fill via `initialData`) |
+| POST | `/bri-funds` | `BriFundController@store` | Save posting (INFLOW & OUTFLOW immediately APPROVED under SAC control; Zero-Deficit Guard enforced; supports `create_another` redirect) |
 | GET | `/bri-funds/pending` | `BriFundController@pending` | Pending outflows queue (legacy approval) |
 | POST | `/bri-funds/{posting}/approve` | `BriFundController@approve` | Approve outflow (legacy pending queue; tier limit enforced: SS ≤ 500k, SM > 500k) |
 | POST | `/bri-funds/{posting}/reject` | `BriFundController@reject` | Reject outflow (legacy pending queue) |
-| GET | `/bri-funds/entity/{entityName}` | `BriFundController@entityDetail` | Entity detail drill-down |
+| GET | `/bri-funds/entity/{entityName}` | `BriFundController@entityDetail` | Entity detail drill-down (includes `customCategoryName`) |
 | GET | `/bri-funds/balances` | `BriFundController@balances` | JSON: current balances for opname form |
 | GET | `/bri-funds/export` | `BriFundController@export` | Export posting summary |
 
